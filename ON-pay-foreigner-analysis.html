@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>외국인 ON페이 버스 이용 월별 보고서</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#152033;--muted:#657187;--line:#dfe6ef;--blue:#2563eb;--blue2:#dbeafe;--teal:#0f766e;--orange:#b45309;--amber:#fff7df;--red:#b42318;--shadow:0 10px 28px rgba(20,32,51,.08);}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--bg);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;color:var(--ink);line-height:1.55}
+a{color:var(--blue)} .wrap{max-width:1180px;margin:0 auto;padding:28px 18px 72px}
+.hero{background:linear-gradient(135deg,#0b1830,#1f3b72);color:white;border-radius:26px;padding:34px 36px 30px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:330px;height:330px;border-radius:50%;right:-120px;top:-170px;background:rgba(255,255,255,.08)}
+.eyebrow{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.82} h1{font-size:clamp(28px,4vw,46px);line-height:1.14;margin:8px 0 12px;letter-spacing:-.04em} .hero p{max-width:860px;margin:0;font-size:17px;color:#e5edf9}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px} .badge{font-size:12px;font-weight:800;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);padding:6px 10px;border-radius:999px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 0} .nav a{text-decoration:none;color:#334155;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:10px;font-size:13px;font-weight:700}
+.section{margin-top:24px} .section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 2px 12px} .section-title h2{font-size:24px;margin:0;letter-spacing:-.03em} .section-title p{margin:0;color:var(--muted);font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px} .kpi{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 5px 16px rgba(20,32,51,.04)} .kpi .label{font-size:13px;color:var(--muted);font-weight:700} .kpi .value{font-size:31px;font-weight:900;letter-spacing:-.045em;margin:5px 0 2px} .kpi .sub{font-size:12px;color:var(--muted)} .kpi.accent{border-color:#bfd4ff;background:#f8fbff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 5px 16px rgba(20,32,51,.04)}
+.keyline{font-size:19px;font-weight:850;letter-spacing:-.02em;margin:0} .explain{margin-top:8px;color:var(--muted);font-size:14px}
+.notice{background:var(--amber);border:1px solid #f0d58e;border-radius:16px;padding:14px 16px;color:#714c06;font-size:14px;margin-top:14px} .notice b{color:#5a3c04}
+.controls{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0 12px} .group{display:flex;gap:7px;flex-wrap:wrap} button,select{font:inherit} .chip{border:1px solid var(--line);background:#fff;color:#445066;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:750;cursor:pointer} .chip.active{background:#172554;color:#fff;border-color:#172554} .action{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 11px;font-size:13px;font-weight:750;cursor:pointer}
+.chart-wrap{position:relative;width:100%;height:390px;border:1px solid #edf1f5;background:#fbfdff;border-radius:16px;overflow:hidden} .chart-wrap > svg{width:100%;height:100%;display:block} .tooltip{position:absolute;pointer-events:none;background:#111827;color:#fff;padding:9px 10px;border-radius:10px;font-size:12px;line-height:1.45;box-shadow:0 7px 22px rgba(0,0,0,.2);display:none;z-index:5;min-width:170px}
+.legend-note{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px} .dot{width:9px;height:9px;border-radius:50%;background:var(--blue);display:inline-block;margin-right:4px}
+.grid2{display:grid;grid-template-columns:1.25fr .75fr;gap:14px} .story{display:grid;gap:10px} .story-item{padding:14px 15px;border:1px solid var(--line);border-radius:14px} .story-item b{display:block;font-size:15px;margin-bottom:3px} .story-item span{font-size:13px;color:var(--muted)}
+.month-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px} .month-card{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff} .month-card .month{font-weight:900;font-size:17px} .month-card .big{font-size:27px;font-weight:900;color:#1e40af;margin:2px 0 8px} .month-card .rows{display:grid;gap:4px;font-size:12.5px;color:var(--muted)} .month-card .rows span{display:flex;justify-content:space-between;gap:14px} .month-card .delta{font-size:12px;font-weight:800;margin-top:8px} .up{color:#0f766e} .down{color:#b42318} .flat{color:#64748b}
+.reading{display:grid;grid-template-columns:repeat(3,1fr);gap:12px} .reading .box{border:1px solid var(--line);border-radius:15px;padding:16px} .reading .num{font-size:24px;font-weight:900;color:#1e40af} .reading p{font-size:13px;color:var(--muted);margin:5px 0 0}
+.method{display:grid;grid-template-columns:repeat(4,1fr);gap:10px} .step{background:#f8fafc;border:1px solid var(--line);border-radius:15px;padding:15px} .step .n{display:inline-flex;width:25px;height:25px;border-radius:50%;align-items:center;justify-content:center;background:#172554;color:#fff;font-weight:900;font-size:12px} .step b{display:block;margin:8px 0 4px} .step p{margin:0;color:var(--muted);font-size:12.5px}
+.table-tools{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px} .table-scroll{overflow:auto;max-height:510px;border:1px solid var(--line);border-radius:14px} table{border-collapse:collapse;width:100%;font-size:13px;background:#fff} th,td{padding:10px 11px;text-align:right;border-bottom:1px solid #edf1f5;white-space:nowrap} th{position:sticky;top:0;background:#f8fafc;z-index:1;font-size:12px;color:#4b5563} th:first-child,td:first-child{text-align:left} tr:hover td{background:#f8fbff} .source{font-size:12.5px;color:var(--muted)} .source li{margin:5px 0} footer{margin-top:28px;text-align:center;color:#8a94a6;font-size:12px}
+.map-card{padding:20px}.map-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:14px 0}.map-control{display:flex;flex-direction:column;gap:5px}.map-control label{font-size:12px;color:var(--muted);font-weight:800}.map-control select{min-width:170px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink)}
+.map-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 12px}.map-kpi{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fbfdff}.map-kpi .mk-label{font-size:12px;color:var(--muted);font-weight:750}.map-kpi .mk-value{font-size:22px;font-weight:900;letter-spacing:-.03em;margin-top:3px}.map-kpi .mk-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+#areaMap{height:620px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#eef3f8}.map-legend{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:10px 2px 0;font-size:12px;color:var(--muted)}.map-gradient{width:150px;height:10px;border-radius:999px;border:1px solid var(--line)}
+.map-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,.7fr);gap:12px}.map-rank{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}.map-rank h3{font-size:14px;margin:0;padding:13px 14px;border-bottom:1px solid var(--line);background:#f8fafc}.rank-row{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:10px 12px;border-bottom:1px solid #edf1f5;align-items:center;font-size:12.5px}.rank-row:last-child{border-bottom:0}.rank-no{font-weight:900;color:#64748b}.rank-area{font-weight:800}.rank-city{display:block;color:var(--muted);font-size:11px;font-weight:500}.rank-val{font-weight:850;font-variant-numeric:tabular-nums}.map-note{margin-top:12px;padding:12px 14px;background:#f8fafc;border:1px solid var(--line);border-radius:13px;color:var(--muted);font-size:12.5px;line-height:1.6}
+.leaflet-tooltip.busmap-tip{background:rgba(17,24,39,.94);color:white;border:0;border-radius:9px;box-shadow:0 5px 18px rgba(0,0,0,.18);padding:7px 9px}.leaflet-tooltip-top.busmap-tip:before{border-top-color:rgba(17,24,39,.94)}
+#areaMap .leaflet-overlay-pane svg{width:auto;height:auto;display:block} #areaMap .leaflet-overlay-pane{z-index:400} #areaMap .leaflet-marker-pane{z-index:600}
+#areaMap .busmap-div-icon{background:transparent;border:0} #areaMap .busmap-dot{display:block;border-radius:50%;box-sizing:border-box;box-shadow:0 1px 5px rgba(15,23,42,.24);cursor:pointer}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.method{grid-template-columns:repeat(2,1fr)}.reading{grid-template-columns:1fr}.month-cards{grid-template-columns:repeat(2,1fr)}.map-grid{grid-template-columns:1fr}.map-kpis{grid-template-columns:1fr 1fr 1fr}#areaMap{height:530px}}
+@media(max-width:560px){.wrap{padding:14px 10px 50px}.hero{padding:25px 20px;border-radius:20px}.kpis{grid-template-columns:1fr 1fr;gap:9px}.kpi{padding:14px}.kpi .value{font-size:25px}.card{padding:16px}.method{grid-template-columns:1fr}.month-cards{grid-template-columns:1fr}.chart-wrap{height:340px}.map-kpis{grid-template-columns:1fr}.map-control{width:100%}.map-control select{width:100%}#areaMap{height:470px}}
+@media print{body{background:#fff}.nav,.controls,.action{display:none!important}.wrap{max-width:none}.card,.kpi,.hero{box-shadow:none}.section{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">JEJU BUS · OVERSEAS PAYMENT</div>
+    <h1>외국인 1,000명당<br>해외결제 버스승차는 월별로 어떻게 달랐을까?</h1>
+    <p>2026년 1~6월 전체 기준 외국인 입도객 1,000명당 해외결제 버스 승차는 약 397건입니다. 월별로는 1월 451건으로 가장 높았고, 3월 338건으로 낮아진 뒤 5월 433건까지 상승했으며 6월에는 401건을 기록했습니다.</p>
+    <div class="badges"><span class="badge">분석기간 2026.1~6</span><span class="badge">VISA + QR(ON나라)</span><span class="badge">월간 확정 집계 기반</span></div>
+  </section>
+
+  <nav class="nav"><a href="#summary">핵심 숫자</a><a href="#monthly-trend">월별 흐름</a><a href="#monthly-cards">월별 상세</a><a href="#method">계산 방법</a><a href="#table">월별 표</a><a href="#area-map">읍면동 지도</a></nav>
+
+  <section id="summary" class="section">
+    <div class="section-title"><h2>핵심 숫자</h2><p>2026년 1~6월 월별 확정 집계를 기준으로 봅니다.</p></div>
+    <div class="kpis">
+      <div class="kpi accent"><div class="label">1,000명당 해외결제 승차</div><div class="value">397<small style="font-size:15px">건</small></div><div class="sub">1~6월 전체 합계 기준</div></div>
+      <div class="kpi"><div class="label">해외결제 버스 승차</div><div class="value">478,365<small style="font-size:15px">건</small></div><div class="sub">VISA + QR 월별 실제 합계</div></div>
+      <div class="kpi"><div class="label">외국인 입도객</div><div class="value">1.20<small style="font-size:15px">백만명</small></div><div class="sub">1~6월 월별 확정치 합계</div></div>
+      <div class="kpi"><div class="label">QR 결제 비중</div><div class="value">91.4<small style="font-size:15px">%</small></div><div class="sub">해외결제 승차 중 QR 비중</div></div>
+    </div>
+    <div class="notice"><b>숫자 읽는 법:</b> 397건은 “외국인 입도객 1,000명 규모와 비교했을 때 해외결제로 발생한 버스 승차가 약 397건”이라는 뜻입니다. 한 사람이 여러 차례 승차할 수 있으므로 이용자 수를 뜻하지 않습니다.</div>
+  </section>
+
+  <section id="monthly-trend" class="section">
+    <div class="section-title"><h2>월별 흐름</h2><p>외국인 입도객과 해외결제 승차 모두 월별 실제 집계를 사용</p></div>
+    <div class="card">
+      <p class="keyline">1월이 가장 높고 3월이 가장 낮았으며, 4~5월 회복 후 6월에는 다시 다소 낮아졌습니다.</p>
+      <p class="explain">결제수단과 표시기준을 바꾸어 월별 흐름을 확인할 수 있습니다. 모든 점은 월별 실제 집계에 기반합니다.</p>
+      <div class="controls">
+        <div class="group" id="seriesButtons"><button class="chip active" data-series="total">VISA+QR</button><button class="chip" data-series="qr">QR만</button><button class="chip" data-series="visa">VISA만</button></div>
+        <div class="group" id="metricButtons"><button class="chip active" data-metric="per1000">1,000명당</button><button class="chip" data-metric="count">승차건수</button></div>
+      </div>
+      <div class="chart-wrap" id="monthChartWrap"><svg id="monthChart" viewBox="0 0 1000 390" preserveAspectRatio="none"></svg><div class="tooltip" id="monthTip"></div></div>
+      <div class="legend-note"><span><i class="dot"></i><span id="legendText">외국인 1,000명당 해외결제 승차건수</span></span><span>최고: <b>1월 · 451건</b></span><span>최저: <b>3월 · 338건</b></span><span>5월: <b>433건</b></span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title"><h2>월별 변동 해석</h2><p>월간 지표가 어떻게 움직였는지 숫자로 확인합니다.</p></div>
+    <div class="reading">
+      <div class="box"><div class="num">-11.1%</div><b>1월 대비 6월 1,000명당 승차</b><p>1월 450.8건에서 6월 400.8건으로 낮아졌습니다.</p></div>
+      <div class="box"><div class="num">+79.2%</div><b>1월 대비 6월 외국인 입도객</b><p>138,998명에서 249,035명으로 늘었습니다.</p></div>
+      <div class="box"><div class="num">+59.3%</div><b>1월 대비 6월 해외결제 승차</b><p>62,657건에서 99,806건으로 늘었지만 입도객 증가율보다는 낮았습니다.</p></div>
+    </div>
+    <div class="notice"><b>해석:</b> 1~6월 동안 해외결제 승차건수 자체는 크게 늘었지만 외국인 입도객이 더 빠르게 증가했습니다. 따라서 “승차건수 증가”와 “외국인 1,000명당 승차 수준”은 구분해서 볼 필요가 있습니다.</div>
+  </section>
+
+  <section id="monthly-cards" class="section">
+    <div class="section-title"><h2>월별 상세</h2><p>입도객·해외결제 승차·1,000명당 지표를 함께 비교</p></div>
+    <div class="month-cards" id="monthCards"></div>
+  </section>
+
+  <section id="method" class="section">
+    <div class="section-title"><h2>계산 방법</h2><p>월별 실제 집계만 사용합니다.</p></div>
+    <div class="card">
+      <div class="method">
+        <div class="step"><span class="n">1</span><b>월별 해외결제 집계</b><p>각 월의 VISA 승차와 QR(ON나라) 승차를 합쳐 해외결제 버스 승차건수를 산정합니다.</p></div>
+        <div class="step"><span class="n">2</span><b>월별 입도객 집계</b><p>제주관광빅데이터플랫폼의 2026년 1~6월 외국인 입도객 월별 확정치를 사용합니다.</p></div>
+        <div class="step"><span class="n">3</span><b>같은 기준으로 환산</b><p>(월별 해외결제 승차 ÷ 월별 외국인 입도객) × 1,000으로 계산합니다.</p></div>
+        <div class="step"><span class="n">4</span><b>월간 변동 비교</b><p>전월과 비교해 1,000명당 승차, 승차건수, 입도객의 증감 방향을 함께 확인합니다.</p></div>
+      </div>
+      <div class="notice"><b>분류상 유의점:</b> VISA·QR 결제를 외국인 버스 이용의 대리표시로 사용합니다. 결제수단으로 국적을 직접 확인한 값은 아니므로 일부 내국인 이용이 포함될 수 있습니다.</div>
+    </div>
+  </section>
+
+  <section id="table" class="section">
+    <div class="section-title"><h2>월별 숫자 보기</h2><p>월별 실제 집계와 환산값을 한 표에서 확인합니다.</p></div>
+    <div class="card">
+      <div class="table-tools"><div class="source">증감률은 전월 대비 1,000명당 승차 변화</div><button class="action" id="csvBtn">월별 데이터 CSV 저장</button></div>
+      <div class="table-scroll"><table><thead><tr><th>월</th><th>외국인 입도객</th><th>VISA 승차</th><th>QR 승차</th><th>해외결제 합계</th><th>QR 비중</th><th>1,000명당 승차</th><th>전월 대비</th></tr></thead><tbody id="monthBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title"><h2>자료와 범위</h2><p>보고서의 집계 기준</p></div>
+    <div class="card source">
+      <ul>
+        <li><b>버스:</b> 「모니터링3_이용자유형별_누적(1).xlsx」의 2026년 1~6월 월별 VISA·QR 실제 승차건수</li>
+        <li><b>정류장 분포:</b> 「모니터링5_승차정류장별_누적(1).xlsx」의 정류장별 결제유형 및 승차자료</li>
+        <li><b>외국인 입도객:</b> 제주관광빅데이터플랫폼 ‘월별 입도 관광객’ 2026년 1~6월 확정치</li>
+        <li><b>제주관광빅데이터플랫폼:</b> https://data.ijto.or.kr/prog/dataPick/bigdata/sub02/view.do?regSn=17</li>
+        <li><b>분석기간:</b> 버스자료와 외국인 입도객 월별 확정치를 같은 기간으로 맞춰 2026년 1~6월을 사용했습니다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="area-map" class="section">
+    <div class="section-title"><h2>1~6월 누적 읍면동별 승차 분포</h2><p>월별 분석기간 전체를 합쳐 공간적 분포를 확인</p></div>
+    <div class="card map-card">
+      <p class="keyline">어느 이용자 집단이 제주 어디에서 많이 탔는지 한눈에 볼 수 있습니다.</p>
+      <p class="explain">원이 크고 색이 진할수록 선택한 집단의 1~6월 누적 승차가 많이 발생한 지역입니다. 마우스를 원 위에 올리면 읍면동별 숫자가 표시됩니다.</p>
+      <div class="map-controls">
+        <div class="map-control"><label for="mapGroup">이용자 분류</label><select id="mapGroup"><option value="foreign" selected>외국인(추정)</option><option value="teen">청소년</option><option value="child">어린이</option><option value="other">그 외</option></select></div>
+        <div class="map-control"><label for="mapMetric">무엇을 기준으로 볼까요?</label><select id="mapMetric"><option value="share" selected>승차 비중 (%)</option><option value="count">승차 건수</option></select></div>
+      </div>
+      <div class="map-kpis">
+        <div class="map-kpi"><div class="mk-label">지도에 잡힌 선택 집단 승차</div><div class="mk-value" id="mapTotal">-</div><div class="mk-sub">2026년 1~6월 누적 · 읍면동 분류분</div></div>
+        <div class="map-kpi"><div class="mk-label">가장 많이 발생한 지역</div><div class="mk-value" id="mapTopArea">-</div><div class="mk-sub" id="mapTopSub">-</div></div>
+        <div class="map-kpi"><div class="mk-label">제주 전체 승차 중 선택 집단</div><div class="mk-value" id="mapOverallShare">-</div><div class="mk-sub">읍면동 위치가 확인된 전체 승차 기준</div></div>
+      </div>
+      <div class="map-legend"><b id="mapLegendLabel">승차 비중</b><span>작음</span><span class="map-gradient" id="mapGradient"></span><span>큼</span><span>· 원 크기도 값에 따라 달라집니다.</span></div>
+      <div class="map-grid"><div id="areaMap" role="img" aria-label="제주 읍면동별 이용자 분류 승차 분포 지도"></div><div class="map-rank"><h3 id="mapRankTitle">상위 지역</h3><div id="mapRank"></div></div></div>
+      <div class="map-note"><b>분류 기준:</b> 외국인(추정)은 정류장별 <b>VISA+QR(ON나라)</b> 결제 승차입니다. 어린이·청소년은 기존 분석의 2026년 상반기 읍면동 승차 분포를 유지하면서 연령별 구성비로 나눈 값이며, <b>그 외</b>는 위치가 확인된 전체 승차에서 외국인(추정)·어린이·청소년을 제외한 값입니다.<br><b>주의:</b> 지도는 거주지가 아니라 <b>승차가 발생한 정류장 소재 읍면동</b>을 뜻합니다. 외국인 지도 합계는 정류장 위치가 확인된 해외결제만 포함하므로 상단의 결제유형 전체 집계와 차이가 있습니다.</div>
+    </div>
+  </section>
+
+  <footer>외국인 ON페이 버스 이용 월별 보고서 · 제주 · 2026</footer>
+</div>
+
+<script>
+const DATA={"monthly":[{"month":1,"label":"1월","arrivals":138998,"visa":4730,"qr":57927,"foreign":62657,"per1000":450.7762701621606,"visa_per1000":34.02926660815263,"qr_per1000":416.74700355400796,"qr_share":92.4509631804906,"mom_per1000":null,"mom_foreign":null,"mom_arrivals":null},{"month":2,"label":"2월","arrivals":153830,"visa":4093,"qr":52811,"foreign":56904,"per1000":369.91484105831114,"visa_per1000":26.607293765845416,"qr_per1000":343.3075472924657,"qr_share":92.80718402924222,"mom_per1000":-17.938262161573114,"mom_foreign":-9.181735480473051,"mom_arrivals":10.670657131757299},{"month":3,"label":"3월","arrivals":188653,"visa":6071,"qr":57657,"foreign":63728,"per1000":337.80538872957226,"visa_per1000":32.18077634598973,"qr_per1000":305.6246123835826,"qr_share":90.47357519457695,"mom_per1000":-8.680228194379836,"mom_foreign":11.992127091241379,"mom_arrivals":22.63732691932654},{"month":4,"label":"4월","arrivals":232712,"visa":8478,"qr":82242,"foreign":90720,"per1000":389.838083124205,"visa_per1000":36.43129705386916,"qr_per1000":353.4067860703359,"qr_share":90.6547619047619,"mom_per1000":15.403157004190703,"mom_foreign":42.355008787346215,"mom_arrivals":23.354518613539142},{"month":5,"label":"5월","arrivals":241555,"visa":9895,"qr":94655,"foreign":104550,"per1000":432.8206826602637,"visa_per1000":40.96375566641137,"qr_per1000":391.8569269938523,"qr_share":90.53562888570063,"mom_per1000":11.025756948010667,"mom_foreign":15.244708994709,"mom_arrivals":3.799975935920785},{"month":6,"label":"6월","arrivals":249035,"visa":7868,"qr":91938,"foreign":99806,"per1000":400.77097596723354,"visa_per1000":31.593952657257013,"qr_per1000":369.1770233099765,"qr_share":92.11670641043625,"mom_per1000":-7.404846389512098,"mom_foreign":-4.5375418460066985,"mom_arrivals":3.0966032580571623}],"summary":{"all_arrivals":1204783,"all_foreign":478365,"overall_per1000":397.05490532319925,"qr_share":91.40091770928058,"max_month":{"month":1,"label":"1월","arrivals":138998,"visa":4730,"qr":57927,"foreign":62657,"per1000":450.7762701621606,"visa_per1000":34.02926660815263,"qr_per1000":416.74700355400796,"qr_share":92.4509631804906,"mom_per1000":null,"mom_foreign":null,"mom_arrivals":null},"min_month":{"month":3,"label":"3월","arrivals":188653,"visa":6071,"qr":57657,"foreign":63728,"per1000":337.80538872957226,"visa_per1000":32.18077634598973,"qr_per1000":305.6246123835826,"qr_share":90.47357519457695,"mom_per1000":-8.680228194379836,"mom_foreign":11.992127091241379,"mom_arrivals":22.63732691932654},"jan_to_jun_arrivals":79.16444840932964,"jan_to_jun_foreign":59.289464864260964,"jan_to_jun_per1000":-11.093151415654223}};
+const fmt=n=>Math.round(n).toLocaleString('ko-KR');
+const f1=n=>Number(n).toLocaleString('ko-KR',{maximumFractionDigits:1,minimumFractionDigits:1});
+const signPct=n=>n==null?'—':(n>0?'+':'')+n.toFixed(1)+'%';
+
+(function renderCards(){
+  const root=document.getElementById('monthCards');
+  root.innerHTML=DATA.monthly.map((d,i)=>{
+    const cls=d.mom_per1000==null?'flat':d.mom_per1000>0?'up':'down';
+    const delta=d.mom_per1000==null?'기준월':`전월 대비 ${signPct(d.mom_per1000)}`;
+    return `<div class="month-card"><div class="month">${d.label}</div><div class="big">${d.per1000.toFixed(0)}건/1,000명</div><div class="rows"><span><em>외국인 입도객</em><b>${fmt(d.arrivals)}명</b></span><span><em>해외결제 승차</em><b>${fmt(d.foreign)}건</b></span><span><em>VISA</em><b>${fmt(d.visa)}건</b></span><span><em>QR</em><b>${fmt(d.qr)}건</b></span><span><em>QR 비중</em><b>${d.qr_share.toFixed(1)}%</b></span></div><div class="delta ${cls}">${delta}</div></div>`;
+  }).join('');
+})();
+
+let series='total', metric='per1000';
+const svg=document.getElementById('monthChart'), tip=document.getElementById('monthTip'), wrap=document.getElementById('monthChartWrap');
+function val(d){
+  if(metric==='count') return series==='total'?d.foreign:series==='qr'?d.qr:d.visa;
+  return series==='total'?d.per1000:series==='qr'?d.qr_per1000:d.visa_per1000;
+}
+function seriesName(){return series==='total'?'VISA+QR':series==='qr'?'QR':'VISA'}
+function metricName(){return metric==='per1000'?'외국인 1,000명당 승차건수':'월별 승차건수'}
+function drawMonth(){
+  const D=DATA.monthly,W=1000,H=390,L=78,R=24,T=30,B=62,iw=W-L-R,ih=H-T-B;
+  const vals=D.map(val); let ymin=Math.min(...vals), ymax=Math.max(...vals);
+  if(metric==='count') ymin=0;
+  else { const pad=(ymax-ymin)*.22||10; ymin=Math.max(0,ymin-pad); ymax+=pad; }
+  if(ymax===ymin)ymax=ymin+1;
+  const x=i=>L+i*iw/(D.length-1), y=v=>T+(ymax-v)*ih/(ymax-ymin);
+  let out='';
+  for(let i=0;i<=5;i++){const v=ymin+(ymax-ymin)*i/5,yy=y(v);out+=`<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#e5eaf1"/><text x="${L-10}" y="${yy+4}" text-anchor="end" font-size="12" fill="#718096">${metric==='count'?Math.round(v/1000)+'k':Math.round(v)}</text>`;}
+  D.forEach((d,i)=>{out+=`<text x="${x(i)}" y="${H-22}" text-anchor="middle" font-size="12" font-weight="800" fill="#64748b">${d.label}</text>`;});
+  const pts=D.map((d,i)=>`${x(i)},${y(val(d))}`).join(' ');
+  out+=`<polyline points="${pts}" fill="none" stroke="#2563eb" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  D.forEach((d,i)=>{const xx=x(i),yy=y(val(d));out+=`<circle cx="${xx}" cy="${yy}" r="5" fill="#fff" stroke="#2563eb" stroke-width="3"/><circle class="hoverdot" data-i="${i}" cx="${xx}" cy="${yy}" r="16" fill="transparent" style="cursor:pointer"/>`; if(metric==='per1000'&&series==='total')out+=`<text x="${xx}" y="${yy-13}" text-anchor="middle" font-size="12" font-weight="800" fill="#1e40af">${d.per1000.toFixed(0)}</text>`;});
+  out+=`<text x="${L}" y="17" font-size="12" fill="#64748b">${metricName()}</text>`;
+  svg.innerHTML=out;
+  svg.querySelectorAll('.hoverdot').forEach(el=>{el.addEventListener('mouseenter',e=>showTip(e,D[+el.dataset.i]));el.addEventListener('mousemove',moveTip);el.addEventListener('mouseleave',()=>tip.style.display='none');});
+  document.getElementById('legendText').textContent=seriesName()+' · '+metricName();
+}
+function showTip(e,d){
+  const vv=val(d);
+  const shown=metric==='count'?fmt(vv)+'건':vv.toFixed(1)+'건/1,000명';
+  tip.innerHTML=`<b>${d.label}</b><br>${seriesName()}: <b>${shown}</b><br>외국인 입도객 ${fmt(d.arrivals)}명<br>해외결제 전체 ${fmt(d.foreign)}건<br>QR 비중 ${d.qr_share.toFixed(1)}%`;
+  tip.style.display='block';moveTip(e);
+}
+function moveTip(e){const r=wrap.getBoundingClientRect();let x=e.clientX-r.left+12,y=e.clientY-r.top-20;if(x>r.width-195)x-=205;if(y<5)y=5;tip.style.left=x+'px';tip.style.top=y+'px';}
+document.getElementById('seriesButtons').addEventListener('click',e=>{if(!e.target.dataset.series)return;series=e.target.dataset.series;[...e.currentTarget.children].forEach(b=>b.classList.toggle('active',b===e.target));drawMonth();});
+document.getElementById('metricButtons').addEventListener('click',e=>{if(!e.target.dataset.metric)return;metric=e.target.dataset.metric;[...e.currentTarget.children].forEach(b=>b.classList.toggle('active',b===e.target));drawMonth();});
+drawMonth();
+
+(function renderTable(){
+  document.getElementById('monthBody').innerHTML=DATA.monthly.map(d=>`<tr><td>${d.label}</td><td>${fmt(d.arrivals)}</td><td>${fmt(d.visa)}</td><td>${fmt(d.qr)}</td><td>${fmt(d.foreign)}</td><td>${d.qr_share.toFixed(1)}%</td><td><b>${d.per1000.toFixed(1)}</b></td><td>${signPct(d.mom_per1000)}</td></tr>`).join('');
+})();
+
+document.getElementById('csvBtn').addEventListener('click',()=>{
+  const head=['월','외국인입도객','VISA승차','QR승차','해외결제합계','QR비중_pct','1000명당승차','전월대비_1000명당_pct'];
+  const rows=DATA.monthly.map(d=>[d.label,d.arrivals,d.visa,d.qr,d.foreign,d.qr_share.toFixed(1),d.per1000.toFixed(1),d.mom_per1000==null?'':d.mom_per1000.toFixed(1)]);
+  const csv='﻿'+[head,...rows].map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='외국인_ON페이_월별데이터.csv';a.click();URL.revokeObjectURL(a.href);
+});
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const AREA_MAP_DATA=[{"city":"서귀포시","area":"중앙동","lat":33.25,"lon":126.564,"foreign":8504,"teen":197952,"child":34556,"other":937192,"total":1178203},{"city":"제주시","area":"일도1동","lat":33.514,"lon":126.526,"foreign":11667,"teen":33653,"child":4767,"other":448158,"total":498245},{"city":"제주시","area":"이도1동","lat":33.499,"lon":126.531,"foreign":7841,"teen":113884,"child":15993,"other":833631,"total":971349},{"city":"제주시","area":"이도2동","lat":33.492,"lon":126.536,"foreign":8094,"teen":667661,"child":90796,"other":1845410,"total":2611961},{"city":"제주시","area":"아라동","lat":33.473,"lon":126.545,"foreign":6251,"teen":661307,"child":134325,"other":1792697,"total":2594580},{"city":"제주시","area":"봉개동","lat":33.476,"lon":126.594,"foreign":218,"teen":60742,"child":12346,"other":159382,"total":232688},{"city":"제주시","area":"건입동","lat":33.516,"lon":126.53,"foreign":2412,"teen":73552,"child":13775,"other":374938,"total":464677},{"city":"서귀포시","area":"영천동","lat":33.313,"lon":126.599,"foreign":170,"teen":38630,"child":3366,"other":76544,"total":118710},{"city":"서귀포시","area":"남원읍","lat":33.328,"lon":126.668,"foreign":2708,"teen":93613,"child":34525,"other":611081,"total":741927},{"city":"제주시","area":"도두동","lat":33.507,"lon":126.472,"foreign":3456,"teen":27561,"child":4032,"other":148222,"total":183271},{"city":"서귀포시","area":"대륜동","lat":33.253,"lon":126.561,"foreign":9011,"teen":120703,"child":35197,"other":558708,"total":723619},{"city":"서귀포시","area":"천지동","lat":33.249,"lon":126.561,"foreign":7995,"teen":16201,"child":2831,"other":150528,"total":177556},{"city":"제주시","area":"용담1동","lat":33.512,"lon":126.513,"foreign":2196,"teen":37992,"child":5235,"other":233637,"total":279060},{"city":"제주시","area":"화북동","lat":33.519,"lon":126.566,"foreign":1040,"teen":182443,"child":59248,"other":554551,"total":797282},{"city":"제주시","area":"용담2동","lat":33.514,"lon":126.499,"foreign":48588,"teen":93187,"child":11335,"other":1255205,"total":1408315},{"city":"서귀포시","area":"중문동","lat":33.254,"lon":126.413,"foreign":38852,"teen":84774,"child":17454,"other":504398,"total":645478},{"city":"서귀포시","area":"예래동","lat":33.247,"lon":126.385,"foreign":6539,"teen":15283,"child":4317,"other":117236,"total":143375},{"city":"제주시","area":"연동","lat":33.489,"lon":126.496,"foreign":104460,"teen":283520,"child":44411,"other":2272927,"total":2705318},{"city":"서귀포시","area":"송산동","lat":33.242,"lon":126.565,"foreign":3418,"teen":18318,"child":3796,"other":44497,"total":70029},{"city":"제주시","area":"구좌읍","lat":33.514,"lon":126.807,"foreign":10742,"teen":69548,"child":14594,"other":361602,"total":456486},{"city":"제주시","area":"조천읍","lat":33.539,"lon":126.648,"foreign":16050,"teen":139181,"child":46983,"other":720068,"total":922282},{"city":"제주시","area":"애월읍","lat":33.461,"lon":126.331,"foreign":27183,"teen":244224,"child":50307,"other":959626,"total":1281340},{"city":"서귀포시","area":"서홍동","lat":33.259,"lon":126.551,"foreign":7257,"teen":83332,"child":27159,"other":293187,"total":410935},{"city":"서귀포시","area":"안덕면","lat":33.291,"lon":126.349,"foreign":10254,"teen":62836,"child":7106,"other":417528,"total":497724},{"city":"제주시","area":"노형동","lat":33.485,"lon":126.479,"foreign":17081,"teen":376953,"child":51591,"other":1511585,"total":1957210},{"city":"제주시","area":"한림읍","lat":33.414,"lon":126.266,"foreign":15070,"teen":95680,"child":16795,"other":401302,"total":528847},{"city":"제주시","area":"오라동","lat":33.467,"lon":126.506,"foreign":18718,"teen":130843,"child":21235,"other":1097135,"total":1267931},{"city":"제주시","area":"외도동","lat":33.492,"lon":126.433,"foreign":4138,"teen":134052,"child":53673,"other":392713,"total":584576},{"city":"제주시","area":"일도2동","lat":33.507,"lon":126.545,"foreign":3699,"teen":152069,"child":35600,"other":754896,"total":946264},{"city":"제주시","area":"삼도2동","lat":33.511,"lon":126.521,"foreign":9010,"teen":29548,"child":6795,"other":343940,"total":389293},{"city":"제주시","area":"삼양동","lat":33.521,"lon":126.587,"foreign":654,"teen":165477,"child":70312,"other":512832,"total":749275},{"city":"서귀포시","area":"성산읍","lat":33.418,"lon":126.899,"foreign":26898,"teen":47435,"child":9647,"other":445113,"total":529093},{"city":"서귀포시","area":"표선면","lat":33.384,"lon":126.838,"foreign":1136,"teen":58436,"child":15371,"other":230742,"total":305685},{"city":"서귀포시","area":"효돈동","lat":33.284,"lon":126.634,"foreign":288,"teen":16315,"child":4860,"other":73599,"total":95062},{"city":"서귀포시","area":"동홍동","lat":33.264,"lon":126.568,"foreign":628,"teen":92357,"child":19839,"other":249572,"total":362396},{"city":"제주시","area":"이호동","lat":33.496,"lon":126.452,"foreign":1136,"teen":13372,"child":1498,"other":105754,"total":121760},{"city":"제주시","area":"추자면","lat":33.952,"lon":126.305,"foreign":2,"teen":1528,"child":553,"other":0,"total":2083},{"city":"제주시","area":"삼도1동","lat":33.503,"lon":126.523,"foreign":2596,"teen":41956,"child":6472,"other":307615,"total":358639},{"city":"제주시","area":"한경면","lat":33.304,"lon":126.183,"foreign":1076,"teen":25056,"child":4083,"other":107642,"total":137857},{"city":"서귀포시","area":"정방동","lat":33.247,"lon":126.567,"foreign":230,"teen":4162,"child":729,"other":2968,"total":8089},{"city":"서귀포시","area":"대정읍","lat":33.247,"lon":126.252,"foreign":2064,"teen":76762,"child":9639,"other":326174,"total":414639},{"city":"서귀포시","area":"대천동","lat":33.253,"lon":126.474,"foreign":7468,"teen":16163,"child":9912,"other":86602,"total":120145},{"city":"제주시","area":"우도면","lat":33.5,"lon":126.955,"foreign":0,"teen":0,"child":0,"other":0,"total":0}];
+const AREA_GROUP_META={
+ foreign:{label:'외국인(추정)',light:[237,233,254],dark:[91,33,182]},
+ teen:{label:'청소년',light:[219,234,254],dark:[30,64,175]},
+ child:{label:'어린이',light:[204,251,241],dark:[15,118,110]},
+ other:{label:'그 외',light:[226,232,240],dark:[51,65,85]}
+};
+const AREA_TOTAL_MAPPED=28993254;
+let busMap=null,busLayer=null;
+function mapFmt(n){return Math.round(n).toLocaleString('ko-KR')}
+function mapColor(meta,t){t=Math.max(.12,Math.min(1,t));const a=meta.light,b=meta.dark;const c=a.map((v,i)=>Math.round(v+(b[i]-v)*t));return `rgb(${c[0]},${c[1]},${c[2]})`}
+function initBusMap(){
+  if(busMap||typeof L==='undefined')return;
+  busMap=L.map('areaMap',{zoomControl:true,attributionControl:true}).setView([33.38,126.54],10);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:20,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(busMap);
+  busLayer=L.layerGroup().addTo(busMap);renderBusMap();
+}
+function renderBusMap(){
+  if(!busMap||!busLayer)return;
+  const group=document.getElementById('mapGroup').value,metric=document.getElementById('mapMetric').value,meta=AREA_GROUP_META[group];
+  const groupTotal=AREA_MAP_DATA.reduce((s,d)=>s+d[group],0);
+  const vals=AREA_MAP_DATA.map(d=>metric==='share'?(groupTotal?d[group]/groupTotal*100:0):d[group]);
+  const max=Math.max(...vals,1),min=Math.min(...vals);busLayer.clearLayers();let markers=[];
+  AREA_MAP_DATA.forEach((d,i)=>{
+    const v=vals[i],norm=max===min?.5:(v-min)/(max-min),radius=7+Math.sqrt(Math.max(0,norm))*23,color=mapColor(meta,norm),share=groupTotal?d[group]/groupTotal*100:0,diameter=Math.max(16,Math.round(radius*2));
+    const dotHtml=`<span class="busmap-dot" style="width:${diameter}px;height:${diameter}px;background:${color};border:2px solid ${color};opacity:.82"></span>`;
+    const icon=L.divIcon({className:'busmap-div-icon',html:dotHtml,iconSize:[diameter,diameter],iconAnchor:[diameter/2,diameter/2]});
+    const marker=L.marker([d.lat,d.lon],{icon,keyboard:true,title:`${d.city} ${d.area}`});
+    marker.bindTooltip(`<b>${d.area}</b> · ${meta.label}<br>${mapFmt(d[group])}건 · ${share.toFixed(2)}%`,{sticky:true,direction:'top',className:'busmap-tip'});
+    marker.bindPopup(`<div style="line-height:1.6;min-width:205px"><b style="font-size:15px">${d.city} ${d.area}</b><br><b>${meta.label}</b>: ${mapFmt(d[group])}건 (${share.toFixed(2)}%)<hr style="border:0;border-top:1px solid #e5e7eb"><span style="font-size:12px;color:#64748b">외국인(추정) ${mapFmt(d.foreign)}건<br>청소년 ${mapFmt(d.teen)}건<br>어린이 ${mapFmt(d.child)}건<br>그 외 ${mapFmt(d.other)}건</span></div>`);
+    marker.addTo(busLayer);markers.push(marker);
+  });
+  if(markers.length){const fg=L.featureGroup(markers);busMap.fitBounds(fg.getBounds().pad(0.08),{maxZoom:11});setTimeout(()=>busMap.invalidateSize(false),80);}
+  const top=[...AREA_MAP_DATA].sort((a,b)=>b[group]-a[group]),t=top[0],topShare=groupTotal?t[group]/groupTotal*100:0;
+  document.getElementById('mapTotal').textContent=mapFmt(groupTotal)+'건';
+  document.getElementById('mapTopArea').textContent=t.area;
+  document.getElementById('mapTopSub').textContent=t.city+' · '+mapFmt(t[group])+'건 · '+topShare.toFixed(1)+'%';
+  document.getElementById('mapOverallShare').textContent=(groupTotal/AREA_TOTAL_MAPPED*100).toFixed(1)+'%';
+  document.getElementById('mapLegendLabel').textContent=metric==='share'?meta.label+' 승차 비중':meta.label+' 승차 건수';
+  document.getElementById('mapGradient').style.background=`linear-gradient(90deg,${mapColor(meta,.08)},${mapColor(meta,.45)},${mapColor(meta,1)})`;
+  document.getElementById('mapRankTitle').textContent=meta.label+' 상위 10개 읍면동';
+  document.getElementById('mapRank').innerHTML=top.slice(0,10).map((d,i)=>{const s=groupTotal?d[group]/groupTotal*100:0;return `<div class="rank-row"><span class="rank-no">${i+1}</span><span class="rank-area">${d.area}<span class="rank-city">${d.city}</span></span><span class="rank-val">${metric==='share'?s.toFixed(1)+'%':mapFmt(d[group])+'건'}</span></div>`}).join('');
+}
+document.getElementById('mapGroup').addEventListener('change',renderBusMap);
+document.getElementById('mapMetric').addEventListener('change',renderBusMap);
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initBusMap)}else{initBusMap()}
+</script>
+</body>
+</html>

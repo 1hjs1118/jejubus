@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>제주 읍면동 O/D 추정 시각화 · 3차 개선본</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      --ink: #152334;
+      --muted: #617083;
+      --line: #dce4ec;
+      --surface: #ffffff;
+      --soft: #f3f7fa;
+      --navy: #12304a;
+      --blue: #1f6feb;
+      --blue-soft: #eaf2ff;
+      --green: #087f5b;
+      --amber: #c56a00;
+      --red: #d64545;
+      --q-a: #1769db;
+      --q-b: #7b61c9;
+      --q-c: #dc4c3f;
+      --shadow: 0 10px 28px rgba(26, 45, 64, .09);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #edf3f7; color: var(--ink); }
+    body { font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif; }
+    button, select, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .app-shell { max-width: 1680px; margin: 0 auto; padding: 22px; }
+    .hero {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+      padding: 25px 28px; color: #fff; border-radius: 22px;
+      background: linear-gradient(120deg, #0d2c46 0%, #17496a 65%, #1b657a 100%);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { margin: 0 0 7px; font-size: 12px; font-weight: 800; letter-spacing: .13em; opacity: .72; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 36px); letter-spacing: -.035em; }
+    .subtitle { margin: 8px 0 0; color: #d8e9f3; font-size: 14px; line-height: 1.55; }
+    .hero-meta { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .hero-badge { padding: 8px 11px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 12px; white-space: nowrap; }
+
+    .warning-banner {
+      display: grid; grid-template-columns: auto 1fr; gap: 11px; align-items: start;
+      margin: 14px 0; padding: 14px 16px; border: 1px solid #f0cc8d; border-radius: 14px;
+      background: #fff9ea; color: #684717; font-size: 13px; line-height: 1.58;
+    }
+    .warning-icon { font-size: 18px; line-height: 1.2; }
+
+    .loader-card, .control-card, .map-card, .table-card, .method-card {
+      border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow);
+    }
+    .loader-card { padding: 16px; margin-bottom: 14px; }
+    .load-row { display: grid; grid-template-columns: minmax(260px, 1.3fr) minmax(300px, 2fr); gap: 16px; align-items: center; }
+    .drop-zone {
+      min-height: 88px; display: flex; align-items: center; gap: 13px; padding: 15px;
+      border: 1.5px dashed #9cb2c3; border-radius: 14px; background: #f7fafc;
+      transition: .18s ease;
+    }
+    .drop-zone.dragover { border-color: var(--blue); background: var(--blue-soft); transform: translateY(-1px); }
+    .file-button {
+      flex: 0 0 auto; border: 0; border-radius: 11px; padding: 11px 15px;
+      color: #fff; background: var(--blue); font-weight: 800;
+    }
+    .file-button:hover { background: #155bc4; }
+    .load-actions { display: flex; flex: 0 0 auto; gap: 7px; flex-wrap: wrap; }
+    .folder-button { border: 1px solid #b7c8d6; border-radius: 11px; padding: 10px 13px; color: var(--navy); background: #fff; font-weight: 800; }
+    .folder-button:hover { background: #edf4f8; }
+    .auto-note { color: #385c73; font-weight: 700; }
+    .drop-copy strong { display: block; font-size: 14px; }
+    .drop-copy span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    #fileInput, #folderInput { display: none; }
+    .file-status-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .file-status { padding: 10px 11px; border: 1px solid var(--line); border-radius: 11px; min-width: 0; background: #fbfdff; }
+    .file-status .label { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .file-status .name { margin-top: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .status-line { display: flex; align-items: center; gap: 9px; margin-top: 11px; min-height: 22px; color: var(--muted); font-size: 12px; }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca9b5; box-shadow: 0 0 0 4px #edf1f4; }
+    .status-line.loading .status-dot { background: var(--amber); animation: pulse 1s infinite; }
+    .status-line.ready .status-dot { background: var(--green); box-shadow: 0 0 0 4px #dff4ed; }
+    .status-line.error { color: var(--red); }
+    .status-line.error .status-dot { background: var(--red); box-shadow: 0 0 0 4px #fae6e4; }
+    .progress { height: 6px; margin-top: 9px; border-radius: 99px; overflow: hidden; background: #e6edf2; }
+    .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2b7de9, #35a3b5); transition: width .16s linear; }
+
+    .workspace { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 14px; align-items: start; }
+    .control-card { position: sticky; top: 12px; padding: 16px; }
+    .control-section + .control-section { border-top: 1px solid var(--line); margin-top: 15px; padding-top: 15px; }
+    .section-label { margin: 0 0 8px; color: #405269; font-size: 11px; font-weight: 900; letter-spacing: .07em; }
+    .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 4px; border-radius: 11px; background: var(--soft); }
+    .segmented.two { grid-template-columns: repeat(2, 1fr); }
+    .segmented button { border: 0; border-radius: 8px; padding: 9px 6px; color: #53657a; background: transparent; font-size: 12px; font-weight: 800; }
+    .segmented button.active { color: #fff; background: var(--navy); box-shadow: 0 3px 8px rgba(18,48,74,.18); }
+    .field { display: grid; gap: 6px; margin-top: 10px; }
+    .field label, .range-head { color: var(--muted); font-size: 11px; font-weight: 800; }
+    select { width: 100%; border: 1px solid #cbd7e1; border-radius: 10px; padding: 10px 11px; color: var(--ink); background: #fff; }
+    select:focus, button:focus-visible, input:focus-visible { outline: 3px solid rgba(31,111,235,.18); outline-offset: 1px; }
+    .time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hour-box { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .play-button { width: 42px; height: 42px; border: 0; border-radius: 11px; color: #fff; background: var(--green); font-weight: 900; }
+    .hour-control { flex: 1; min-width: 0; }
+    .hour-value { color: var(--navy); font-size: 19px; font-weight: 900; }
+    input[type="range"] { width: 100%; accent-color: var(--blue); }
+    .range-head { display: flex; justify-content: space-between; align-items: center; }
+    .range-head strong { color: var(--navy); font-size: 15px; }
+    .export-button { width: 100%; margin-top: 12px; padding: 11px; border: 1px solid #b8c8d6; border-radius: 10px; background: #fff; color: var(--navy); font-weight: 800; }
+    .export-button:hover { background: var(--soft); }
+    button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity: .45; }
+
+    .main-column { min-width: 0; display: grid; gap: 14px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    .kpi { min-height: 96px; padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: #fff; box-shadow: var(--shadow); }
+    .kpi-label { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .kpi-value { margin-top: 9px; color: var(--navy); font-size: clamp(17px, 2vw, 25px); font-weight: 900; letter-spacing: -.035em; }
+    .kpi-note { margin-top: 5px; color: #8491a0; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .map-card { overflow: hidden; }
+    .map-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 15px; border-bottom: 1px solid var(--line); }
+    .map-title { min-width: 0; }
+    .map-title strong { display: block; font-size: 14px; }
+    .map-title span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .quality-badge { padding: 6px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; white-space: nowrap; }
+    .quality-badge.q3 { color: #0f56bd; background: #e5efff; }
+    .quality-badge.q2 { color: #6544ad; background: #eee8fb; }
+    .quality-badge.q1 { color: #ad372f; background: #fdeae7; }
+    #map { position: relative; height: 610px; background: #dce7eb; }
+    .map-empty { position: absolute; z-index: 900; inset: 0; display: grid; place-items: center; padding: 20px; pointer-events: none; background: rgba(238,244,247,.78); backdrop-filter: blur(2px); }
+    .empty-card { max-width: 390px; padding: 20px; border-radius: 16px; text-align: center; background: rgba(255,255,255,.95); box-shadow: var(--shadow); }
+    .empty-card strong { display: block; font-size: 17px; }
+    .empty-card span { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .legend { display: flex; gap: 17px; align-items: center; flex-wrap: wrap; padding: 10px 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-line { width: 30px; border-top: 3px solid var(--q-a); }
+    .legend-line.b { border-color: var(--q-b); border-top-style: dashed; opacity: .78; }
+    .legend-line.c { border-color: var(--q-c); border-top-style: dotted; opacity: .55; }
+    .legend-note { margin-left: auto; color: #8491a0; }
+
+    .table-card { overflow: hidden; }
+    .table-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+    .table-head strong { font-size: 15px; }
+    .table-head span { color: var(--muted); font-size: 11px; }
+    .table-wrap { max-height: 470px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { position: sticky; top: 0; z-index: 1; padding: 10px 12px; color: #53657a; background: #f4f7f9; text-align: left; font-size: 11px; white-space: nowrap; }
+    td { padding: 10px 12px; border-top: 1px solid #edf1f4; vertical-align: middle; }
+    tbody tr:hover { background: #f7fbff; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .rank { width: 50px; color: #7b8895; font-weight: 900; }
+    .q-pill { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; color: #fff; font-weight: 900; }
+    .q-pill.q3 { background: var(--q-a); }
+    .q-pill.q2 { background: var(--q-b); }
+    .q-pill.q1 { background: var(--q-c); }
+
+    .method-card { padding: 0 17px; }
+    details summary { padding: 15px 0; cursor: pointer; color: var(--navy); font-weight: 900; font-size: 13px; }
+    .method-body { padding: 0 0 17px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 22px; }
+    .method-grid p { margin: 0; }
+    .method-grid strong { color: var(--ink); }
+
+    .toast { position: fixed; z-index: 2000; left: 50%; bottom: 24px; transform: translate(-50%, 16px); padding: 11px 15px; border-radius: 10px; color: #fff; background: #203447; font-size: 12px; opacity: 0; pointer-events: none; transition: .2s ease; box-shadow: var(--shadow); }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .leaflet-tooltip.flow-tip { border: 0; border-radius: 9px; padding: 8px 10px; color: #fff; background: rgba(18,48,74,.93); box-shadow: 0 5px 16px rgba(0,0,0,.15); }
+    .leaflet-tooltip.flow-tip::before { border-top-color: rgba(18,48,74,.93); }
+    .leaflet-control-attribution { font-size: 9px; }
+    @keyframes pulse { 50% { transform: scale(1.35); } }
+
+    @media (max-width: 1160px) {
+      .workspace { grid-template-columns: 1fr; }
+      .control-card { position: static; }
+      .control-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; }
+      .control-section + .control-section { margin-top: 0; padding-top: 0; border-top: 0; }
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .app-shell { padding: 10px; }
+      .hero { padding: 20px; border-radius: 16px; }
+      .hero-meta { display: none; }
+      .load-row, .control-card, .method-grid { grid-template-columns: 1fr; }
+      .file-status-grid { grid-template-columns: 1fr; }
+      .control-section + .control-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #map { height: 500px; }
+      .legend-note { width: 100%; margin-left: 0; }
+      .hide-mobile { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">JEJU ORIGIN–DESTINATION EXPLORER</p>
+        <h1>제주 읍면동 O/D 추정 시각화 · 3차 개선본</h1>
+        <p class="subtitle">본섬 71개 분석존의 월·요일·시간별 지역간 이동을 탐색합니다. 추자면·우도면은 분석에서 제외하고, 읍·면 내부통행은 법정리 생활권 유효면적 기반 거리로 보정합니다.</p>
+      </div>
+      <div class="hero-meta" aria-label="데이터 규모">
+        <span class="hero-badge">원자료 73 × 73 O/D</span>
+        <span class="hero-badge">본섬 71개 존 표시</span>
+        <span class="hero-badge">10,743,264행</span>
+      </div>
+    </header>
+
+    <section class="warning-banner" role="note">
+      <span class="warning-icon">⚠</span>
+      <div><strong>3차 보정 적용:</strong> 원자료의 자기지역 내부거리 0.8km 고정 가정은 읍·면 내부통행을 과대평가할 수 있어, 10개 본섬 읍·면은 법정리 중심점의 생활권 유효면적에서 산정한 대표 내부거리(약 3.6~6.1km)를 적용합니다. 감소한 내부통행은 해당 출발지의 기존 외부 목적지 비율대로 재배분하여 출발 총량을 보존합니다. <strong>추자면·우도면은 지도·순위·합계에서 완전히 제외</strong>합니다. ‘전체이동’은 4대 거시권역 총량 배분치라는 한계가 있으므로 기본값은 버스승차기반입니다.</div>
+    </section>
+
+    <section class="loader-card" aria-label="데이터 불러오기">
+      <div class="load-row">
+        <div id="dropZone" class="drop-zone">
+          <div class="load-actions">
+            <button id="fileButton" class="file-button" type="button">파일 직접 선택</button>
+            <button id="folderButton" class="folder-button" type="button">폴더 연결</button>
+          </div>
+          <div class="drop-copy">
+            <strong>같은 폴더의 3개 파일을 자동 탐색합니다</strong>
+            <span>LongFormat.csv.gz · 존메타_품질.csv · 읍면동_대표좌표(법정동).csv<br><span class="auto-note">웹서버(HTTP/HTTPS)에서는 자동 로드</span> · 더블클릭(file://) 실행 시에는 브라우저 보안상 ‘폴더 연결’ 1회가 필요할 수 있습니다. 데이터는 외부로 업로드되지 않습니다.</span>
+          </div>
+          <input id="fileInput" type="file" multiple accept=".csv,.gz,text/csv,application/gzip">
+          <input id="folderInput" type="file" multiple webkitdirectory directory accept=".csv,.gz,text/csv,application/gzip">
+        </div>
+        <div>
+          <div class="file-status-grid">
+            <div class="file-status"><div class="label">O/D 전체자료</div><div id="longFileName" class="name">선택 전</div></div>
+            <div class="file-status"><div class="label">존 메타·품질</div><div id="metaFileName" class="name">선택 전</div></div>
+            <div class="file-status"><div class="label">대표좌표</div><div id="coordFileName" class="name">선택 전</div></div>
+          </div>
+          <div id="statusLine" class="status-line"><span class="status-dot"></span><span id="statusText">데이터 파일을 선택하면 분석을 시작합니다.</span></div>
+          <div class="progress" aria-hidden="true"><div id="progressBar" class="progress-bar"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <aside class="control-card" aria-label="시각화 조건">
+        <section class="control-section">
+          <p class="section-label">표시 관점</p>
+          <div id="viewMode" class="segmented">
+            <button type="button" data-value="origin" class="active" disabled>출발지</button>
+            <button type="button" data-value="destination" disabled>도착지</button>
+            <button type="button" data-value="national" disabled>전도 TOP</button>
+          </div>
+          <div class="field">
+            <label for="zoneSelect">법정동 선택</label>
+            <select id="zoneSelect" disabled><option>데이터를 먼저 불러오세요</option></select>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <p class="section-label">추정지표</p>
+          <div id="metricMode" class="segmented two">
+            <button type="button" data-value="total" disabled>전체이동</button>
+            <button type="button" data-value="bus" class="active" disabled>버스승차기반</button>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <p class="section-label">읍·면 내부통행 보정</p>
+          <div id="correctionMode" class="segmented two">
+            <button type="button" data-value="corrected" class="active" disabled>보정 적용</button>
+            <button type="button" data-value="raw" disabled>원자료 비교</button>
+          </div>
+          <div class="kpi-note" style="margin-top:7px;white-space:normal;line-height:1.45">법정리 생활권 유효면적 → 대표 내부거리 → 제주권 거리저항함수 적용</div>
+        </section>
+
+        <section class="control-section">
+          <p class="section-label">시간 조건</p>
+          <div class="time-grid">
+            <div class="field" style="margin-top:0">
+              <label for="monthSelect">월</label>
+              <select id="monthSelect" disabled></select>
+            </div>
+            <div class="field" style="margin-top:0">
+              <label for="weekdaySelect">요일</label>
+              <select id="weekdaySelect" disabled></select>
+            </div>
+          </div>
+          <div class="hour-box">
+            <button id="playButton" class="play-button" type="button" title="시간 재생" aria-label="시간 재생" disabled>▶</button>
+            <div class="hour-control">
+              <div class="range-head"><span>시간대</span><strong id="hourValue" class="hour-value">08:00</strong></div>
+              <input id="hourRange" type="range" min="0" max="23" step="1" value="8" disabled>
+            </div>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <div class="range-head"><span>지도 표시 흐름</span><strong id="topNValue">TOP 15</strong></div>
+          <input id="topNRange" type="range" min="5" max="50" step="5" value="15" disabled>
+          <button id="exportButton" class="export-button" type="button" disabled>현재 TOP 흐름 CSV 저장</button>
+        </section>
+      </aside>
+
+      <section class="main-column">
+        <div class="kpi-grid" aria-label="핵심 지표">
+          <article class="kpi"><div class="kpi-label">총 유출</div><div id="kpiOut" class="kpi-value">–</div><div class="kpi-note">선택 법정동 출발 합계</div></article>
+          <article class="kpi"><div class="kpi-label">총 유입</div><div id="kpiIn" class="kpi-value">–</div><div class="kpi-note">선택 법정동 도착 합계</div></article>
+          <article class="kpi"><div id="kpiPartnerLabel" class="kpi-label">1위 상대지역</div><div id="kpiPartner" class="kpi-value">–</div><div id="kpiPartnerNote" class="kpi-note">현재 관점 기준</div></article>
+          <article class="kpi"><div class="kpi-label">TOP 5 집중도</div><div id="kpiTop5" class="kpi-value">–</div><div id="kpiTop5Note" class="kpi-note">현재 관점 합계 대비</div></article>
+          <article class="kpi"><div class="kpi-label">내부통행량</div><div id="kpiInternal" class="kpi-value">–</div><div id="kpiInternalNote" class="kpi-note">동일 지역 O→D · 순위표에서는 별도</div></article>
+        </div>
+
+        <section class="map-card">
+          <div class="map-toolbar">
+            <div class="map-title"><strong id="mapHeading">데이터 대기 중</strong><span id="mapSubheading">파일을 불러오면 흐름 화살표를 표시합니다.</span></div>
+            <span id="timeQuality" class="quality-badge q2">시간품질 –</span>
+          </div>
+          <div id="map">
+            <div id="mapEmpty" class="map-empty"><div class="empty-card"><strong>O/D 데이터 파일을 불러오세요</strong><span>대용량 압축파일은 Web Worker에서 스트리밍 해제·색인하므로 화면이 멈추지 않습니다.</span></div></div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><i class="legend-line"></i><strong>A</strong> 직접 ITS·비분할</span>
+            <span class="legend-item"><i class="legend-line b"></i><strong>B</strong> 직접 ITS 일부 또는 세분화</span>
+            <span class="legend-item"><i class="legend-line c"></i><strong>C</strong> 대체 ITS 포함</span>
+            <span class="legend-note">전도 TOP·순위표는 지역간 O≠D 기준 · 내부통행은 KPI로 별도 표시 · 추자·우도 제외</span>
+          </div>
+        </section>
+
+        <section class="table-card">
+          <div class="table-head"><strong id="tableTitle">O/D 순위표</strong><span id="tableCaption">상위 흐름을 표시합니다.</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>순위</th><th>출발 법정동</th><th>도착 법정동</th><th class="num">추정통행량</th><th class="num">비중</th><th>품질</th><th class="num hide-mobile">대표점 거리</th></tr></thead>
+              <tbody id="rankingBody"><tr><td colspan="7" style="text-align:center;color:#7b8895;padding:30px">데이터를 불러오면 순위가 표시됩니다.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="method-card">
+          <details>
+            <summary>방법론과 해석 한계 보기</summary>
+            <div class="method-body method-grid">
+              <p><strong>지역간 TOP 원칙</strong><br>전도 TOP과 출발·도착 순위는 동일지역 O=D를 제외합니다. 내부통행은 별도 KPI로 보여 주므로 애월읍→애월읍처럼 공간단위가 큰 읍·면의 대각선 값이 일반 법정동 간 O/D와 직접 경쟁하지 않습니다.</p>
+              <p><strong>읍·면 내부거리 보정</strong><br>원자료는 모든 자기지역 거리를 0.8km로 처리했습니다. 3차본은 「행정_법정동 중심좌표.xlsx」의 법정리(B) 중심점을 이용해 본섬 10개 읍·면의 생활권 유효면적을 구성하고, 동일면적 원의 평균 점간거리로 대표 내부거리를 산정했습니다. 행정동 총면적을 쓰지 않아 한라산 중산간·정상부의 비거주 면적이 보정거리 산정에 직접 포함되지 않습니다.</p>
+              <p><strong>거리저항 재배분</strong><br>제주권 수정혼합형 ‘기타’ 목적 거리저항계수를 사용해 새 대표거리와 기존 0.8km의 저항함수 비율로 내부통행을 감액합니다. 감액분은 같은 출발지의 기존 외부 목적지 비율대로 재배분하여 본섬 출발 총량을 보존합니다. 보정 대표거리: 한림 4.30, 애월 4.82, 구좌 6.06, 조천 5.00, 한경 3.60, 대정 3.87, 남원 4.58, 성산 4.73, 안덕 4.79, 표선 4.17km.</p>
+              <p><strong>도서 제외·한계</strong><br>추자면(존67)과 우도면(존58)은 지도·순위·합계에서 제외합니다. ‘버스승차기반’은 실제 하차태그가 아니라 승차량에 추정 목적지 비율을 적용한 값이며, ‘전체이동’은 4대 거시권역 총량을 세부 존으로 배분한 추정치입니다. 법정리 경계면적·고도·실제 하차 O/D가 확보되면 추가 재보정이 필요합니다.</p>
+              <p><strong>좌표 기준</strong><br>지도 위치는 「행정_법정동 중심좌표.xlsx」를 기준으로 도시지역 법정동은 B 좌표, 읍·면 존은 H 중심좌표를 적용했습니다. 외도이동·상예동·회수동·대포동·중문동·오라이동은 사용자 지정 좌표를 우선 적용하며 인위적인 위치 오프셋은 사용하지 않습니다.</p>
+            </div>
+          </details>
+        </section>
+      </section>
+    </div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const EXPECTED_ZONE_COUNT = 73;
+    const FRAME_COUNT = 12 * 7 * 24;
+    const OD_PER_FRAME = EXPECTED_ZONE_COUNT * EXPECTED_ZONE_COUNT;
+    const EXPECTED_ROWS = FRAME_COUNT * OD_PER_FRAME;
+    const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
+    const EXCLUDED_ZONE_IDS = new Set([58, 67]); // 우도면, 추자면
+    const TOWN_CORRECTION = {
+      '남원읍': { id: 2, effectiveArea: 80.4, distance: 4.58 },
+      '대정읍': { id: 3, effectiveArea: 57.5, distance: 3.87 },
+      '성산읍': { id: 15, effectiveArea: 85.7, distance: 4.73 },
+      '안덕면': { id: 17, effectiveArea: 88.1, distance: 4.79 },
+      '표선면': { id: 21, effectiveArea: 66.5, distance: 4.17 },
+      '구좌읍': { id: 28, effectiveArea: 140.6, distance: 6.06 },
+      '애월읍': { id: 45, effectiveArea: 89.0, distance: 4.82 },
+      '조천읍': { id: 66, effectiveArea: 95.9, distance: 5.00 },
+      '한경면': { id: 68, effectiveArea: 49.7, distance: 3.60 },
+      '한림읍': { id: 69, effectiveArea: 70.7, distance: 4.30 }
+    };
+    const QUALITY = {
+      3: { letter: 'A', color: '#1769db', dash: null, opacity: .90, text: '직접 ITS·비분할' },
+      2: { letter: 'B', color: '#7b61c9', dash: '9 7', opacity: .72, text: '직접 ITS 일부 또는 세분화' },
+      1: { letter: 'C', color: '#dc4c3f', dash: '2 7', opacity: .52, text: '대체 ITS·도서 포함' }
+    };
+    const AUTO_FILES = {
+      long: ['LongFormat.csv.gz', '제주_OD추정_LongFormat.csv.gz', 'LongFormat.csv', '제주_OD추정_LongFormat.csv'],
+      meta: ['존메타_품질.csv', '제주_OD추정_존메타_품질.csv'],
+      coords: ['읍면동_대표좌표(법정동).csv']
+    };
+
+    const el = id => document.getElementById(id);
+    const state = {
+      loaded: false,
+      zones: [],
+      total: null,
+      bus: null,
+      spatialQuality: null,
+      timeQuality: null,
+      metric: 'bus',
+      correction: 'corrected',
+      view: 'origin',
+      month: 1,
+      weekday: 0,
+      hour: 8,
+      topN: 15,
+      selectedId: null,
+      currentFlows: [],
+      worker: null,
+      timer: null,
+      map: null,
+      markerLayer: null,
+      flowLayer: null,
+      flowRenderer: null,
+      markerById: new Map()
+    };
+
+    function initSelectors() {
+      el('monthSelect').innerHTML = Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}월</option>`).join('');
+      el('weekdaySelect').innerHTML = WEEKDAYS.map((d, i) => `<option value="${i}">${d}요일</option>`).join('');
+      el('monthSelect').value = '1';
+      el('weekdaySelect').value = '0';
+    }
+
+    function initMap() {
+      if (typeof L === 'undefined') {
+        setStatus('error', 'Leaflet을 불러오지 못했습니다. 인터넷 연결 후 이 파일을 다시 여세요.');
+        el('mapEmpty').querySelector('strong').textContent = '지도를 불러오지 못했습니다';
+        el('mapEmpty').querySelector('span').textContent = 'Leaflet과 배경지도를 사용하려면 인터넷 연결이 필요합니다.';
+        return;
+      }
+      state.map = L.map('map', { zoomControl: true, minZoom: 8, maxZoom: 15 }).setView([33.38, 126.55], 10);
+      const baseLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      });
+      let tileErrors = 0;
+      baseLayer.on('tileerror', () => {
+        tileErrors += 1;
+        if (tileErrors === 4) {
+          el('mapSubheading').textContent = '배경지도 타일 연결이 원활하지 않습니다. O/D 선과 존 위치는 계속 표시됩니다.';
+        }
+      });
+      baseLayer.addTo(state.map);
+      L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
+      state.flowRenderer = L.svg({ padding: .6 }).addTo(state.map);
+      state.markerLayer = L.layerGroup().addTo(state.map);
+      state.flowLayer = L.layerGroup().addTo(state.map);
+      state.map.on('click', ev => {
+        if (!state.loaded || !state.zones.length) return;
+        let nearest = null;
+        let distance = Infinity;
+        for (const zone of state.zones) {
+          if (EXCLUDED_ZONE_IDS.has(zone.id)) continue;
+          const d = state.map.distance(ev.latlng, [zone.lat, zone.lon]);
+          if (d < distance) { distance = d; nearest = zone; }
+        }
+        if (nearest) {
+          setSelectedZone(nearest.id);
+          toast(`가장 가까운 법정동 ‘${nearest.legalDong}’을 선택했습니다.`);
+        }
+      });
+    }
+
+    function bindEvents() {
+      el('fileButton').addEventListener('click', () => el('fileInput').click());
+      el('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+      el('folderButton').addEventListener('click', () => el('folderInput').click());
+      el('folderInput').addEventListener('change', e => handleFiles(e.target.files));
+      const dz = el('dropZone');
+      for (const eventName of ['dragenter', 'dragover']) dz.addEventListener(eventName, e => { e.preventDefault(); dz.classList.add('dragover'); });
+      for (const eventName of ['dragleave', 'drop']) dz.addEventListener(eventName, e => { e.preventDefault(); dz.classList.remove('dragover'); });
+      dz.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+
+      document.querySelectorAll('#viewMode button').forEach(button => button.addEventListener('click', () => {
+        state.view = button.dataset.value;
+        setActiveButtons('viewMode', state.view);
+        el('zoneSelect').disabled = state.view === 'national' || !state.loaded;
+        render();
+      }));
+      document.querySelectorAll('#metricMode button').forEach(button => button.addEventListener('click', () => {
+        state.metric = button.dataset.value;
+        setActiveButtons('metricMode', state.metric);
+        render();
+      }));
+      document.querySelectorAll('#correctionMode button').forEach(button => button.addEventListener('click', () => {
+        state.correction = button.dataset.value;
+        setActiveButtons('correctionMode', state.correction);
+        render();
+      }));
+      el('zoneSelect').addEventListener('change', e => setSelectedZone(Number(e.target.value)));
+      el('monthSelect').addEventListener('change', e => { state.month = Number(e.target.value); render(); });
+      el('weekdaySelect').addEventListener('change', e => { state.weekday = Number(e.target.value); render(); });
+      el('hourRange').addEventListener('input', e => {
+        state.hour = Number(e.target.value);
+        el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
+        render();
+      });
+      el('topNRange').addEventListener('input', e => {
+        state.topN = Number(e.target.value);
+        el('topNValue').textContent = `TOP ${state.topN}`;
+        render();
+      });
+      el('playButton').addEventListener('click', toggleAnimation);
+      el('exportButton').addEventListener('click', exportCurrentFlows);
+    }
+
+    function setActiveButtons(groupId, value) {
+      document.querySelectorAll(`#${groupId} button`).forEach(b => b.classList.toggle('active', b.dataset.value === value));
+    }
+
+    function setControlsEnabled(enabled) {
+      document.querySelectorAll('#viewMode button, #metricMode button, #correctionMode button, #monthSelect, #weekdaySelect, #hourRange, #topNRange, #playButton, #exportButton').forEach(node => node.disabled = !enabled);
+      el('zoneSelect').disabled = !enabled || state.view === 'national';
+    }
+
+    function setStatus(kind, text, percent = null) {
+      const line = el('statusLine');
+      line.className = `status-line${kind ? ' ' + kind : ''}`;
+      el('statusText').textContent = text;
+      if (percent != null) el('progressBar').style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    }
+
+    function toast(message) {
+      const node = el('toast');
+      node.textContent = message;
+      node.classList.add('show');
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => node.classList.remove('show'), 2200);
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], field = '', quoted = false;
+      text = text.replace(/^\uFEFF/, '');
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (quoted) {
+          if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+          else if (ch === '"') quoted = false;
+          else field += ch;
+        } else if (ch === '"') quoted = true;
+        else if (ch === ',') { row.push(field); field = ''; }
+        else if (ch === '\n') { row.push(field.replace(/\r$/, '')); if (row.some(v => v !== '')) rows.push(row); row = []; field = ''; }
+        else field += ch;
+      }
+      if (field || row.length) { row.push(field.replace(/\r$/, '')); rows.push(row); }
+      return rows;
+    }
+
+    function csvRecords(text) {
+      const rows = parseCSV(text);
+      if (!rows.length) return [];
+      const header = rows[0].map(v => v.trim());
+      return rows.slice(1).map(row => Object.fromEntries(header.map((h, i) => [h, row[i] ?? ''])));
+    }
+
+    function pickRequiredFiles(fileList) {
+      const files = Array.from(fileList || []);
+      const long = files.find(f => /LongFormat\.csv(\.gz)?$/i.test(f.name) || /LongFormat/i.test(f.name));
+      const meta = files.find(f => /존메타.*품질.*\.csv$/i.test(f.name));
+      const coords = files.find(f => /대표좌표.*\.csv$/i.test(f.name));
+      if (!long || !meta || !coords) throw new Error('LongFormat, 존메타_품질, 읍면동_대표좌표(법정동) 파일을 각각 1개씩 선택해야 합니다.');
+      return { long, meta, coords };
+    }
+
+    function resetForLoad() {
+      stopAnimation();
+      if (state.worker) state.worker.terminate();
+      state.worker = null;
+      state.loaded = false;
+      setControlsEnabled(false);
+      el('mapEmpty').style.display = 'grid';
+      el('progressBar').style.width = '0%';
+    }
+
+    function prepareZones(metaText, coordText) {
+      const meta = csvRecords(metaText);
+      const coords = csvRecords(coordText);
+      validateSmallFiles(meta, coords);
+      state.zones = buildZones(meta, coords);
+      populateZoneSelect();
+      drawZoneMarkers();
+    }
+
+    async function handleFiles(fileList) {
+      try {
+        resetForLoad();
+        const files = pickRequiredFiles(fileList);
+        el('longFileName').textContent = `${files.long.name} (${formatBytes(files.long.size)})`;
+        el('metaFileName').textContent = files.meta.name;
+        el('coordFileName').textContent = files.coords.name;
+        setStatus('loading', '존 메타와 법정동·읍면 대표좌표를 확인하는 중…', 1);
+
+        const [metaText, coordText] = await Promise.all([files.meta.text(), files.coords.text()]);
+        prepareZones(metaText, coordText);
+        startWorker(files.long);
+      } catch (error) {
+        console.error(error);
+        setStatus('error', error.message || '파일을 불러오지 못했습니다.', 0);
+        toast(error.message || '파일 확인이 필요합니다.');
+      }
+    }
+
+    function siblingUrl(name) {
+      return new URL(name, window.location.href).href;
+    }
+
+    async function fetchFirstText(candidates, label) {
+      const errors = [];
+      for (const name of candidates) {
+        const url = siblingUrl(name);
+        try {
+          const response = await fetch(url, { cache: 'no-store' });
+          if (!response.ok) {
+            errors.push(`${name}: HTTP ${response.status}`);
+            continue;
+          }
+          return { name, url, text: await response.text() };
+        } catch (error) {
+          errors.push(`${name}: ${error && error.message ? error.message : error}`);
+        }
+      }
+      throw new Error(`같은 폴더에서 ${label} 파일을 찾지 못했습니다.`);
+    }
+
+    async function autoLoadSiblingFiles() {
+      if (window.location.protocol === 'file:') {
+        setStatus('', '같은 폴더 자동탐색 준비됨 · 더블클릭 실행에서는 브라우저 보안상 ‘폴더 연결’을 한 번 눌러 주세요.', 0);
+        return;
+      }
+      try {
+        resetForLoad();
+        setStatus('loading', '같은 폴더에서 데이터 파일을 자동 탐색하는 중…', 1);
+        const [metaResult, coordResult] = await Promise.all([
+          fetchFirstText(AUTO_FILES.meta, '존메타_품질'),
+          fetchFirstText(AUTO_FILES.coords, '읍면동_대표좌표(법정동)')
+        ]);
+        el('metaFileName').textContent = `${metaResult.name} (자동)`;
+        el('coordFileName').textContent = `${coordResult.name} (자동)`;
+        el('longFileName').textContent = 'LongFormat 자동 탐색 중…';
+        prepareZones(metaResult.text, coordResult.text);
+        const longUrls = AUTO_FILES.long.map(siblingUrl);
+        startWorker({ sourceUrls: longUrls });
+      } catch (error) {
+        console.info('같은 폴더 자동 로드 실패:', error);
+        state.loaded = false;
+        setControlsEnabled(false);
+        setStatus('', '같은 폴더 자동 불러오기에 실패했습니다. ‘폴더 연결’ 또는 ‘파일 직접 선택’을 사용해 주세요.', 0);
+      }
+    }
+
+    function validateSmallFiles(meta, coords) {
+      if (meta.length !== EXPECTED_ZONE_COUNT) throw new Error(`존 메타는 73행이어야 합니다. 현재 ${meta.length.toLocaleString()}행입니다.`);
+      const metaFields = ['존ID','행정시','법정동','분석존','거시권역','도서지역주의'];
+      const coordFields = ['행정시','법정동','lat','lon'];
+      if (!meta.length || metaFields.some(k => !(k in meta[0]))) throw new Error('존 메타 파일의 열 구성이 예상과 다릅니다.');
+      if (!coords.length || coordFields.some(k => !(k in coords[0]))) throw new Error('법정동 대표좌표 파일의 열 구성이 예상과 다릅니다.');
+      const ids = meta.map(r => Number(r['존ID'])).sort((a,b) => a-b);
+      if (ids.some((id, i) => id !== i + 1)) throw new Error('존ID는 1~73의 연속값이어야 합니다.');
+    }
+
+    function buildZones(meta, coords) {
+      const coordMap = new Map();
+      for (const r of coords) {
+        const lat = Number(r.lat), lon = Number(r.lon);
+        const key = `${r['행정시']}|${r['법정동']}`;
+        if (Number.isFinite(lat) && Number.isFinite(lon)) coordMap.set(key, { lat, lon });
+      }
+
+      const zones = meta.map(r => {
+        const key = `${r['행정시']}|${r['법정동']}`;
+        const point = coordMap.get(key);
+        if (!point) throw new Error(`‘${r['행정시']} ${r['법정동']}’의 대표좌표를 찾지 못했습니다.`);
+        return {
+          id: Number(r['존ID']),
+          city: r['행정시'],
+          legalDong: r['법정동'],
+          analysisZone: r['분석존'],
+          macro: r['거시권역'],
+          island: r['도서지역주의'] === 'Y',
+          directITS: r['ITS직접관측존여부'] === 'Y',
+          lat: point.lat,
+          lon: point.lon,
+          offset: false
+        };
+      });
+      if (zones.length !== EXPECTED_ZONE_COUNT) throw new Error(`좌표 매칭 결과가 ${zones.length}개입니다. 73개여야 합니다.`);
+      return zones.sort((a,b) => a.id - b.id);
+    }
+
+    function populateZoneSelect() {
+      const sorted = state.zones.filter(z => !EXCLUDED_ZONE_IDS.has(z.id)).sort((a,b) => a.city.localeCompare(b.city, 'ko') || a.legalDong.localeCompare(b.legalDong, 'ko'));
+      el('zoneSelect').innerHTML = sorted.map(z => `<option value="${z.id}">${escapeHTML(z.city)} · ${escapeHTML(z.legalDong)}</option>`).join('');
+      const preferred = state.zones.find(z => z.legalDong === '연동') || state.zones[0];
+      state.selectedId = preferred.id;
+      el('zoneSelect').value = String(preferred.id);
+    }
+
+    function drawZoneMarkers() {
+      if (!state.map || !state.markerLayer) return;
+      state.markerLayer.clearLayers();
+      state.markerById.clear();
+      for (const zone of state.zones) {
+        if (EXCLUDED_ZONE_IDS.has(zone.id)) continue;
+        const marker = L.circleMarker([zone.lat, zone.lon], markerStyle(zone.id === state.selectedId));
+        marker.bindTooltip(`<strong>${escapeHTML(zone.legalDong)}</strong><br>${escapeHTML(zone.city)} · 분석존 ${escapeHTML(zone.analysisZone)}${zone.island ? '<br><b>도서지역 품질주의</b>' : ''}`);
+        marker.on('click', event => {
+          L.DomEvent.stopPropagation(event);
+          setSelectedZone(zone.id);
+        });
+        marker.addTo(state.markerLayer);
+        state.markerById.set(zone.id, marker);
+      }
+    }
+
+    function markerStyle(selected) {
+      return selected
+        ? { radius: 7, color: '#0b253d', weight: 3, fillColor: '#fff', fillOpacity: 1 }
+        : { radius: 4, color: '#fff', weight: 1.5, fillColor: '#204f70', fillOpacity: .84 };
+    }
+
+    function setSelectedZone(id) {
+      if (!state.zones.some(z => z.id === id) || EXCLUDED_ZONE_IDS.has(id)) return;
+      const previous = state.selectedId;
+      state.selectedId = id;
+      el('zoneSelect').value = String(id);
+      if (state.markerById.has(previous)) state.markerById.get(previous).setStyle(markerStyle(false));
+      if (state.markerById.has(id)) {
+        state.markerById.get(id).setStyle(markerStyle(true)).bringToFront();
+      }
+      render();
+    }
+
+    function startWorker(input) {
+      const blob = new Blob([`(${odWorker.toString()})()`], { type: 'text/javascript' });
+      const url = URL.createObjectURL(blob);
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      state.worker = worker;
+      const started = performance.now();
+      setStatus('loading', '대용량 O/D를 스트리밍 해제하고 색인하는 중…', 2);
+
+      worker.onmessage = event => {
+        const msg = event.data;
+        if (msg.type === 'source') {
+          el('longFileName').textContent = `${msg.name}${msg.size ? ` (${formatBytes(msg.size)})` : ' (자동)'}`;
+        } else if (msg.type === 'progress') {
+          const pct = Math.max(2, Math.min(99, msg.percent || 0));
+          const rows = Number(msg.rows || 0).toLocaleString('ko-KR');
+          setStatus('loading', `O/D 색인 중 · ${rows} / ${EXPECTED_ROWS.toLocaleString('ko-KR')}행 · ${pct.toFixed(0)}%`, pct);
+        } else if (msg.type === 'complete') {
+          state.total = new Float32Array(msg.total);
+          state.bus = new Float32Array(msg.bus);
+          state.spatialQuality = new Uint8Array(msg.spatialQuality);
+          state.timeQuality = new Uint8Array(msg.timeQuality);
+          state.loaded = true;
+          state.worker = null;
+          setControlsEnabled(true);
+          el('mapEmpty').style.display = 'none';
+          const seconds = ((performance.now() - started) / 1000).toFixed(1);
+          setStatus('ready', `${Number(msg.rows).toLocaleString('ko-KR')}행 색인 완료 · ${seconds}초 · 지도 조작 준비됨`, 100);
+          render();
+          setTimeout(() => state.map && state.map.invalidateSize(), 0);
+          toast('O/D 데이터 준비가 완료됐습니다.');
+        } else if (msg.type === 'error') {
+          state.worker = null;
+          throwWorkerError(msg.message);
+        }
+      };
+      worker.onerror = event => throwWorkerError(event.message || 'Web Worker 처리 오류');
+      const payload = input && input.sourceUrls
+        ? { sourceUrls: input.sourceUrls, expectedRows: EXPECTED_ROWS, zoneCount: EXPECTED_ZONE_COUNT }
+        : { file: input, expectedRows: EXPECTED_ROWS, zoneCount: EXPECTED_ZONE_COUNT };
+      worker.postMessage(payload);
+    }
+
+    function throwWorkerError(message) {
+      state.loaded = false;
+      setControlsEnabled(false);
+      setStatus('error', message || 'O/D 파일 처리 중 오류가 발생했습니다.', 0);
+      toast('O/D 파일을 확인해 주세요.');
+    }
+
+    function odWorker() {
+      self.onmessage = async event => {
+        const { file, sourceUrls, expectedRows, zoneCount } = event.data;
+        try {
+          const frameCount = 12 * 7 * 24;
+          const odCount = zoneCount * zoneCount;
+          const total = new Float32Array(expectedRows);
+          const bus = new Float32Array(expectedRows);
+          const spatialQuality = new Uint8Array(odCount);
+          const timeQuality = new Uint8Array(frameCount);
+          let rows = 0;
+          let compressedBytes = 0;
+          let lastPost = 0;
+          let sourceName = '';
+          let sourceSize = 0;
+          let sourceType = '';
+          let rawSource = null;
+
+          if (file) {
+            sourceName = file.name || 'LongFormat.csv.gz';
+            sourceSize = Number(file.size || 0);
+            sourceType = file.type || '';
+            rawSource = file.stream();
+          } else {
+            let response = null;
+            let selectedUrl = '';
+            for (const candidateUrl of (sourceUrls || [])) {
+              try {
+                const current = await fetch(candidateUrl, { cache: 'no-store' });
+                if (current.ok && current.body) {
+                  response = current;
+                  selectedUrl = candidateUrl;
+                  break;
+                }
+              } catch (_) { /* 다음 후보 시도 */ }
+            }
+            if (!response) throw new Error('같은 폴더에서 LongFormat.csv.gz 파일을 찾지 못했습니다.');
+            const pathname = new URL(selectedUrl).pathname;
+            sourceName = decodeURIComponent(pathname.slice(pathname.lastIndexOf('/') + 1)) || 'LongFormat.csv.gz';
+            sourceSize = Number(response.headers.get('content-length') || 0);
+            sourceType = response.headers.get('content-type') || '';
+            rawSource = response.body;
+            self.postMessage({ type: 'source', name: sourceName, size: sourceSize });
+          }
+
+          let source = rawSource.pipeThrough(new TransformStream({
+            transform(chunk, controller) {
+              compressedBytes += chunk.byteLength;
+              controller.enqueue(chunk);
+              const now = performance.now();
+              if (now - lastPost > 240) {
+                lastPost = now;
+                self.postMessage({ type: 'progress', percent: sourceSize ? compressedBytes / sourceSize * 100 : rows / expectedRows * 100, rows });
+              }
+            }
+          }));
+          const gzipped = /\.gz$/i.test(sourceName) || /gzip/i.test(sourceType || '');
+          if (gzipped) {
+            if (typeof DecompressionStream === 'undefined') throw new Error('이 브라우저는 GZIP 스트리밍 해제를 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용해 주세요.');
+            source = source.pipeThrough(new DecompressionStream('gzip'));
+          }
+          const reader = source.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let pending = '';
+          let headerDone = false;
+          let dataHeaders = null;
+
+          const parseHeader = line => {
+            const clean = line.replace(/^\uFEFF/, '').replace(/\r$/, '');
+            dataHeaders = clean.split(',').map(v => v.trim());
+            const expected = ['월','요일번호','시간대','출발존ID','도착존ID','전체이동_OD_추정통행','버스승차기반_OD_추정통행','공간품질코드','시간품질코드'];
+            if (dataHeaders.length !== expected.length || expected.some((v, i) => dataHeaders[i] !== v)) {
+              throw new Error('LongFormat 파일의 9개 열 구성이 예상과 다릅니다.');
+            }
+          };
+
+          const parseLine = raw => {
+            if (!raw) return;
+            const line = raw.charCodeAt(raw.length - 1) === 13 ? raw.slice(0, -1) : raw;
+            let s = 0, e = line.indexOf(',', s);
+            const month = Number(line.slice(s, e)); s = e + 1; e = line.indexOf(',', s);
+            const weekday = Number(line.slice(s, e)); s = e + 1; e = line.indexOf(',', s);
+            const hour = Number(line.slice(s, e)); s = e + 1; e = line.indexOf(',', s);
+            const origin = Number(line.slice(s, e)); s = e + 1; e = line.indexOf(',', s);
+            const destination = Number(line.slice(s, e)); s = e + 1; e = line.indexOf(',', s);
+            const totalText = line.slice(s, e); const totalValue = (!totalText || totalText === 'nan' || totalText === 'NaN') ? 0 : Number(totalText); s = e + 1; e = line.indexOf(',', s);
+            const busText = line.slice(s, e); const busValue = (!busText || busText === 'nan' || busText === 'NaN') ? 0 : Number(busText); s = e + 1; e = line.indexOf(',', s);
+            const sq = Number(line.slice(s, e)); s = e + 1;
+            const tq = Number(line.slice(s));
+
+            if (month < 1 || month > 12 || weekday < 0 || weekday > 6 || hour < 0 || hour > 23 || origin < 1 || origin > zoneCount || destination < 1 || destination > zoneCount) {
+              throw new Error(`LongFormat ${rows + 2}행의 월·요일·시간·존ID 범위가 잘못됐습니다.`);
+            }
+            if (!Number.isFinite(totalValue) || !Number.isFinite(busValue) || totalValue < 0 || busValue < 0) {
+              throw new Error(`LongFormat ${rows + 2}행의 추정통행량이 유효하지 않습니다.`);
+            }
+            const frame = ((month - 1) * 7 + weekday) * 24 + hour;
+            const od = (origin - 1) * zoneCount + (destination - 1);
+            const index = frame * odCount + od;
+            total[index] = totalValue;
+            bus[index] = busValue;
+            spatialQuality[od] = sq;
+            timeQuality[frame] = tq;
+            rows++;
+            if (rows % 200000 === 0) {
+              self.postMessage({ type: 'progress', percent: sourceSize ? compressedBytes / sourceSize * 100 : rows / expectedRows * 100, rows });
+            }
+          };
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            pending += decoder.decode(value, { stream: true });
+            let start = 0, end;
+            while ((end = pending.indexOf('\n', start)) !== -1) {
+              const line = pending.slice(start, end);
+              if (!headerDone) { parseHeader(line); headerDone = true; }
+              else parseLine(line);
+              start = end + 1;
+            }
+            pending = pending.slice(start);
+          }
+          pending += decoder.decode();
+          if (pending) {
+            if (!headerDone) parseHeader(pending);
+            else parseLine(pending);
+          }
+          if (rows !== expectedRows) throw new Error(`LongFormat 행수가 ${rows.toLocaleString()}행입니다. 기대값은 ${expectedRows.toLocaleString()}행입니다.`);
+          self.postMessage({
+            type: 'complete', rows,
+            total: total.buffer,
+            bus: bus.buffer,
+            spatialQuality: spatialQuality.buffer,
+            timeQuality: timeQuality.buffer
+          }, [total.buffer, bus.buffer, spatialQuality.buffer, timeQuality.buffer]);
+        } catch (error) {
+          self.postMessage({ type: 'error', message: error && error.message ? error.message : String(error) });
+        }
+      };
+    }
+
+    function render() {
+      if (!state.loaded) return;
+      const frame = frameIndex();
+      const values = state.metric === 'total' ? state.total : state.bus;
+      const matrix = buildDisplayMatrix(values, frame);
+      const flows = collectFlows(matrix);
+      state.currentFlows = flows.slice(0, state.topN);
+      updateHeadings(frame);
+      updateKPIs(matrix, values, frame, flows);
+      drawFlows(state.currentFlows);
+      renderTable(state.currentFlows, flows);
+    }
+
+    function gravityFriction(distanceKm) {
+      const d = Math.max(0.05, Number(distanceKm) || 0.05);
+      const p = d < 5
+        ? { lnAlpha: 11.637, beta: 1.098, gamma: -0.782 }
+        : { lnAlpha: 9.554, beta: 0.314, gamma: -0.117 };
+      return Math.exp(p.lnAlpha + p.beta * Math.log(d) + p.gamma * d);
+    }
+
+    function buildDisplayMatrix(values, frame) {
+      const base = frame * OD_PER_FRAME;
+      const matrix = new Float64Array(OD_PER_FRAME);
+      for (let o = 0; o < EXPECTED_ZONE_COUNT; o++) {
+        const oid = o + 1;
+        if (EXCLUDED_ZONE_IDS.has(oid)) continue;
+        for (let d = 0; d < EXPECTED_ZONE_COUNT; d++) {
+          const did = d + 1;
+          if (EXCLUDED_ZONE_IDS.has(did)) continue;
+          matrix[o * EXPECTED_ZONE_COUNT + d] = values[base + o * EXPECTED_ZONE_COUNT + d] || 0;
+        }
+      }
+      if (state.correction !== 'corrected') return matrix;
+
+      const baseFriction = gravityFriction(0.8);
+      for (const [town, info] of Object.entries(TOWN_CORRECTION)) {
+        const o = info.id - 1;
+        if (EXCLUDED_ZONE_IDS.has(info.id)) continue;
+        const idx = o * EXPECTED_ZONE_COUNT + o;
+        const originalInternal = matrix[idx] || 0;
+        if (!(originalInternal > 0)) continue;
+        const ratio = Math.min(1, Math.max(0, gravityFriction(info.distance) / baseFriction));
+        const correctedInternal = originalInternal * ratio;
+        const released = originalInternal - correctedInternal;
+        let external = 0;
+        for (let d = 0; d < EXPECTED_ZONE_COUNT; d++) {
+          if (d === o || EXCLUDED_ZONE_IDS.has(d + 1)) continue;
+          external += matrix[o * EXPECTED_ZONE_COUNT + d] || 0;
+        }
+        matrix[idx] = correctedInternal;
+        if (released > 0 && external > 0) {
+          for (let d = 0; d < EXPECTED_ZONE_COUNT; d++) {
+            if (d === o || EXCLUDED_ZONE_IDS.has(d + 1)) continue;
+            const j = o * EXPECTED_ZONE_COUNT + d;
+            matrix[j] += released * (matrix[j] / external);
+          }
+        }
+      }
+      return matrix;
+    }
+
+    function frameIndex() {
+      return ((state.month - 1) * 7 + state.weekday) * 24 + state.hour;
+    }
+
+    function collectFlows(matrix) {
+      const flows = [];
+      if (state.view === 'origin') {
+        const o = state.selectedId - 1;
+        for (let d = 0; d < EXPECTED_ZONE_COUNT; d++) {
+          if (d === o || EXCLUDED_ZONE_IDS.has(d + 1)) continue;
+          flows.push(flowObject(o, d, matrix[o * EXPECTED_ZONE_COUNT + d] || 0));
+        }
+      } else if (state.view === 'destination') {
+        const d = state.selectedId - 1;
+        for (let o = 0; o < EXPECTED_ZONE_COUNT; o++) {
+          if (o === d || EXCLUDED_ZONE_IDS.has(o + 1)) continue;
+          flows.push(flowObject(o, d, matrix[o * EXPECTED_ZONE_COUNT + d] || 0));
+        }
+      } else {
+        for (let o = 0; o < EXPECTED_ZONE_COUNT; o++) {
+          if (EXCLUDED_ZONE_IDS.has(o + 1)) continue;
+          for (let d = 0; d < EXPECTED_ZONE_COUNT; d++) {
+            if (o === d || EXCLUDED_ZONE_IDS.has(d + 1)) continue;
+            flows.push(flowObject(o, d, matrix[o * EXPECTED_ZONE_COUNT + d] || 0));
+          }
+        }
+      }
+      return flows.filter(f => f.value > 0).sort((a,b) => b.value - a.value);
+    }
+
+    function flowObject(originIndex, destIndex, value) {
+      const q = state.spatialQuality[originIndex * EXPECTED_ZONE_COUNT + destIndex] || 1;
+      return { origin: state.zones[originIndex], destination: state.zones[destIndex], value, quality: q };
+    }
+
+    function updateHeadings(frame) {
+      const zone = state.zones[state.selectedId - 1];
+      const metricText = state.metric === 'total' ? '전체이동 추정' : '버스승차기반 추정';
+      const viewText = state.view === 'origin' ? `${zone.legalDong} 출발 · 지역간` : state.view === 'destination' ? `${zone.legalDong} 도착 · 지역간` : '제주 본섬 지역간 주요 O/D';
+      el('mapHeading').textContent = `${viewText} · ${metricText}`;
+      el('mapSubheading').textContent = `${state.month}월 ${WEEKDAYS[state.weekday]}요일 ${String(state.hour).padStart(2,'0')}:00 · ${state.currentFlows.length}개 흐름 · ${state.correction === 'corrected' ? '읍·면 내부거리 보정' : '원자료 비교'} · 추자·우도 제외`;
+      el('tableTitle').textContent = `${viewText} 순위`;
+      el('tableCaption').textContent = `TOP ${state.topN} · ${metricText} · 지역간 O≠D`;
+      const tq = state.timeQuality[frame] || 1;
+      const info = QUALITY[tq] || QUALITY[1];
+      const badge = el('timeQuality');
+      badge.className = `quality-badge q${tq}`;
+      badge.textContent = `시간품질 ${info.letter}`;
+    }
+
+    function updateKPIs(matrix, rawValues, frame, sortedFlows) {
+      const z = state.selectedId - 1;
+      const base = frame * OD_PER_FRAME;
+      let totalOut = 0, totalIn = 0;
+      const outgoing = [], incoming = [];
+      for (let i = 0; i < EXPECTED_ZONE_COUNT; i++) {
+        if (EXCLUDED_ZONE_IDS.has(i + 1)) continue;
+        const out = matrix[z * EXPECTED_ZONE_COUNT + i] || 0;
+        const inn = matrix[i * EXPECTED_ZONE_COUNT + z] || 0;
+        totalOut += out; totalIn += inn;
+        if (i !== z) {
+          outgoing.push({ index: i, value: out });
+          incoming.push({ index: i, value: inn });
+        }
+      }
+      const internal = matrix[z * EXPECTED_ZONE_COUNT + z] || 0;
+      const rawInternal = rawValues[base + z * EXPECTED_ZONE_COUNT + z] || 0;
+      outgoing.sort((a,b) => b.value - a.value);
+      incoming.sort((a,b) => b.value - a.value);
+      const positiveOutgoing = outgoing.filter(x => x.value > 0);
+      const positiveIncoming = incoming.filter(x => x.value > 0);
+      el('kpiOut').textContent = formatValue(totalOut);
+      el('kpiIn').textContent = formatValue(totalIn);
+      el('kpiInternal').textContent = formatValue(internal);
+      const townInfo = TOWN_CORRECTION[state.zones[z].legalDong];
+      if (state.correction === 'corrected' && townInfo) {
+        el('kpiInternalNote').textContent = `원자료 ${formatValue(rawInternal)} → 보정 · 유효면적 ${townInfo.effectiveArea.toFixed(1)}㎢ · 내부거리 ${townInfo.distance.toFixed(2)}km`;
+      } else {
+        el('kpiInternalNote').textContent = state.correction === 'corrected' ? '동일 지역 O→D · 도시 법정동은 원자료 유지' : '원자료 내부통행 · 순위표에서는 별도';
+      }
+
+      let partnerText = '–', partnerNote = '현재 관점 기준', top5 = 0, denominator = 0;
+      if (state.view === 'origin') {
+        const first = positiveOutgoing[0];
+        if (first) {
+          partnerText = state.zones[first.index].legalDong;
+          partnerNote = `${formatValue(first.value)} 통행 · 외부 도착 기준`;
+        } else {
+          partnerText = '–';
+          partnerNote = '지역간 이동량 0';
+        }
+        top5 = positiveOutgoing.slice(0,5).reduce((sum,x) => sum + x.value, 0);
+        denominator = positiveOutgoing.reduce((sum,x) => sum + x.value, 0);
+        el('kpiPartnerLabel').textContent = '1위 외부 도착지역';
+      } else if (state.view === 'destination') {
+        const first = positiveIncoming[0];
+        if (first) {
+          partnerText = state.zones[first.index].legalDong;
+          partnerNote = `${formatValue(first.value)} 통행 · 외부 출발 기준`;
+        } else {
+          partnerText = '–';
+          partnerNote = '지역간 이동량 0';
+        }
+        top5 = positiveIncoming.slice(0,5).reduce((sum,x) => sum + x.value, 0);
+        denominator = positiveIncoming.reduce((sum,x) => sum + x.value, 0);
+        el('kpiPartnerLabel').textContent = '1위 외부 출발지역';
+      } else {
+        const first = sortedFlows[0];
+        partnerText = first ? `${first.origin.legalDong}→${first.destination.legalDong}` : '–';
+        partnerNote = first ? `${formatValue(first.value)} 통행 · 본섬 지역간 기준` : '본섬 지역간 기준';
+        top5 = sortedFlows.slice(0,5).reduce((sum,x) => sum + x.value, 0);
+        denominator = sortedFlows.reduce((sum,x) => sum + x.value, 0);
+        el('kpiPartnerLabel').textContent = '본섬 지역간 1위 O/D';
+      }
+      el('kpiPartner').textContent = partnerText;
+      el('kpiPartnerNote').textContent = partnerNote;
+      el('kpiTop5').textContent = denominator ? `${(top5 / denominator * 100).toFixed(1)}%` : '0.0%';
+      el('kpiTop5Note').textContent = state.view === 'national' ? '본섬 지역간 총통행 대비' : '선택 방향 외부통행 대비';
+    }
+
+    function drawFlows(flows) {
+      if (!state.map || !state.flowLayer) return;
+      state.flowLayer.clearLayers();
+      if (!flows.length) return;
+      const max = flows[0].value || 1;
+      flows.slice().reverse().forEach((flow, reverseIndex) => {
+        const rank = flows.length - reverseIndex;
+        const q = QUALITY[flow.quality] || QUALITY[1];
+        const weight = 2 + 9 * Math.sqrt(flow.value / max);
+        const points = flow.origin.id === flow.destination.id
+          ? loopPoints(flow.origin, rank)
+          : [[flow.origin.lat, flow.origin.lon], [flow.destination.lat, flow.destination.lon]];
+        const line = L.polyline(points, {
+          renderer: state.flowRenderer,
+          color: q.color,
+          weight,
+          opacity: q.opacity,
+          dashArray: q.dash,
+          lineCap: 'round',
+          lineJoin: 'round'
+        });
+        line.bindTooltip(`<strong>${rank}. ${escapeHTML(flow.origin.legalDong)} → ${escapeHTML(flow.destination.legalDong)}</strong><br>${formatValue(flow.value)} 통행 · 품질 ${q.letter}`, { className: 'flow-tip', sticky: true });
+        line.addTo(state.flowLayer);
+        ensureArrowDefs();
+        if (line._path) line._path.setAttribute('marker-end', `url(#flow-arrow-${flow.quality})`);
+      });
+      state.markerById.forEach(marker => marker.bringToFront());
+    }
+
+    function loopPoints(zone, rank) {
+      const radius = .010 + Math.min(rank, 20) * .00012;
+      const points = [];
+      for (let i = 0; i <= 14; i++) {
+        const a = -Math.PI / 2 + i / 14 * Math.PI * 1.78;
+        points.push([zone.lat + Math.sin(a) * radius, zone.lon + Math.cos(a) * radius]);
+      }
+      return points;
+    }
+
+    function ensureArrowDefs() {
+      if (!state.map) return;
+      const svg = state.map.getPanes().overlayPane.querySelector('svg');
+      if (!svg || svg.querySelector('#flow-arrow-3')) return;
+      const ns = 'http://www.w3.org/2000/svg';
+      const defs = document.createElementNS(ns, 'defs');
+      for (const code of [1,2,3]) {
+        const marker = document.createElementNS(ns, 'marker');
+        marker.setAttribute('id', `flow-arrow-${code}`);
+        marker.setAttribute('markerWidth', '8');
+        marker.setAttribute('markerHeight', '8');
+        marker.setAttribute('refX', '7');
+        marker.setAttribute('refY', '3');
+        marker.setAttribute('orient', 'auto');
+        marker.setAttribute('markerUnits', 'userSpaceOnUse');
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', 'M0,0 L0,6 L7,3 z');
+        path.setAttribute('fill', QUALITY[code].color);
+        path.setAttribute('fill-opacity', String(QUALITY[code].opacity));
+        marker.appendChild(path); defs.appendChild(marker);
+      }
+      svg.insertBefore(defs, svg.firstChild);
+    }
+
+    function renderTable(flows, allFlows) {
+      const denominator = allFlows.reduce((s, f) => s + f.value, 0) || 1;
+      if (!flows.length) {
+        el('rankingBody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#7b8895;padding:30px">표시할 통행량이 없습니다.</td></tr>';
+        return;
+      }
+      el('rankingBody').innerHTML = flows.map((flow, i) => {
+        const q = QUALITY[flow.quality] || QUALITY[1];
+        return `<tr>
+          <td class="rank">${i+1}</td>
+          <td>${escapeHTML(flow.origin.city)} · <strong>${escapeHTML(flow.origin.legalDong)}</strong></td>
+          <td>${escapeHTML(flow.destination.city)} · <strong>${escapeHTML(flow.destination.legalDong)}</strong></td>
+          <td class="num"><strong>${formatValue(flow.value)}</strong></td>
+          <td class="num">${(flow.value / denominator * 100).toFixed(1)}%</td>
+          <td><span class="q-pill q${flow.quality}" title="${q.text}">${q.letter}</span></td>
+          <td class="num hide-mobile">${haversine(flow.origin, flow.destination).toFixed(1)} km</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function toggleAnimation() {
+      if (state.timer) { stopAnimation(); return; }
+      el('playButton').textContent = 'Ⅱ';
+      el('playButton').setAttribute('aria-label', '시간 재생 일시정지');
+      state.timer = setInterval(() => {
+        state.hour = (state.hour + 1) % 24;
+        el('hourRange').value = String(state.hour);
+        el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
+        render();
+      }, 900);
+    }
+
+    function stopAnimation() {
+      if (state.timer) clearInterval(state.timer);
+      state.timer = null;
+      el('playButton').textContent = '▶';
+      el('playButton').setAttribute('aria-label', '시간 재생');
+    }
+
+    function exportCurrentFlows() {
+      if (!state.currentFlows.length) return;
+      const header = ['월','요일','요일번호','시간대','표시관점','추정지표','보정모드','순위','출발존ID','출발행정시','출발법정동','도착존ID','도착행정시','도착법정동','추정통행량','공간품질코드','공간품질등급','대표점거리_km'];
+      const rows = state.currentFlows.map((f, i) => [
+        state.month, WEEKDAYS[state.weekday], state.weekday, state.hour,
+        state.view, state.metric, state.correction, i+1,
+        f.origin.id, f.origin.city, f.origin.legalDong,
+        f.destination.id, f.destination.city, f.destination.legalDong,
+        f.value.toFixed(6), f.quality, (QUALITY[f.quality] || QUALITY[1]).letter,
+        haversine(f.origin, f.destination).toFixed(3)
+      ]);
+      const csv = '\uFEFF' + [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `제주_OD_3차_TOP${state.topN}_${state.month}월_${WEEKDAYS[state.weekday]}_${String(state.hour).padStart(2,'0')}시.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('현재 화면의 TOP 흐름을 CSV로 저장했습니다.');
+    }
+
+    function csvEscape(value) {
+      const text = String(value ?? '');
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function haversine(a, b) {
+      if (a.id === b.id) return 0;
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(b.lat - a.lat), dLon = toRad(b.lon - a.lon);
+      const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+      const h = Math.sin(dLat/2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2) ** 2;
+      return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+    }
+
+    function formatValue(value) {
+      if (!Number.isFinite(value)) return '–';
+      if (value >= 100) return Math.round(value).toLocaleString('ko-KR');
+      if (value >= 10) return value.toLocaleString('ko-KR', { maximumFractionDigits: 1 });
+      return value.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024 * 1024) return `${(bytes/1024).toFixed(0)} KB`;
+      return `${(bytes/1024/1024).toFixed(1)} MB`;
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    }
+
+    initSelectors();
+    initMap();
+    bindEvents();
+    autoLoadSiblingFiles();
+  })();
+  </script>
+</body>
+</html>
