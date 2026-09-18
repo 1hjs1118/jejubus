@@ -221,7 +221,7 @@
           </div>
           <div class="drop-copy">
             <strong>같은 폴더의 3개 파일을 자동 탐색합니다</strong>
-            <span>LongFormat.csv.gz · 존메타_품질.csv · 읍면동_대표좌표(법정동).csv<br><span class="auto-note">웹서버(HTTP/HTTPS)에서는 자동 로드</span> · 더블클릭(file://) 실행 시에는 브라우저 보안상 ‘폴더 연결’ 1회가 필요할 수 있습니다. 데이터는 외부로 업로드되지 않습니다.</span>
+            <span>LongFormat.csv.gz · 존메타_품질.csv · 읍면동_대표좌표(법정동).csv<br><span class="auto-note">LongFormat.csv.gz는 Git LFS 미디어 저장소(media.githubusercontent.com)에서 자동 다운로드</span> · 더블클릭(file://) 실행 시에는 브라우저 보안상 ‘폴더 연결’ 1회가 필요할 수 있습니다. 데이터는 외부로 업로드되지 않습니다.</span>
           </div>
           <input id="fileInput" type="file" multiple accept=".csv,.gz,text/csv,application/gzip">
           <input id="folderInput" type="file" multiple webkitdirectory directory accept=".csv,.gz,text/csv,application/gzip">
@@ -384,6 +384,78 @@
       meta: ['존메타_품질.csv', '제주_OD추정_존메타_품질.csv'],
       coords: ['읍면동_대표좌표(법정동).csv']
     };
+
+    /* ── Git LFS 원격 소스 설정 ───────────────────────────────────────────────
+       LongFormat.csv.gz(약 111MB)는 Git LFS로 커밋되어 있어서
+       GitHub Pages / raw.githubusercontent.com 주소는 실제 GZIP이 아니라
+       LFS 포인터 텍스트(수백 바이트)를 돌려줍니다. 그 텍스트를 GZIP으로
+       풀려다가 "The compressed data was not valid: incorrect header check."가
+       발생합니다. → LFS 미디어 저장소(media.githubusercontent.com/media/...)를
+       1순위 소스로 사용하고, 포인터/HTML 응답은 자동으로 건너뜁니다. */
+    const LFS_REMOTE = { owner: '1hjs1118', repo: 'jejubus', ref: 'main' };
+    const LFS_MEDIA_ORIGIN = 'https://media.githubusercontent.com/media';
+    const RAW_ORIGIN = 'https://raw.githubusercontent.com';
+    const LFS_POINTER_RE = /^version\s+https:\/\/git-lfs\.github\.com\/spec\/v1/;
+
+    /* 현재 페이지 주소에서 owner/repo/ref/하위경로를 추정하고, 실패하면 LFS_REMOTE 기본값을 씁니다. */
+    function githubContext() {
+      const ctx = { owner: LFS_REMOTE.owner, repo: LFS_REMOTE.repo, ref: LFS_REMOTE.ref, dir: '' };
+      try {
+        const host = location.hostname.toLowerCase();
+        const parts = location.pathname.split('/').filter(Boolean);
+        const dirParts = location.pathname.endsWith('/') ? parts : parts.slice(0, -1);
+        if (/\.github\.io$/.test(host)) {
+          ctx.owner = host.replace(/\.github\.io$/, '');
+          if (dirParts.length) {
+            ctx.repo = dirParts[0];
+            ctx.dir = dirParts.slice(1).join('/');
+          }
+        } else if (host === 'raw.githubusercontent.com' && dirParts.length >= 3) {
+          ctx.owner = dirParts[0];
+          ctx.repo = dirParts[1];
+          ctx.ref = dirParts[2];
+          ctx.dir = dirParts.slice(3).join('/');
+        } else if (host === 'media.githubusercontent.com' && dirParts.length >= 4 && dirParts[0] === 'media') {
+          ctx.owner = dirParts[1];
+          ctx.repo = dirParts[2];
+          ctx.ref = dirParts[3];
+          ctx.dir = dirParts.slice(4).join('/');
+        }
+      } catch (_) { /* 기본값 사용 */ }
+      return ctx;
+    }
+
+    function remoteFileUrls(name) {
+      const ctx = githubContext();
+      const encodePath = seg => seg.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+      const path = [ctx.dir, name].filter(Boolean).map(encodePath).join('/');
+      const suffix = `${encodeURIComponent(ctx.owner)}/${encodeURIComponent(ctx.repo)}/${encodeURIComponent(ctx.ref)}/${path}`;
+      return { media: `${LFS_MEDIA_ORIGIN}/${suffix}`, raw: `${RAW_ORIGIN}/${suffix}` };
+    }
+
+    /* LongFormat(대용량·LFS): 미디어 저장소 → 같은 폴더 → raw 순서 */
+    function longSourceUrls() {
+      const urls = [];
+      const push = url => { if (url && !urls.includes(url)) urls.push(url); };
+      for (const name of AUTO_FILES.long) push(remoteFileUrls(name).media);
+      if (location.protocol !== 'file:') {
+        for (const name of AUTO_FILES.long) push(siblingUrl(name));
+      }
+      for (const name of AUTO_FILES.long) push(remoteFileUrls(name).raw);
+      return urls;
+    }
+
+    /* 소용량 CSV(LFS 아님): 같은 폴더 → raw → 미디어 저장소 순서 */
+    function smallSourceUrls(names) {
+      const urls = [];
+      const push = url => { if (url && !urls.includes(url)) urls.push(url); };
+      if (location.protocol !== 'file:') {
+        for (const name of names) push(siblingUrl(name));
+      }
+      for (const name of names) push(remoteFileUrls(name).raw);
+      for (const name of names) push(remoteFileUrls(name).media);
+      return urls;
+    }
 
     const el = id => document.getElementById(id);
     const state = {
@@ -602,47 +674,59 @@
       return new URL(name, window.location.href).href;
     }
 
-    async function fetchFirstText(candidates, label) {
+    function urlFileName(url) {
+      try {
+        const pathname = new URL(url, window.location.href).pathname;
+        return decodeURIComponent(pathname.slice(pathname.lastIndexOf('/') + 1)) || url;
+      } catch (_) {
+        return url;
+      }
+    }
+
+    async function fetchFirstText(urls, label) {
       const errors = [];
-      for (const name of candidates) {
-        const url = siblingUrl(name);
+      for (const url of urls) {
+        const name = urlFileName(url);
         try {
           const response = await fetch(url, { cache: 'no-store' });
           if (!response.ok) {
             errors.push(`${name}: HTTP ${response.status}`);
             continue;
           }
-          return { name, url, text: await response.text() };
+          const text = await response.text();
+          if (LFS_POINTER_RE.test(text.replace(/^\uFEFF/, ''))) {
+            errors.push(`${name}: Git LFS 포인터 응답`);
+            continue;
+          }
+          return { name, url, text };
         } catch (error) {
           errors.push(`${name}: ${error && error.message ? error.message : error}`);
         }
       }
-      throw new Error(`같은 폴더에서 ${label} 파일을 찾지 못했습니다.`);
+      throw new Error(`${label} 파일을 불러오지 못했습니다. (${errors.join(' / ')})`);
     }
 
     async function autoLoadSiblingFiles() {
-      if (window.location.protocol === 'file:') {
-        setStatus('', '같은 폴더 자동탐색 준비됨 · 더블클릭 실행에서는 브라우저 보안상 ‘폴더 연결’을 한 번 눌러 주세요.', 0);
-        return;
-      }
+      const localFile = window.location.protocol === 'file:';
       try {
         resetForLoad();
-        setStatus('loading', '같은 폴더에서 데이터 파일을 자동 탐색하는 중…', 1);
+        setStatus('loading', localFile
+          ? 'GitHub 저장소(LFS 미디어 포함)에서 데이터 파일을 불러오는 중…'
+          : '같은 폴더와 GitHub 저장소(LFS 미디어)에서 데이터 파일을 자동 탐색하는 중…', 1);
         const [metaResult, coordResult] = await Promise.all([
-          fetchFirstText(AUTO_FILES.meta, '존메타_품질'),
-          fetchFirstText(AUTO_FILES.coords, '읍면동_대표좌표(법정동)')
+          fetchFirstText(smallSourceUrls(AUTO_FILES.meta), '존메타_품질'),
+          fetchFirstText(smallSourceUrls(AUTO_FILES.coords), '읍면동_대표좌표(법정동)')
         ]);
         el('metaFileName').textContent = `${metaResult.name} (자동)`;
         el('coordFileName').textContent = `${coordResult.name} (자동)`;
-        el('longFileName').textContent = 'LongFormat 자동 탐색 중…';
+        el('longFileName').textContent = 'LongFormat 자동 탐색 중… (Git LFS 미디어 저장소)';
         prepareZones(metaResult.text, coordResult.text);
-        const longUrls = AUTO_FILES.long.map(siblingUrl);
-        startWorker({ sourceUrls: longUrls });
+        startWorker({ sourceUrls: longSourceUrls() });
       } catch (error) {
-        console.info('같은 폴더 자동 로드 실패:', error);
+        console.info('자동 로드 실패:', error);
         state.loaded = false;
         setControlsEnabled(false);
-        setStatus('', '같은 폴더 자동 불러오기에 실패했습니다. ‘폴더 연결’ 또는 ‘파일 직접 선택’을 사용해 주세요.', 0);
+        setStatus('', '자동 불러오기에 실패했습니다. ‘폴더 연결’ 또는 ‘파일 직접 선택’을 사용해 주세요. (LongFormat.csv.gz는 Git LFS 미디어 주소에서 직접 받습니다)', 0);
       }
     }
 
@@ -796,30 +880,86 @@
           let sourceType = '';
           let rawSource = null;
 
+          /* 첫 청크를 미리 읽어 Git LFS 포인터·HTML 오류응답을 걸러냅니다. */
+          const LFS_POINTER_RE = /^version\s+https:\/\/git-lfs\.github\.com\/spec\/v1/;
+          const headText = head => {
+            try {
+              return new TextDecoder('utf-8', { fatal: false })
+                .decode(head.subarray(0, Math.min(256, head.byteLength)))
+                .replace(/^\uFEFF/, '');
+            } catch (_) { return ''; }
+          };
+          const classifyHead = head => {
+            if (!head || !head.byteLength) return 'empty';
+            if (head[0] === 0x1f && head[1] === 0x8b) return 'gzip';
+            const text = headText(head);
+            if (LFS_POINTER_RE.test(text)) return 'lfs-pointer';
+            if (/^\s*<(?:!doctype|html)/i.test(text)) return 'html';
+            return 'text';
+          };
+          const restream = (head, reader) => new ReadableStream({
+            start(controller) {
+              if (head && head.byteLength) controller.enqueue(head);
+            },
+            async pull(controller) {
+              const { value, done } = await reader.read();
+              if (done) { controller.close(); return; }
+              controller.enqueue(value);
+            },
+            cancel(reason) {
+              try { reader.cancel(reason); } catch (_) { /* 무시 */ }
+            }
+          });
+          let headKind = '';
+
           if (file) {
             sourceName = file.name || 'LongFormat.csv.gz';
             sourceSize = Number(file.size || 0);
             sourceType = file.type || '';
-            rawSource = file.stream();
+            const fileReader = file.stream().getReader();
+            const firstChunk = await fileReader.read();
+            const head = firstChunk.value || new Uint8Array(0);
+            headKind = classifyHead(head);
+            if (headKind === 'lfs-pointer') {
+              try { await fileReader.cancel(); } catch (_) { /* 무시 */ }
+              throw new Error('선택한 LongFormat 파일이 Git LFS 포인터(수백 바이트 텍스트)입니다. GitHub에서 ‘Download raw file’ 또는 git lfs pull로 실제 파일을 받아 주세요.');
+            }
+            rawSource = restream(head, fileReader);
           } else {
-            let response = null;
+            const failures = [];
             let selectedUrl = '';
             for (const candidateUrl of (sourceUrls || [])) {
+              let reader = null;
               try {
-                const current = await fetch(candidateUrl, { cache: 'no-store' });
-                if (current.ok && current.body) {
-                  response = current;
-                  selectedUrl = candidateUrl;
-                  break;
+                /* 111MB 대용량이므로 브라우저 캐시를 활용합니다(no-store 미사용). */
+                const current = await fetch(candidateUrl, { cache: 'default', redirect: 'follow' });
+                if (!current.ok || !current.body) {
+                  failures.push(`${candidateUrl} → HTTP ${current.status}`);
+                  continue;
                 }
-              } catch (_) { /* 다음 후보 시도 */ }
+                reader = current.body.getReader();
+                const firstChunk = await reader.read();
+                const head = firstChunk.value || new Uint8Array(0);
+                const kind = classifyHead(head);
+                if (kind === 'lfs-pointer' || kind === 'html' || kind === 'empty') {
+                  failures.push(`${candidateUrl} → ${kind === 'lfs-pointer' ? 'Git LFS 포인터(실데이터 아님)' : kind === 'html' ? 'HTML 응답' : '빈 응답'}`);
+                  try { await reader.cancel(); } catch (_) { /* 무시 */ }
+                  continue;
+                }
+                headKind = kind;
+                selectedUrl = candidateUrl;
+                sourceSize = Number(current.headers.get('content-length') || 0);
+                sourceType = current.headers.get('content-type') || '';
+                rawSource = restream(head, reader);
+                break;
+              } catch (error) {
+                failures.push(`${candidateUrl} → ${error && error.message ? error.message : error}`);
+                if (reader) { try { await reader.cancel(); } catch (_) { /* 무시 */ } }
+              }
             }
-            if (!response) throw new Error('같은 폴더에서 LongFormat.csv.gz 파일을 찾지 못했습니다.');
+            if (!rawSource) throw new Error(`LongFormat 원본을 불러오지 못했습니다. ${failures.join(' / ')}`);
             const pathname = new URL(selectedUrl).pathname;
             sourceName = decodeURIComponent(pathname.slice(pathname.lastIndexOf('/') + 1)) || 'LongFormat.csv.gz';
-            sourceSize = Number(response.headers.get('content-length') || 0);
-            sourceType = response.headers.get('content-type') || '';
-            rawSource = response.body;
             self.postMessage({ type: 'source', name: sourceName, size: sourceSize });
           }
 
@@ -834,7 +974,8 @@
               }
             }
           }));
-          const gzipped = /\.gz$/i.test(sourceName) || /gzip/i.test(sourceType || '');
+          /* 실제 매직바이트(1f 8b)로 GZIP 여부를 판정합니다. 서버가 Content-Encoding으로 이미 해제한 경우도 안전하게 처리됩니다. */
+          const gzipped = headKind ? headKind === 'gzip' : (/\.gz$/i.test(sourceName) || /gzip/i.test(sourceType || ''));
           if (gzipped) {
             if (typeof DecompressionStream === 'undefined') throw new Error('이 브라우저는 GZIP 스트리밍 해제를 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용해 주세요.');
             source = source.pipeThrough(new DecompressionStream('gzip'));
