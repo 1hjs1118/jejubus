@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>제주 옵서버스 수요응답형 버스 OD 이동패턴 (Leaflet OSM)</title>
+<title>제주 옵서버스 수요응답형 버스 OD 이동패턴</title>
 <style>
 /* required styles */
 
@@ -740,7 +740,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 <body>
 <header>
   <h1>제주 옵서버스 수요응답형 버스 OD 이동패턴</h1>
-  <div class="sub">10개 읍면 · 2026-02-25 ~ 2026-06-30 · 이상 좌표 제외 후 통행 50,618건 / 이용 59,507명 · 점 1개 = 1인(다인승은 크기 비례) · 실제 픽업~하차 시각 기반 · OSM 도로 최단경로 이동</div>
+  <div class="sub">10개 읍면 · 2026-02-25 ~ 2026-06-30 · 이상 좌표 제외 후 통행 50,618건 / 이용 59,507명 · 점 1개 = 1인(다인승은 크기 비례) · 실제 픽업~하차 시각 기반 이동 재현 · 기본은 직선 OD, 체크 시 도로 경로</div>
 </header>
 <div class="wrap">
   <div class="warn" id="warn">지도 라이브러리(Leaflet)를 불러오지 못했습니다. 인터넷에 연결된 상태에서 다시 열어주세요.</div>
@@ -755,7 +755,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   <div class="panelbar">
     <div class="grp"><span class="lab">레이어</span><div id="fLayer"></div></div>
     <div class="grp"><span class="lab">속도</span><div id="fSpeed"></div></div>
-    <div class="grp"><span class="lab">구역</span><label class="chkwrap"><input type="checkbox" id="chkBoundary"> 경계 표시</label></div>
+    <div class="grp"><span class="lab">구역</span><label class="chkwrap"><input type="checkbox" id="chkBoundary"> 경계 표시</label></div><div class="grp"><span class="lab">경로</span><label class="chkwrap"><input type="checkbox" id="chkRoad"> 도로 기준으로 표시</label></div>
   </div>
 
   <div class="main">
@@ -768,7 +768,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
                <span class="dot" style="width:9px;height:9px;background:#dc2626;margin-left:7px"></span>4인
                <span class="dot" style="width:12px;height:12px;background:#dc2626;margin-left:7px"></span>8인</div>
           <div style="margin-top:4px"><span class="dot" style="width:8px;height:8px;background:#dc2626"></span>승차 직후 &nbsp;<span class="dot" style="width:8px;height:8px;background:#1d4ed8"></span>하차 임박</div>
-          <div style="margin-top:4px;color:#374151">궤적: OSM 자동차 최단경로 (OSRM)</div>
+          <div id="pathLegend" style="margin-top:4px;color:#374151">궤적: 승차지→하차지 직선</div>
           <div id="zoneLegend" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);display:none">
             <span class="swatch" style="background:#059669;border:1px solid #059669"></span>DRT 호출 가능 경계&nbsp;&nbsp;
             <span class="swatch" style="background:#dc2626;opacity:.55"></span>호출 불가(레드존)
@@ -879,7 +879,7 @@ if(!window.L){ document.getElementById('warn').style.display='block'; }
 /* ---------- state ---------- */
 var st = {
   months:new Set(META.months), hours:new Set(META.hours), regs:new Set(REGS.map(function(_,i){return i;})), dayType:'all', age:'all',
-  pts:true, flow:false, heatO:false, heatD:false, trail:true,
+  pts:true, flow:false, heatO:false, heatD:false, trail:true, road:false,
   secPerHour:20, playing:false
 };
 
@@ -936,7 +936,7 @@ function renderNativeLayers(){
       var o=top[i][0], d=top[i][1], v=top[i][2];
       if(o===d) continue;
       var pi=pathByKey[o*1000+d];
-      var latlngs=(pi!=null)?pathLatLngs(pi):[[SLAT[o],SLON[o]],[SLAT[d],SLON[d]]];
+      var latlngs=(st.road && pi!=null)?pathLatLngs(pi):[[SLAT[o],SLON[o]],[SLAT[d],SLON[d]]];
       L.polyline(latlngs,{
         renderer:nativeRenderer, color:'#2563eb', weight:0.8+3.2*Math.sqrt(v/mx),
         opacity:0.12+0.65*Math.sqrt(v/mx), interactive:false, lineCap:'round'
@@ -1075,9 +1075,9 @@ function drawFrame(force){
     var i=active[a], p=TR.p[i], u=TR.u[i];
     var f=(t-p)/u; if(f<0) f=0; if(f>1) f=1;
     var o=TR.o[i], d=TR.d[i];
-    var e=f;
+    var e=f<0.5 ? 2*f*f : 1-Math.pow(-2*f+2,2)/2;
     var pi=pathByKey[o*1000+d], x, y, xy;
-    if(pi!=null && pathsProjected){ xy=xyOnPath(pi, e); x=xy[0]; y=xy[1]; }
+    if(st.road && pi!=null && pathsProjected){ xy=xyOnPath(pi, f); x=xy[0]; y=xy[1]; }
     else { x=SX[o]+(SX[d]-SX[o])*e; y=SY[o]+(SY[d]-SY[o])*e; }
     var r=2.3*Math.sqrt(paxFor(i))+0.9;
     var cr=Math.round(220+(29-220)*f), cg=Math.round(38+(78-38)*f), cb=Math.round(38+(216-38)*f);
@@ -1219,7 +1219,7 @@ function renderTab(){
       '<li>애니메이션은 실제 픽업~하차 시각을 따르며, 선택 기간의 모든 날짜를 하나의 가상 하루에 겹쳐 재생합니다.</li></ul>'+
       '<b>해석 시 유의</b><ul>'+
       '<li><b>2026년 2월은 25~28일 부분 데이터(1,354건)</b>입니다. 3~6월과 총량을 직접 비교하지 마시고 ‘일평균 통행’ 지표를 사용하세요.</li>'+
-      '<li>점의 궤적은 <b>OSM 도로망 자동차 최단경로(OSRM)</b>를 따릅니다. 소요시간은 실제 픽업~하차 시각이며, 경로 길이에 비례해 등속으로 이동합니다. 경로를 찾지 못한 구간만 직선으로 대체합니다.</li><li>OD 흐름선 레이어도 동일한 도로 경로를 사용합니다. 실제 버스가 달린 GPS 궤적은 아니며, 공개 OSM 도로 그래프 기준 최단거리입니다.</li>'+
+      '<li>기본 궤적은 원본과 같이 <b>승차지→하차지 직선</b>입니다. ‘도로 기준으로 표시’를 켜면 점 이동과 OD 흐름선이 OSM 자동차 최단경로를 따릅니다.</li><li>도로 경로 모드의 소요시간은 실제 픽업~하차 시각이며, 경로 길이에 비례해 등속으로 이동합니다. 실제 버스 GPS 궤적은 아니고 공개 OSM 도로 그래프 기준 최단거리입니다.</li>'+
       '<li>한림(1,777건)은 원본 파일의 승·하차 위경도를 그대로 사용해 다른 읍면보다 좌표 정밀도가 높습니다.</li></ul>'+
       '</div>';
   }
@@ -1253,6 +1253,13 @@ document.getElementById('chkBoundary').onchange=function(){
     if(map && boundaryLayer){ map.removeLayer(boundaryLayer); }
     if(lg) lg.style.display='none';
   }
+};
+document.getElementById('chkRoad').onchange=function(){
+  st.road=!!this.checked;
+  var lg=document.getElementById('pathLegend');
+  if(lg) lg.textContent= st.road ? '궤적: OSM 자동차 최단경로' : '궤적: 승차지→하차지 직선';
+  renderNativeLayers();
+  paintAll();
 };
 
 buildFilters();
