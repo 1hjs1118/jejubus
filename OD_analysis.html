@@ -306,7 +306,7 @@
               <input id="hourRange" type="range" min="0" max="23" step="1" value="8" disabled>
               <div class="range-head" style="margin-top:10px"><span>1시간 흐름 이동</span><strong id="travelProgressLabel">08:00 → 09:00 · 0%</strong></div>
               <div class="travel-track" aria-hidden="true"><div id="travelBar" class="travel-bar"></div></div>
-              <div class="travel-caption">▶ 를 누르면 원이 출발지에서 도착지로 이동하고, 도착하면 다음 시간으로 넘어갑니다. 일시정지는 그 자리에 멈춥니다.</div>
+              <div class="travel-caption" id="travelCaption">▶ 를 누르면 원이 출발지에서 도착지로 이동합니다. 같은 날 안에서 총량이 적은 시간대는 원 면적 합도 줄어듭니다.</div>
             </div>
           </div>
         </section>
@@ -340,7 +340,7 @@
             <span class="legend-item"><i class="legend-dot small"></i>통행량 적음 · 하양</span>
             <span class="legend-item"><i class="legend-dot big origin"></i>출발 · 빨강 스펙트럼</span>
             <span class="legend-item"><i class="legend-dot big dest"></i>도착 · 파랑 스펙트럼</span>
-            <span class="legend-note">표시 중인 TOP 안에서 상대 크기를 벌림 · 원이 출발 읍면동에서 도착 읍면동으로 이동 · 추자·우도 제외</span>
+            <span class="legend-note">원 면적 ∝ 통행량 · 심야처럼 총량이 줄면 원 면적 합도 감소 · 출발 읍면동→도착 읍면동 이동 · 추자·우도 제외</span>
           </div>
         </section>
 
@@ -362,7 +362,7 @@
               <p><strong>읍·면 내부거리 보정</strong><br>원자료는 모든 자기지역 거리를 0.8km로 처리했습니다. 3차본은 「행정_법정동 중심좌표.xlsx」의 법정리(B) 중심점을 이용해 본섬 10개 읍·면의 생활권 유효면적을 구성하고, 동일면적 원의 평균 점간거리로 대표 내부거리를 산정했습니다. 행정동 총면적을 쓰지 않아 한라산 중산간·정상부의 비거주 면적이 보정거리 산정에 직접 포함되지 않습니다.</p>
               <p><strong>거리저항 재배분</strong><br>제주권 수정혼합형 ‘기타’ 목적 거리저항계수를 사용해 새 대표거리와 기존 0.8km의 저항함수 비율로 내부통행을 감액합니다. 감액분은 같은 출발지의 기존 외부 목적지 비율대로 재배분하여 본섬 출발 총량을 보존합니다. 보정 대표거리: 한림 4.30, 애월 4.82, 구좌 6.06, 조천 5.00, 한경 3.60, 대정 3.87, 남원 4.58, 성산 4.73, 안덕 4.79, 표선 4.17km.</p>
               <p><strong>도서 제외·한계</strong><br>추자면(존67)과 우도면(존58)은 지도·순위·합계에서 제외합니다. ‘버스승차기반’은 실제 하차태그가 아니라 승차량에 추정 목적지 비율을 적용한 값이며, ‘전체이동’은 4대 거시권역 총량을 세부 존으로 배분한 추정치입니다. 법정리 경계면적·고도·실제 하차 O/D가 확보되면 추가 재보정이 필요합니다.</p>
-              <p><strong>원 이동 표현</strong><br>지역간 O/D는 직선 대신 원으로 그립니다. 표시 중인 TOP 흐름 안에서 통행량 차이를 반지름에 크게 반영합니다. 1위는 큰 원, 하위는 작은 원으로 벌어지게 그립니다. 각 원은 출발 법정동에서 도착 법정동으로 지도 위를 실제로 이동합니다. 출발 때는 빨강~하양, 도착 즈음에는 파랑~하양 스펙트럼을 씁니다.</p>
+              <p><strong>원 이동 표현</strong><br>지역간 O/D는 직선 대신 원으로 그립니다. 각 원의 면적은 해당 1시간 통행량에 비례합니다(반지름 ∝ √통행량). 같은 시간 안에서는 통행이 많은 흐름이 더 큰 원이고, 같은 날의 다른 시간대와 비교하면 총량이 적은 시간(심야 등)은 원 면적 합이 함께 줄어듭니다. 스케일은 선택한 월·요일 24시간의 피크를 기준으로 고정합니다. 각 원은 출발 법정동에서 도착 법정동으로 지도 위를 실제로 이동합니다. 출발 때는 빨강~하양, 도착 즈음에는 파랑~하양 스펙트럼을 씁니다.</p>
               <p><strong>좌표 기준</strong><br>지도 위치는 「행정_법정동 중심좌표.xlsx」를 기준으로 도시지역 법정동은 B 좌표, 읍·면 존은 H 중심좌표를 적용했습니다. 외도이동·상예동·회수동·대포동·중문동·오라이동은 사용자 지정 좌표를 우선 적용하며 인위적인 위치 오프셋은 사용하지 않습니다.</p>
             </div>
           </details>
@@ -516,6 +516,10 @@
       flowMarkers: [],
       flowMax: 1,
       pendingFit: true,
+      areaScaleK: 0,
+      dayMaxValue: 1,
+      dayPeakSum: 0,
+      dayScaleKey: '',
       flowCanvas: null,
       flowCtx: null,
       flowDpr: 1,
@@ -611,7 +615,6 @@
         state.hour = Number(e.target.value);
         el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
         state.hourProgress = 0;
-        state.pendingFit = true;
         render();
       });
       el('topNRange').addEventListener('input', e => {
@@ -1117,6 +1120,7 @@
 
     function render() {
       if (!state.loaded) return;
+      refreshDayScale();
       const frame = frameIndex();
       const values = state.metric === 'total' ? state.total : state.bus;
       const matrix = buildDisplayMatrix(values, frame);
@@ -1179,6 +1183,36 @@
 
     function frameIndex() {
       return ((state.month - 1) * 7 + state.weekday) * 24 + state.hour;
+    }
+
+    function dayScaleKey() {
+      return [state.month, state.weekday, state.metric, state.correction, state.view, state.selectedId, state.topN].join('|');
+    }
+
+    function refreshDayScale() {
+      const key = dayScaleKey();
+      if (state.dayScaleKey === key && state.areaScaleK > 0) return;
+      const values = state.metric === 'total' ? state.total : state.bus;
+      const base = ((state.month - 1) * 7 + state.weekday) * 24;
+      let peakSum = 0;
+      let dayMax = 0;
+      for (let h = 0; h < 24; h++) {
+        const matrix = buildDisplayMatrix(values, base + h);
+        const flows = collectFlows(matrix).slice(0, state.topN);
+        let sum = 0;
+        for (const flow of flows) {
+          sum += flow.value;
+          if (flow.value > dayMax) dayMax = flow.value;
+        }
+        if (sum > peakSum) peakSum = sum;
+      }
+      const TARGET_AREA = 16500;
+      const kFromTotal = peakSum > 0 ? Math.sqrt(TARGET_AREA / (Math.PI * peakSum)) : 0.2;
+      const kFromMax = dayMax > 0 ? 26 / Math.sqrt(dayMax) : kFromTotal;
+      state.areaScaleK = Math.min(kFromTotal, kFromMax);
+      state.dayMaxValue = dayMax || 1;
+      state.dayPeakSum = peakSum;
+      state.dayScaleKey = key;
     }
 
     function collectFlows(matrix) {
@@ -1349,13 +1383,20 @@
       const start = String(state.hour).padStart(2, '0');
       const endHour = (state.hour + 1) % 24;
       const end = String(endHour).padStart(2, '0');
+      const hourSum = (state.currentFlows || []).reduce((s, f) => s + f.value, 0);
+      const areaRatio = state.dayPeakSum ? (hourSum / state.dayPeakSum * 100) : 0;
+      const areaText = areaRatio <= 0 ? '0%' : areaRatio < 10 ? `${areaRatio.toFixed(1)}%` : `${Math.round(areaRatio)}%`;
       const label = el('travelProgressLabel');
       const bar = el('travelBar');
       if (label) {
         const mode = state.playing ? '재생 중' : '일시정지';
-        label.textContent = `${start}:00 → ${end}:00 · ${pct}% · ${mode}`;
+        label.textContent = `${start}:00 → ${end}:00 · ${pct}% · ${mode} · 원면적합 ${areaText}`;
       }
       if (bar) bar.style.width = `${pct}%`;
+      const caption = el('travelCaption');
+      if (caption) {
+        caption.textContent = `같은 날 피크 시간 TOP 면적 합을 100%로 둡니다. 지금 시간대는 ${areaText}입니다. 총량이 줄면 원도 함께 작아집니다.`;
+      }
     }
 
     function ensureFlowCanvas() {
@@ -1476,18 +1517,14 @@
       paintFlows();
     }
 
-    function flowSizeScale(flows) {
-      const sqrts = flows.map(f => Math.sqrt(Math.max(0, f.value)));
-      const sMax = sqrts[0] || 1;
-      const sMin = sqrts[sqrts.length - 1] || 0;
-      const span = Math.max(sMax - sMin, sMax * 0.22, 1e-9);
-      return function scale(value) {
-        const t = (Math.sqrt(Math.max(0, value)) - sMin) / span;
-        const contrast = Math.pow(Math.max(0, Math.min(1, t)), 1.25);
-        return {
-          norm: contrast,
-          radius: 4 + 20 * contrast
-        };
+    function flowVisual(value) {
+      const v = Math.max(0, Number(value) || 0);
+      const k = state.areaScaleK || 0.2;
+      const radius = v > 0 ? Math.max(1.1, Math.min(28, k * Math.sqrt(v))) : 0;
+      const norm = Math.sqrt(v / (state.dayMaxValue || 1));
+      return {
+        norm: Math.max(0, Math.min(1, norm)),
+        radius
       };
     }
 
@@ -1495,9 +1532,8 @@
       ensureFlowCanvas();
       const max = flows.length ? (flows[0].value || 1) : 1;
       state.flowMax = max;
-      const scale = flowSizeScale(flows);
       state.flowMarkers = flows.map((flow, i) => {
-        const visual = scale(flow.value);
+        const visual = flowVisual(flow.value);
         return {
           origin: flow.origin,
           destination: flow.destination,
@@ -1506,15 +1542,14 @@
           rank: i + 1,
           norm: visual.norm,
           radius: visual.radius,
-          fillOpacity: 0.78 + 0.18 * visual.norm
+          fillOpacity: 0.72 + 0.24 * visual.norm
         };
       });
-      if (state.pendingFit) {
+      if (state.pendingFit && flows.length) {
         fitFlowCamera(flows);
         state.pendingFit = false;
-      } else {
-        paintFlows();
       }
+      paintFlows();
       updateTravelProgress();
     }
 
