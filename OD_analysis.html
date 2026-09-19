@@ -306,14 +306,14 @@
               <input id="hourRange" type="range" min="0" max="23" step="1" value="8" disabled>
               <div class="range-head" style="margin-top:10px"><span>1시간 흐름 이동</span><strong id="travelProgressLabel">08:00 → 09:00 · 0%</strong></div>
               <div class="travel-track" aria-hidden="true"><div id="travelBar" class="travel-bar"></div></div>
-              <div class="travel-caption" id="travelCaption">▶ 를 누르면 원이 출발지에서 도착지로 이동합니다. 같은 날 안에서 총량이 적은 시간대는 원 면적 합도 줄어듭니다.</div>
+              <div class="travel-caption" id="travelCaption">▶ 를 누르면 원이 출발지에서 도착지로 이동합니다. 통행이 없는 시간대는 빈 화면으로 짧게 지나 다음 시간으로 이어집니다.</div>
             </div>
           </div>
         </section>
 
         <section class="control-section">
           <div class="range-head"><span>지도 표시 흐름</span><strong id="topNValue">TOP 30</strong></div>
-          <input id="topNRange" type="range" min="5" max="50" step="5" value="30" disabled>
+          <input id="topNRange" type="range" min="10" max="300" step="10" value="30" disabled>
           <button id="exportButton" class="export-button" type="button" disabled>현재 TOP 흐름 CSV 저장</button>
         </section>
       </aside>
@@ -1553,6 +1553,13 @@
       updateTravelProgress();
     }
 
+    function advanceHour() {
+      state.hour = (state.hour + 1) % 24;
+      el('hourRange').value = String(state.hour);
+      el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
+      render();
+    }
+
     function tickPlayback(now) {
       if (!state.loaded) {
         state.lastTs = now;
@@ -1564,20 +1571,15 @@
       }
       const dt = Math.min(80, now - state.lastTs);
       state.lastTs = now;
-      if (!state.flowMarkers.length) {
-        updateTravelProgress();
-        return;
-      }
-      state.hourProgress += dt / state.hourDurationMs;
+      const empty = !state.flowMarkers.length;
+      const duration = empty ? Math.max(400, state.hourDurationMs * 0.22) : state.hourDurationMs;
+      state.hourProgress += dt / duration;
       if (state.hourProgress >= 1) {
         state.hourProgress -= Math.floor(state.hourProgress);
-        state.hour = (state.hour + 1) % 24;
-        el('hourRange').value = String(state.hour);
-        el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
-        render();
+        advanceHour();
         return;
       }
-      paintFlows();
+      if (!empty) paintFlows();
       updateTravelProgress();
     }
 
