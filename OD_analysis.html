@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>제주 읍면동 O/D 추정 시각화 · 3차 개선본</title>
+  <title>제주 읍면동 O/D 추정 시각화 · 원 이동</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -104,6 +104,7 @@
     .time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .hour-box { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
     .play-button { width: 42px; height: 42px; border: 0; border-radius: 11px; color: #fff; background: var(--green); font-weight: 900; }
+    .play-button.playing { background: var(--amber); box-shadow: 0 0 0 3px rgba(197,106,0,.22); }
     .hour-control { flex: 1; min-width: 0; }
     .hour-value { color: var(--navy); font-size: 19px; font-weight: 900; }
     input[type="range"] { width: 100%; accent-color: var(--blue); }
@@ -136,9 +137,25 @@
     .empty-card span { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.55; }
     .legend { display: flex; gap: 17px; align-items: center; flex-wrap: wrap; padding: 10px 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
     .legend-item { display: inline-flex; align-items: center; gap: 7px; }
-    .legend-line { width: 30px; border-top: 3px solid var(--q-a); }
-    .legend-line.b { border-color: var(--q-b); border-top-style: dashed; opacity: .78; }
-    .legend-line.c { border-color: var(--q-c); border-top-style: dotted; opacity: .55; }
+    .legend-dot {
+      display: inline-block; border-radius: 50%; border: 1.5px solid #8a3030;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.65);
+    }
+    .legend-dot.small { width: 6px; height: 6px; background: #fff; }
+    .legend-dot.big { width: 26px; height: 26px; }
+    .legend-dot.origin { background: #b00c12; border-color: #5c1014; }
+    .legend-dot.dest { background: #0c48b0; border-color: #10285c; }
+    .travel-track { height: 6px; margin-top: 8px; border-radius: 99px; overflow: hidden; background: #e6edf2; }
+    .travel-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c41218, #1a4fb3); }
+    .od-flow-canvas { pointer-events: none; }
+    .flow-hover-tip {
+      position: absolute; z-index: 1100; display: none; pointer-events: none;
+      transform: translate(-50%, calc(-100% - 12px));
+      padding: 8px 10px; border-radius: 9px; color: #fff;
+      background: rgba(18,48,74,.93); font-size: 12px; line-height: 1.45;
+      white-space: nowrap; box-shadow: 0 5px 16px rgba(0,0,0,.15);
+    }
+    .travel-caption { margin-top: 6px; color: #8491a0; font-size: 10px; line-height: 1.4; }
     .legend-note { margin-left: auto; color: #8491a0; }
 
     .table-card { overflow: hidden; }
@@ -197,8 +214,8 @@
     <header class="hero">
       <div>
         <p class="eyebrow">JEJU ORIGIN–DESTINATION EXPLORER</p>
-        <h1>제주 읍면동 O/D 추정 시각화 · 3차 개선본</h1>
-        <p class="subtitle">본섬 71개 분석존의 월·요일·시간별 지역간 이동을 탐색합니다. 추자면·우도면은 분석에서 제외하고, 읍·면 내부통행은 법정리 생활권 유효면적 기반 거리로 보정합니다.</p>
+        <h1>제주 읍면동 O/D 추정 시각화 · 원 이동</h1>
+        <p class="subtitle">본섬 71개 분석존의 월·요일·시간별 지역간 이동을 탐색합니다. 각 원은 출발 읍면동에서 도착 읍면동으로 지도 위를 실제로 이동합니다. 출발 때는 빨강(통행 많음)~하양(적음), 도착 즈음에는 파랑~하양으로 바뀝니다.</p>
       </div>
       <div class="hero-meta" aria-label="데이터 규모">
         <span class="hero-badge">원자료 73 × 73 O/D</span>
@@ -209,7 +226,7 @@
 
     <section class="warning-banner" role="note">
       <span class="warning-icon">⚠</span>
-      <div><strong>3차 보정 적용:</strong> 원자료의 자기지역 내부거리 0.8km 고정 가정은 읍·면 내부통행을 과대평가할 수 있어, 10개 본섬 읍·면은 법정리 중심점의 생활권 유효면적에서 산정한 대표 내부거리(약 3.6~6.1km)를 적용합니다. 감소한 내부통행은 해당 출발지의 기존 외부 목적지 비율대로 재배분하여 출발 총량을 보존합니다. <strong>추자면·우도면은 지도·순위·합계에서 완전히 제외</strong>합니다. ‘전체이동’은 4대 거시권역 총량 배분치라는 한계가 있으므로 기본값은 버스승차기반입니다.</div>
+      <div><strong>3차 보정 적용:</strong> 원자료의 자기지역 내부거리 0.8km 고정 가정은 읍·면 내부통행을 과대평가할 수 있어, 10개 본섬 읍·면은 법정리 중심점의 생활권 유효면적에서 산정한 대표 내부거리(약 3.6~6.1km)를 적용합니다. 감소한 내부통행은 해당 출발지의 기존 외부 목적지 비율대로 재배분하여 출발 총량을 보존합니다. <strong>추자면·우도면은 지도·순위·합계에서 완전히 제외</strong>합니다. 지도에서는 직선 대신 통행량에 비례해 크기가 갈리는 원이 출발지에서 도착지로 해당 1시간 동안 이동합니다. 초기 화면은 전도 TOP · 전체이동 · TOP 30입니다. ‘전체이동’은 4대 거시권역 총량 배분치라는 한계가 있으므로 비교 시 버스승차기반도 함께 보기를 권합니다.</div>
     </section>
 
     <section class="loader-card" aria-label="데이터 불러오기">
@@ -243,9 +260,9 @@
         <section class="control-section">
           <p class="section-label">표시 관점</p>
           <div id="viewMode" class="segmented">
-            <button type="button" data-value="origin" class="active" disabled>출발지</button>
+            <button type="button" data-value="origin" disabled>출발지</button>
             <button type="button" data-value="destination" disabled>도착지</button>
-            <button type="button" data-value="national" disabled>전도 TOP</button>
+            <button type="button" data-value="national" class="active" disabled>전도 TOP</button>
           </div>
           <div class="field">
             <label for="zoneSelect">법정동 선택</label>
@@ -256,8 +273,8 @@
         <section class="control-section">
           <p class="section-label">추정지표</p>
           <div id="metricMode" class="segmented two">
-            <button type="button" data-value="total" disabled>전체이동</button>
-            <button type="button" data-value="bus" class="active" disabled>버스승차기반</button>
+            <button type="button" data-value="total" class="active" disabled>전체이동</button>
+            <button type="button" data-value="bus" disabled>버스승차기반</button>
           </div>
         </section>
 
@@ -287,13 +304,16 @@
             <div class="hour-control">
               <div class="range-head"><span>시간대</span><strong id="hourValue" class="hour-value">08:00</strong></div>
               <input id="hourRange" type="range" min="0" max="23" step="1" value="8" disabled>
+              <div class="range-head" style="margin-top:10px"><span>1시간 흐름 이동</span><strong id="travelProgressLabel">08:00 → 09:00 · 0%</strong></div>
+              <div class="travel-track" aria-hidden="true"><div id="travelBar" class="travel-bar"></div></div>
+              <div class="travel-caption">▶ 를 누르면 원이 출발지에서 도착지로 이동하고, 도착하면 다음 시간으로 넘어갑니다. 일시정지는 그 자리에 멈춥니다.</div>
             </div>
           </div>
         </section>
 
         <section class="control-section">
-          <div class="range-head"><span>지도 표시 흐름</span><strong id="topNValue">TOP 15</strong></div>
-          <input id="topNRange" type="range" min="5" max="50" step="5" value="15" disabled>
+          <div class="range-head"><span>지도 표시 흐름</span><strong id="topNValue">TOP 30</strong></div>
+          <input id="topNRange" type="range" min="5" max="50" step="5" value="30" disabled>
           <button id="exportButton" class="export-button" type="button" disabled>현재 TOP 흐름 CSV 저장</button>
         </section>
       </aside>
@@ -309,17 +329,18 @@
 
         <section class="map-card">
           <div class="map-toolbar">
-            <div class="map-title"><strong id="mapHeading">데이터 대기 중</strong><span id="mapSubheading">파일을 불러오면 흐름 화살표를 표시합니다.</span></div>
+            <div class="map-title"><strong id="mapHeading">데이터 대기 중</strong><span id="mapSubheading">파일을 불러오면 교통량 원이 출발지에서 도착지로 이동합니다.</span></div>
             <span id="timeQuality" class="quality-badge q2">시간품질 –</span>
           </div>
           <div id="map">
-            <div id="mapEmpty" class="map-empty"><div class="empty-card"><strong>O/D 데이터 파일을 불러오세요</strong><span>대용량 압축파일은 Web Worker에서 스트리밍 해제·색인하므로 화면이 멈추지 않습니다.</span></div></div>
+            <div id="mapEmpty" class="map-empty"><div class="empty-card"><strong>O/D 데이터 파일을 불러오세요</strong><span>대용량 압축파일은 Web Worker에서 스트리밍 해제·색인합니다. 준비되면 교통량 원이 출발지에서 도착지로 1시간 동안 이동합니다.</span></div></div>
+            <div id="flowHoverTip" class="flow-hover-tip" role="tooltip"></div>
           </div>
           <div class="legend">
-            <span class="legend-item"><i class="legend-line"></i><strong>A</strong> 직접 ITS·비분할</span>
-            <span class="legend-item"><i class="legend-line b"></i><strong>B</strong> 직접 ITS 일부 또는 세분화</span>
-            <span class="legend-item"><i class="legend-line c"></i><strong>C</strong> 대체 ITS 포함</span>
-            <span class="legend-note">전도 TOP·순위표는 지역간 O≠D 기준 · 내부통행은 KPI로 별도 표시 · 추자·우도 제외</span>
+            <span class="legend-item"><i class="legend-dot small"></i>통행량 적음 · 하양</span>
+            <span class="legend-item"><i class="legend-dot big origin"></i>출발 · 빨강 스펙트럼</span>
+            <span class="legend-item"><i class="legend-dot big dest"></i>도착 · 파랑 스펙트럼</span>
+            <span class="legend-note">표시 중인 TOP 안에서 상대 크기를 벌림 · 원이 출발 읍면동에서 도착 읍면동으로 이동 · 추자·우도 제외</span>
           </div>
         </section>
 
@@ -341,6 +362,7 @@
               <p><strong>읍·면 내부거리 보정</strong><br>원자료는 모든 자기지역 거리를 0.8km로 처리했습니다. 3차본은 「행정_법정동 중심좌표.xlsx」의 법정리(B) 중심점을 이용해 본섬 10개 읍·면의 생활권 유효면적을 구성하고, 동일면적 원의 평균 점간거리로 대표 내부거리를 산정했습니다. 행정동 총면적을 쓰지 않아 한라산 중산간·정상부의 비거주 면적이 보정거리 산정에 직접 포함되지 않습니다.</p>
               <p><strong>거리저항 재배분</strong><br>제주권 수정혼합형 ‘기타’ 목적 거리저항계수를 사용해 새 대표거리와 기존 0.8km의 저항함수 비율로 내부통행을 감액합니다. 감액분은 같은 출발지의 기존 외부 목적지 비율대로 재배분하여 본섬 출발 총량을 보존합니다. 보정 대표거리: 한림 4.30, 애월 4.82, 구좌 6.06, 조천 5.00, 한경 3.60, 대정 3.87, 남원 4.58, 성산 4.73, 안덕 4.79, 표선 4.17km.</p>
               <p><strong>도서 제외·한계</strong><br>추자면(존67)과 우도면(존58)은 지도·순위·합계에서 제외합니다. ‘버스승차기반’은 실제 하차태그가 아니라 승차량에 추정 목적지 비율을 적용한 값이며, ‘전체이동’은 4대 거시권역 총량을 세부 존으로 배분한 추정치입니다. 법정리 경계면적·고도·실제 하차 O/D가 확보되면 추가 재보정이 필요합니다.</p>
+              <p><strong>원 이동 표현</strong><br>지역간 O/D는 직선 대신 원으로 그립니다. 표시 중인 TOP 흐름 안에서 통행량 차이를 반지름에 크게 반영합니다. 1위는 큰 원, 하위는 작은 원으로 벌어지게 그립니다. 각 원은 출발 법정동에서 도착 법정동으로 지도 위를 실제로 이동합니다. 출발 때는 빨강~하양, 도착 즈음에는 파랑~하양 스펙트럼을 씁니다.</p>
               <p><strong>좌표 기준</strong><br>지도 위치는 「행정_법정동 중심좌표.xlsx」를 기준으로 도시지역 법정동은 B 좌표, 읍·면 존은 H 중심좌표를 적용했습니다. 외도이동·상예동·회수동·대포동·중문동·오라이동은 사용자 지정 좌표를 우선 적용하며 인위적인 위치 오프셋은 사용하지 않습니다.</p>
             </div>
           </details>
@@ -360,6 +382,7 @@
     const FRAME_COUNT = 12 * 7 * 24;
     const OD_PER_FRAME = EXPECTED_ZONE_COUNT * EXPECTED_ZONE_COUNT;
     const EXPECTED_ROWS = FRAME_COUNT * OD_PER_FRAME;
+    const HOUR_DURATION_MS = 4000;
     const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
     const EXCLUDED_ZONE_IDS = new Set([58, 67]); // 우도면, 추자면
     const TOWN_CORRECTION = {
@@ -433,23 +456,31 @@
       return { media: `${LFS_MEDIA_ORIGIN}/${suffix}`, raw: `${RAW_ORIGIN}/${suffix}` };
     }
 
-    /* LongFormat(대용량·LFS): 미디어 저장소 → 같은 폴더 → raw 순서 */
+    function shouldTrySiblings() {
+      try {
+        return /\.github\.io$/i.test(location.hostname);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    /* LongFormat(대용량·LFS): 미디어 저장소 → (GitHub Pages일 때만) 같은 폴더 → raw 순서 */
     function longSourceUrls() {
       const urls = [];
       const push = url => { if (url && !urls.includes(url)) urls.push(url); };
       for (const name of AUTO_FILES.long) push(remoteFileUrls(name).media);
-      if (location.protocol !== 'file:') {
+      if (shouldTrySiblings()) {
         for (const name of AUTO_FILES.long) push(siblingUrl(name));
       }
       for (const name of AUTO_FILES.long) push(remoteFileUrls(name).raw);
       return urls;
     }
 
-    /* 소용량 CSV(LFS 아님): 같은 폴더 → raw → 미디어 저장소 순서 */
+    /* 소용량 CSV(LFS 아님): (GitHub Pages일 때만) 같은 폴더 → raw → 미디어 저장소 순서 */
     function smallSourceUrls(names) {
       const urls = [];
       const push = url => { if (url && !urls.includes(url)) urls.push(url); };
-      if (location.protocol !== 'file:') {
+      if (shouldTrySiblings()) {
         for (const name of names) push(siblingUrl(name));
       }
       for (const name of names) push(remoteFileUrls(name).raw);
@@ -465,21 +496,31 @@
       bus: null,
       spatialQuality: null,
       timeQuality: null,
-      metric: 'bus',
+      metric: 'total',
       correction: 'corrected',
-      view: 'origin',
+      view: 'national',
       month: 1,
       weekday: 0,
       hour: 8,
-      topN: 15,
+      topN: 30,
       selectedId: null,
       currentFlows: [],
       worker: null,
-      timer: null,
+      playing: false,
+      hourProgress: 0,
+      hourDurationMs: HOUR_DURATION_MS,
+      lastTs: 0,
+      raf: null,
+      ticker: null,
+      _reducedAcc: 0,
+      flowMarkers: [],
+      flowMax: 1,
+      pendingFit: true,
+      flowCanvas: null,
+      flowCtx: null,
+      flowDpr: 1,
       map: null,
       markerLayer: null,
-      flowLayer: null,
-      flowRenderer: null,
       markerById: new Map()
     };
 
@@ -506,14 +547,15 @@
       baseLayer.on('tileerror', () => {
         tileErrors += 1;
         if (tileErrors === 4) {
-          el('mapSubheading').textContent = '배경지도 타일 연결이 원활하지 않습니다. O/D 선과 존 위치는 계속 표시됩니다.';
+          el('mapSubheading').textContent = '배경지도 타일 연결이 원활하지 않습니다. O/D 원과 존 위치는 계속 표시됩니다.';
         }
       });
       baseLayer.addTo(state.map);
       L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
-      state.flowRenderer = L.svg({ padding: .6 }).addTo(state.map);
       state.markerLayer = L.layerGroup().addTo(state.map);
-      state.flowLayer = L.layerGroup().addTo(state.map);
+      ensureFlowCanvas();
+      state.map.on('mousemove', onFlowHover);
+      state.map.on('mouseout', hideFlowTip);
       state.map.on('click', ev => {
         if (!state.loaded || !state.zones.length) return;
         let nearest = null;
@@ -544,29 +586,38 @@
         state.view = button.dataset.value;
         setActiveButtons('viewMode', state.view);
         el('zoneSelect').disabled = state.view === 'national' || !state.loaded;
+        state.hourProgress = 0;
+        state.pendingFit = true;
         render();
       }));
       document.querySelectorAll('#metricMode button').forEach(button => button.addEventListener('click', () => {
         state.metric = button.dataset.value;
         setActiveButtons('metricMode', state.metric);
+        state.hourProgress = 0;
+        state.pendingFit = true;
         render();
       }));
       document.querySelectorAll('#correctionMode button').forEach(button => button.addEventListener('click', () => {
         state.correction = button.dataset.value;
         setActiveButtons('correctionMode', state.correction);
+        state.hourProgress = 0;
+        state.pendingFit = true;
         render();
       }));
       el('zoneSelect').addEventListener('change', e => setSelectedZone(Number(e.target.value)));
-      el('monthSelect').addEventListener('change', e => { state.month = Number(e.target.value); render(); });
-      el('weekdaySelect').addEventListener('change', e => { state.weekday = Number(e.target.value); render(); });
+      el('monthSelect').addEventListener('change', e => { state.month = Number(e.target.value); state.hourProgress = 0; state.pendingFit = true; render(); });
+      el('weekdaySelect').addEventListener('change', e => { state.weekday = Number(e.target.value); state.hourProgress = 0; state.pendingFit = true; render(); });
       el('hourRange').addEventListener('input', e => {
         state.hour = Number(e.target.value);
         el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
+        state.hourProgress = 0;
+        state.pendingFit = true;
         render();
       });
       el('topNRange').addEventListener('input', e => {
         state.topN = Number(e.target.value);
         el('topNValue').textContent = `TOP ${state.topN}`;
+        state.pendingFit = true;
         render();
       });
       el('playButton').addEventListener('click', toggleAnimation);
@@ -649,6 +700,8 @@
       state.zones = buildZones(meta, coords);
       populateZoneSelect();
       drawZoneMarkers();
+      el('mapEmpty').style.display = 'none';
+      setTimeout(() => state.map && state.map.invalidateSize(), 0);
     }
 
     async function handleFiles(fileList) {
@@ -783,7 +836,7 @@
       state.markerById.clear();
       for (const zone of state.zones) {
         if (EXCLUDED_ZONE_IDS.has(zone.id)) continue;
-        const marker = L.circleMarker([zone.lat, zone.lon], markerStyle(zone.id === state.selectedId));
+        const marker = L.circleMarker([zone.lat, zone.lon], { ...markerStyle(zone.id === state.selectedId), pane: 'markerPane' });
         marker.bindTooltip(`<strong>${escapeHTML(zone.legalDong)}</strong><br>${escapeHTML(zone.city)} · 분석존 ${escapeHTML(zone.analysisZone)}${zone.island ? '<br><b>도서지역 품질주의</b>' : ''}`);
         marker.on('click', event => {
           L.DomEvent.stopPropagation(event);
@@ -809,6 +862,8 @@
       if (state.markerById.has(id)) {
         state.markerById.get(id).setStyle(markerStyle(true)).bringToFront();
       }
+      state.hourProgress = 0;
+      state.pendingFit = true;
       render();
     }
 
@@ -1162,7 +1217,7 @@
       const metricText = state.metric === 'total' ? '전체이동 추정' : '버스승차기반 추정';
       const viewText = state.view === 'origin' ? `${zone.legalDong} 출발 · 지역간` : state.view === 'destination' ? `${zone.legalDong} 도착 · 지역간` : '제주 본섬 지역간 주요 O/D';
       el('mapHeading').textContent = `${viewText} · ${metricText}`;
-      el('mapSubheading').textContent = `${state.month}월 ${WEEKDAYS[state.weekday]}요일 ${String(state.hour).padStart(2,'0')}:00 · ${state.currentFlows.length}개 흐름 · ${state.correction === 'corrected' ? '읍·면 내부거리 보정' : '원자료 비교'} · 추자·우도 제외`;
+      el('mapSubheading').textContent = `${state.month}월 ${WEEKDAYS[state.weekday]}요일 ${String(state.hour).padStart(2,'0')}:00 · ${state.currentFlows.length}개 원 이동 · ${state.correction === 'corrected' ? '읍·면 내부거리 보정' : '원자료 비교'} · 추자·우도 제외`;
       el('tableTitle').textContent = `${viewText} 순위`;
       el('tableCaption').textContent = `TOP ${state.topN} · ${metricText} · 지역간 O≠D`;
       const tq = state.timeQuality[frame] || 1;
@@ -1242,67 +1297,264 @@
       el('kpiTop5Note').textContent = state.view === 'national' ? '본섬 지역간 총통행 대비' : '선택 방향 외부통행 대비';
     }
 
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function volumeColorAt(norm, travelT) {
+      const n = Math.max(0, Math.min(1, Number(norm) || 0));
+      const u = Math.max(0, Math.min(1, Number(travelT) || 0));
+      const white = [255, 252, 250];
+      const red = [176, 12, 18];
+      const blue = [12, 72, 186];
+      const r0 = lerp(white[0], red[0], n);
+      const g0 = lerp(white[1], red[1], n);
+      const b0 = lerp(white[2], red[2], n);
+      const r1 = lerp(white[0], blue[0], n);
+      const g1 = lerp(white[1], blue[1], n);
+      const b1 = lerp(white[2], blue[2], n);
+      return [
+        Math.round(lerp(r0, r1, u)),
+        Math.round(lerp(g0, g1, u)),
+        Math.round(lerp(b0, b1, u))
+      ];
+    }
+
+    function cssRgb(rgb, alpha) {
+      if (alpha == null || alpha >= 1) return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+      return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+    }
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function travelPoint(origin, dest, t) {
+      const lat0 = origin.lat, lon0 = origin.lon;
+      const lat2 = dest.lat, lon2 = dest.lon;
+      const dlat = lat2 - lat0, dlon = lon2 - lon0;
+      const dist = Math.hypot(dlat, dlon) || 1e-9;
+      const offset = Math.max(dist * 0.28, 0.018);
+      const lat1 = (lat0 + lat2) / 2 + (-dlon / dist) * offset;
+      const lon1 = (lon0 + lon2) / 2 + (dlat / dist) * offset;
+      const u = 1 - t;
+      return {
+        lat: u * u * lat0 + 2 * u * t * lat1 + t * t * lat2,
+        lon: u * u * lon0 + 2 * u * t * lon1 + t * t * lon2
+      };
+    }
+
+    function updateTravelProgress() {
+      const pct = Math.max(0, Math.min(100, Math.round((state.hourProgress || 0) * 100)));
+      const start = String(state.hour).padStart(2, '0');
+      const endHour = (state.hour + 1) % 24;
+      const end = String(endHour).padStart(2, '0');
+      const label = el('travelProgressLabel');
+      const bar = el('travelBar');
+      if (label) {
+        const mode = state.playing ? '재생 중' : '일시정지';
+        label.textContent = `${start}:00 → ${end}:00 · ${pct}% · ${mode}`;
+      }
+      if (bar) bar.style.width = `${pct}%`;
+    }
+
+    function ensureFlowCanvas() {
+      if (!state.map || state.flowCanvas) return;
+      const canvas = L.DomUtil.create('canvas', 'od-flow-canvas');
+      state.map.getPanes().overlayPane.appendChild(canvas);
+      state.flowCanvas = canvas;
+      state.flowCtx = canvas.getContext('2d', { alpha: true });
+      const sync = () => {
+        syncFlowCanvas();
+        paintFlows();
+      };
+      state.map.on('move resize zoom viewreset zoomanim', sync);
+      sync();
+    }
+
+    function syncFlowCanvas() {
+      const map = state.map;
+      const canvas = state.flowCanvas;
+      if (!map || !canvas) return;
+      const size = map.getSize();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const topLeft = map.containerPointToLayerPoint([0, 0]);
+      L.DomUtil.setPosition(canvas, topLeft);
+      canvas.width = Math.max(1, Math.round(size.x * dpr));
+      canvas.height = Math.max(1, Math.round(size.y * dpr));
+      canvas.style.width = `${size.x}px`;
+      canvas.style.height = `${size.y}px`;
+      state.flowDpr = dpr;
+    }
+
+    function particleScreenPos(item, t) {
+      const geo = travelPoint(item.origin, item.destination, t);
+      return state.map.latLngToContainerPoint([geo.lat, geo.lon]);
+    }
+
+    function paintFlows() {
+      const ctx = state.flowCtx;
+      const canvas = state.flowCanvas;
+      const map = state.map;
+      if (!ctx || !canvas || !map) return;
+      const dpr = state.flowDpr || 1;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const gated = Math.max(0, Math.min(1, state.hourProgress || 0));
+      const eased = easeInOutCubic(gated);
+      const items = state.flowMarkers || [];
+      for (const item of items) {
+        for (let k = 3; k >= 1; k--) {
+          const ghostT = eased - k * 0.08;
+          if (ghostT <= 0) continue;
+          const gPos = particleScreenPos(item, ghostT);
+          const gColor = volumeColorAt(item.norm, ghostT);
+          ctx.beginPath();
+          ctx.arc(gPos.x, gPos.y, Math.max(1, item.radius * (1 - k * 0.22)), 0, Math.PI * 2);
+          ctx.fillStyle = cssRgb(gColor, 0.18 * item.fillOpacity);
+          ctx.fill();
+        }
+        const pos = particleScreenPos(item, eased);
+        const color = volumeColorAt(item.norm, eased);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, item.radius, 0, Math.PI * 2);
+        ctx.fillStyle = cssRgb(color, item.fillOpacity);
+        ctx.fill();
+        ctx.lineWidth = item.radius < 8 ? 0.9 : 1.3;
+        ctx.strokeStyle = eased < 0.5 ? 'rgba(92,16,20,.85)' : 'rgba(16,40,92,.85)';
+        ctx.stroke();
+        item._screen = pos;
+      }
+    }
+
+    function hideFlowTip() {
+      const tip = el('flowHoverTip');
+      if (tip) tip.style.display = 'none';
+    }
+
+    function onFlowHover(ev) {
+      const tip = el('flowHoverTip');
+      if (!tip || !state.flowMarkers.length || !state.map) return;
+      const p = ev.containerPoint;
+      let best = null;
+      let bestD = Infinity;
+      for (const item of state.flowMarkers) {
+        const pos = item._screen;
+        if (!pos) continue;
+        const d = Math.hypot(pos.x - p.x, pos.y - p.y);
+        if (d < item.radius + 10 && d < bestD) {
+          best = item;
+          bestD = d;
+        }
+      }
+      if (!best) {
+        hideFlowTip();
+        return;
+      }
+      const q = QUALITY[best.quality] || QUALITY[1];
+      tip.innerHTML = `<strong>${best.rank}. ${escapeHTML(best.origin.legalDong)} → ${escapeHTML(best.destination.legalDong)}</strong><br>${formatValue(best.value)} 통행 · 반지름 ∝ √통행량 · 품질 ${q.letter}`;
+      tip.style.display = 'block';
+      tip.style.left = `${best._screen.x}px`;
+      tip.style.top = `${best._screen.y}px`;
+    }
+
+    function fitFlowCamera(flows) {
+      if (!state.map || !flows || !flows.length) return;
+      const pts = [];
+      for (const flow of flows) {
+        pts.push([flow.origin.lat, flow.origin.lon]);
+        pts.push([flow.destination.lat, flow.destination.lon]);
+      }
+      const bounds = L.latLngBounds(pts);
+      if (!bounds.isValid()) return;
+      state.map.fitBounds(bounds.pad(0.18), { padding: [36, 36], maxZoom: 13, animate: false });
+      syncFlowCanvas();
+      paintFlows();
+    }
+
+    function updateCirclePositions() {
+      paintFlows();
+    }
+
+    function flowSizeScale(flows) {
+      const sqrts = flows.map(f => Math.sqrt(Math.max(0, f.value)));
+      const sMax = sqrts[0] || 1;
+      const sMin = sqrts[sqrts.length - 1] || 0;
+      const span = Math.max(sMax - sMin, sMax * 0.22, 1e-9);
+      return function scale(value) {
+        const t = (Math.sqrt(Math.max(0, value)) - sMin) / span;
+        const contrast = Math.pow(Math.max(0, Math.min(1, t)), 1.25);
+        return {
+          norm: contrast,
+          radius: 4 + 20 * contrast
+        };
+      };
+    }
+
     function drawFlows(flows) {
-      if (!state.map || !state.flowLayer) return;
-      state.flowLayer.clearLayers();
-      if (!flows.length) return;
-      const max = flows[0].value || 1;
-      flows.slice().reverse().forEach((flow, reverseIndex) => {
-        const rank = flows.length - reverseIndex;
-        const q = QUALITY[flow.quality] || QUALITY[1];
-        const weight = 2 + 9 * Math.sqrt(flow.value / max);
-        const points = flow.origin.id === flow.destination.id
-          ? loopPoints(flow.origin, rank)
-          : [[flow.origin.lat, flow.origin.lon], [flow.destination.lat, flow.destination.lon]];
-        const line = L.polyline(points, {
-          renderer: state.flowRenderer,
-          color: q.color,
-          weight,
-          opacity: q.opacity,
-          dashArray: q.dash,
-          lineCap: 'round',
-          lineJoin: 'round'
-        });
-        line.bindTooltip(`<strong>${rank}. ${escapeHTML(flow.origin.legalDong)} → ${escapeHTML(flow.destination.legalDong)}</strong><br>${formatValue(flow.value)} 통행 · 품질 ${q.letter}`, { className: 'flow-tip', sticky: true });
-        line.addTo(state.flowLayer);
-        ensureArrowDefs();
-        if (line._path) line._path.setAttribute('marker-end', `url(#flow-arrow-${flow.quality})`);
+      ensureFlowCanvas();
+      const max = flows.length ? (flows[0].value || 1) : 1;
+      state.flowMax = max;
+      const scale = flowSizeScale(flows);
+      state.flowMarkers = flows.map((flow, i) => {
+        const visual = scale(flow.value);
+        return {
+          origin: flow.origin,
+          destination: flow.destination,
+          value: flow.value,
+          quality: flow.quality,
+          rank: i + 1,
+          norm: visual.norm,
+          radius: visual.radius,
+          fillOpacity: 0.78 + 0.18 * visual.norm
+        };
       });
-      state.markerById.forEach(marker => marker.bringToFront());
+      if (state.pendingFit) {
+        fitFlowCamera(flows);
+        state.pendingFit = false;
+      } else {
+        paintFlows();
+      }
+      updateTravelProgress();
     }
 
-    function loopPoints(zone, rank) {
-      const radius = .010 + Math.min(rank, 20) * .00012;
-      const points = [];
-      for (let i = 0; i <= 14; i++) {
-        const a = -Math.PI / 2 + i / 14 * Math.PI * 1.78;
-        points.push([zone.lat + Math.sin(a) * radius, zone.lon + Math.cos(a) * radius]);
+    function tickPlayback(now) {
+      if (!state.loaded) {
+        state.lastTs = now;
+        return;
       }
-      return points;
+      if (!state.playing) {
+        state.lastTs = now;
+        return;
+      }
+      const dt = Math.min(80, now - state.lastTs);
+      state.lastTs = now;
+      if (!state.flowMarkers.length) {
+        updateTravelProgress();
+        return;
+      }
+      state.hourProgress += dt / state.hourDurationMs;
+      if (state.hourProgress >= 1) {
+        state.hourProgress -= Math.floor(state.hourProgress);
+        state.hour = (state.hour + 1) % 24;
+        el('hourRange').value = String(state.hour);
+        el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
+        render();
+        return;
+      }
+      paintFlows();
+      updateTravelProgress();
     }
 
-    function ensureArrowDefs() {
-      if (!state.map) return;
-      const svg = state.map.getPanes().overlayPane.querySelector('svg');
-      if (!svg || svg.querySelector('#flow-arrow-3')) return;
-      const ns = 'http://www.w3.org/2000/svg';
-      const defs = document.createElementNS(ns, 'defs');
-      for (const code of [1,2,3]) {
-        const marker = document.createElementNS(ns, 'marker');
-        marker.setAttribute('id', `flow-arrow-${code}`);
-        marker.setAttribute('markerWidth', '8');
-        marker.setAttribute('markerHeight', '8');
-        marker.setAttribute('refX', '7');
-        marker.setAttribute('refY', '3');
-        marker.setAttribute('orient', 'auto');
-        marker.setAttribute('markerUnits', 'userSpaceOnUse');
-        const path = document.createElementNS(ns, 'path');
-        path.setAttribute('d', 'M0,0 L0,6 L7,3 z');
-        path.setAttribute('fill', QUALITY[code].color);
-        path.setAttribute('fill-opacity', String(QUALITY[code].opacity));
-        marker.appendChild(path); defs.appendChild(marker);
-      }
-      svg.insertBefore(defs, svg.firstChild);
+    function ensureTicker() {
+      if (state.ticker || state.raf) return;
+      state.lastTs = performance.now();
+      const loop = now => {
+        state.raf = requestAnimationFrame(loop);
+        tickPlayback(now);
+      };
+      state.raf = requestAnimationFrame(loop);
+      state.ticker = setInterval(() => tickPlayback(performance.now()), 50);
     }
 
     function renderTable(flows, allFlows) {
@@ -1325,23 +1577,35 @@
       }).join('');
     }
 
+    function syncPlayButton() {
+      const btn = el('playButton');
+      if (!btn) return;
+      btn.classList.toggle('playing', state.playing);
+      btn.textContent = state.playing ? 'Ⅱ' : '▶';
+      btn.setAttribute('aria-label', state.playing ? '시간 재생 일시정지' : '시간 재생');
+      btn.title = state.playing ? '일시정지' : '시간 재생';
+    }
+
     function toggleAnimation() {
-      if (state.timer) { stopAnimation(); return; }
-      el('playButton').textContent = 'Ⅱ';
-      el('playButton').setAttribute('aria-label', '시간 재생 일시정지');
-      state.timer = setInterval(() => {
-        state.hour = (state.hour + 1) % 24;
-        el('hourRange').value = String(state.hour);
-        el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
-        render();
-      }, 900);
+      if (state.playing) {
+        stopAnimation();
+        toast('일시정지했습니다. 원은 현재 위치에 멈춥니다.');
+        return;
+      }
+      state.hourProgress = 0;
+      state.lastTs = performance.now();
+      state._reducedAcc = 0;
+      updateCirclePositions(0);
+      state.playing = true;
+      syncPlayButton();
+      updateTravelProgress();
+      toast('재생: 원이 출발지에서 도착지로 이동합니다.');
     }
 
     function stopAnimation() {
-      if (state.timer) clearInterval(state.timer);
-      state.timer = null;
-      el('playButton').textContent = '▶';
-      el('playButton').setAttribute('aria-label', '시간 재생');
+      state.playing = false;
+      syncPlayButton();
+      updateTravelProgress();
     }
 
     function exportCurrentFlows() {
@@ -1360,7 +1624,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `제주_OD_3차_TOP${state.topN}_${state.month}월_${WEEKDAYS[state.weekday]}_${String(state.hour).padStart(2,'0')}시.csv`;
+      a.download = `제주_OD_원이동_TOP${state.topN}_${state.month}월_${WEEKDAYS[state.weekday]}_${String(state.hour).padStart(2,'0')}시.csv`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast('현재 화면의 TOP 흐름을 CSV로 저장했습니다.');
@@ -1399,6 +1663,7 @@
     initSelectors();
     initMap();
     bindEvents();
+    ensureTicker();
     autoLoadSiblingFiles();
   })();
   </script>
