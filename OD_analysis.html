@@ -195,7 +195,7 @@
     .leaflet-tooltip.flow-tip { border: 0; border-radius: 9px; padding: 8px 10px; color: #fff; background: rgba(18,48,74,.93); box-shadow: 0 5px 16px rgba(0,0,0,.15); }
     .leaflet-tooltip.flow-tip::before { border-top-color: rgba(18,48,74,.93); }
     .leaflet-control-attribution { font-size: 9px; }
-    .traffic-control-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: end; }
+    .traffic-control-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: end; }
     .traffic-toggle { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
     .check-pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid #d7e2ea; border-radius: 10px; background: #f7fafc; color: #40546a; font-size: 11px; font-weight: 800; }
     .check-pill input { accent-color: #d33a3a; }
@@ -368,10 +368,6 @@
           <p class="section-label">도로 소통 히트맵</p>
           <div class="traffic-control-row">
             <div class="field" style="margin-top:0">
-              <label for="trafficPeriodSelect">소통자료 월</label>
-              <select id="trafficPeriodSelect" disabled></select>
-            </div>
-            <div class="field" style="margin-top:0">
               <label for="trafficDisplayMode">표시 범위</label>
               <select id="trafficDisplayMode" disabled>
                 <option value="slow" selected>서행 + 정체</option>
@@ -382,7 +378,7 @@
           <div class="traffic-toggle">
             <label class="check-pill"><input id="trafficEnabled" type="checkbox" checked disabled> 도로 히트맵 표시</label>
           </div>
-          <div class="traffic-status" id="trafficStatus">2025-09 ~ 2026-08 시간단위소통 자료를 도로 링크별·요일별·시간대별로 요약해 표시합니다. 원활 구간은 숨깁니다.</div>
+          <div class="traffic-status" id="trafficStatus">지도에서 재생 중인 월·요일·시간에 자동 연동합니다. 서행은 노란색, 정체는 붉은색 halo로 표시하고 원활 구간은 숨깁니다.</div>
         </section>
 
         <section class="control-section">
@@ -445,8 +441,8 @@
               <p><strong>거리저항 재배분</strong><br>제주권 수정혼합형 ‘기타’ 목적 거리저항계수를 사용해 새 대표거리와 기존 0.8km의 저항함수 비율로 내부통행을 감액합니다. 감액분은 같은 출발지의 기존 외부 목적지 비율대로 재배분하여 본섬 출발 총량을 보존합니다. 보정 대표거리: 한림 4.30, 애월 4.82, 구좌 6.06, 조천 5.00, 한경 3.60, 대정 3.87, 남원 4.58, 성산 4.73, 안덕 4.79, 표선 4.17km.</p>
               <p><strong>도서 제외·한계</strong><br>추자면(존67)과 우도면(존58)은 지도·순위·합계에서 제외합니다. ‘전체이동’은 4대 거시권역 총량을 세부 존으로 배분한 추정치입니다. 원자료 ‘버스승차기반’은 하차태그가 아니라 승차에 목적지 비율을 곱한 값이며, 전역 비율이 약 3.8%로 거의 일정합니다. 법정리 경계면적·고도·실제 하차 O/D가 확보되면 추가 재보정이 필요합니다.</p>
               <p><strong>수단 분할 (4차)</strong><br>공표 수송분담은 승용·택시 65%, 버스 12%, 기타(도보·자전거 등) 23%입니다. 읍면동 간 이동은 ITS·교통카드 기반이라 기타 기여가 거의 없다고 보고, 65:12를 모터 합 77로 나눠 <b>승용·택시 84.4%</b>, <b>버스(전세버스 제외) 15.6%</b>로 씁니다. 버스 성향은 원자료 버스열과 요일·시간 탑승 히트맵으로 칸마다 달라지고, 전역 목표는 주간 15.6%입니다. 상한은 칸의 32%입니다. 승용은 그 칸 전체에서 버스를 뺀 잔여라 둘의 합이 전체가 됩니다. 버스의 읍면동·요일·시간 이용량은 「제주 버스 이용 종합 패턴」 일평균 탑승 히트맵(7×24, 본섬 71개 존)입니다. 심야처럼 버스 이용이 없으면 분담을 0에 가깝게 둡니다.</p>
-              <p><strong>도로 소통 히트맵</strong><br>첨부 「시간단위소통.zip」의 12개 월별 CSV를 2025년 9월~2026년 8월의 도로 링크별·요일별·시간대별로 요약했습니다. 혼잡도코드(LTC1·LTC2·LTC3)와 평균속도를 이용해 강도를 0~100으로 환산하고, 원활 구간은 숨기며 서행은 노란색, 정체는 붉은색으로 표시합니다. 지도 선형은 ITS 표준 링크 공간데이터를 조회하여 실제 도로선을 따라 그리며, 선택한 시간의 상위 180개 비원활 링크를 우선 표시합니다.</p>
-              <p><strong>공간 데이터 출처</strong><br>도로 선형은 ESRI Korea의 공개 ITS_LINK FeatureServer를 사용하며, 레이어 필드는 LINK_ID·ROAD_NAME·F_NODE·T_NODE·LENGTH 등을 제공합니다. 해당 서비스는 ITS 국가교통정보센터의 실시간 교통정보와 전국 표준노드링크 정보를 출처로 명시합니다.</p>
+              <p><strong>도로 소통 히트맵</strong><br>첨부 「시간단위소통.zip」의 12개 월별 CSV를 2025년 9월~2026년 8월의 도로 링크별·요일별·시간대별로 요약했습니다. 별도의 소통 기간 선택 없이 지도 시간 조건에 자동 연동하며, 9~12월은 2025년 자료, 1~8월은 2026년 자료를 사용합니다. 혼잡도코드(LTC1·LTC2·LTC3)와 평균속도를 이용해 강도를 0~100으로 환산하고, 원활 구간은 숨기며 서행은 노란색, 정체는 붉은색으로 표시합니다. 강도가 높을수록 도로 주변의 다중 halo가 넓고 진해지며, 선택한 시간의 상위 180개 비원활 링크를 우선 표시합니다.</p>
+              <p><strong>공간 데이터 출처</strong><br>Leaflet의 OpenStreetMap 배경은 래스터 지도 타일이므로 화면에 그려진 도로의 벡터 좌표를 직접 꺼낼 수 없습니다. 또한 도로 소통 자료의 ITS 링크 ID를 OSM 도로 객체와 안정적으로 대응시킬 식별자도 없습니다. 따라서 도로 중심선(polyline)은 교통 자료와 같은 링크 ID를 제공하는 ESRI Korea 공개 ITS_LINK FeatureServer에서 GeoJSON으로 조회합니다. 레이어 필드는 LINK_ID·ROAD_NAME·F_NODE·T_NODE·LENGTH 등을 제공하며, 해당 서비스는 ITS 국가교통정보센터의 실시간 교통정보와 전국 표준노드링크 정보를 출처로 명시합니다.</p>
               <p><strong>원 이동 표현</strong><br>지역간 O/D는 직선 대신 원으로 그립니다. 각 원의 면적은 해당 1시간 통행량에 비례합니다(반지름 ∝ √통행량). 같은 시간 안에서는 통행이 많은 흐름이 더 큰 원이고, 같은 날의 다른 시간대와 비교하면 총량이 적은 시간(심야 등)은 원 면적 합이 함께 줄어듭니다. 스케일은 선택한 월·요일 24시간의 피크를 기준으로 고정합니다. 각 원은 출발지에서 도착지로 이동합니다. 본섬 10개 읍·면은 옵서버스 DRT(2026-02-25~06-30) 승·하차 정류장 수요로 2~3개 허브를 잡아 그 비중만큼 원을 나눕니다(예외: 애월읍, 아래 참고). 도시 동 가운데 노형·중문·건입·용담이·화북이·일도이·토평·법환·서홍·월평처럼 ITS 센서가 1km 이상 갈라진 동은 지점 교통량으로 2~3개 허브를 잡고, 허브 비중은 요일(날짜에서 계산한 월~일)마다 다시 나눕니다. 애월읍(존45)은 평화로를 타고 노형 방향으로 빠지는 통과교통이 장전리 DRT 허브에 섞여 애월읍 내부통행처럼 잡히는 문제가 있어, 10개 읍·면 중 유일하게 DRT 3허브 대신 ITS 지점 4곳 체계로 재편했습니다: 제주관광대학부속유치원(평화로 관광대↔광령 구간, 유수암교차로 인근 — 노형행 통과교통 대표), 하귀초 정문·장전초 정문·구엄리(각각 기존 하귀초등학교·장전리사무소·신엄리 DRT 허브와 같은 생활권을 대표하는 최인접 ITS 지점으로 대체). 4개 지점의 허브 비중은 「지점별 교통량 통계」 2025-09~2026-08 12개월 일별 교통량을 방향 합산 후 요일별로 합산한 비율입니다(제주관광대학부속유치원 비중은 평일 약 12~14%, 주말 10~12%). 연동은 간선 통과 센서가 섞여 분할하지 않고, ITS가 1곳인 동과 오라삼동처럼 센서가 붙어 있는 동도 법정동 중심을 유지합니다. 허브 사이 경로는 OpenStreetMap 자동차 간선(고속·일주·국도·지방도 등)입니다. DRT는 주간·농어촌 수요응답 이용이라 지역 간 통행량을 대체하지 않고, 읍·면 안 출발점만 흩는 데 씁니다. 실제 개별 차량 궤적이 아니라 대표 회랑입니다. 출발 때는 빨강~하양, 도착 즈음에는 파랑~하양 스펙트럼을 씁니다.</p>
               <p><strong>좌표 기준</strong><br>지도 위치는 분할하지 않은 도시 법정동은 「행정_법정동 중심좌표.xlsx」 B 좌표, 10개 읍·면은 DRT 허브(회색 보조점), ITS로 나눈 동은 센서 허브(호박색 보조점)를 적용합니다. 애월읍은 예외적으로 10개 읍·면 중 유일하게 ITS 센서 허브 4곳(호박색 보조점)을 적용합니다. 같은 동의 허브 비중은 선택한 요일의 지점 교통량 비율입니다. 외도이동·상예동·회수동·대포동·중문동·오라이동은 사용자 지정 좌표를 우선 적용하며 인위적인 위치 오프셋은 사용하지 않습니다.</p>
             </div>
@@ -629,7 +625,9 @@
       trafficGeometry: new Map(),
       trafficLines: new Map(),
       trafficFetchInFlight: new Set(),
-      trafficPeriod: 11,
+      trafficGlowRenderer: null,
+      trafficHaloRenderer: null,
+      trafficCoreRenderer: null,
       trafficDisplayMode: 'slow',
       trafficEnabled: true,
       trafficLoadEpoch: 0
@@ -638,11 +636,8 @@
     function initSelectors() {
       el('monthSelect').innerHTML = Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}월</option>`).join('');
       el('weekdaySelect').innerHTML = WEEKDAYS.map((d, i) => `<option value="${i}">${d}요일</option>`).join('');
-      const trafficPeriods = ROAD_TRAFFIC_PACK.periods || [];
-      el('trafficPeriodSelect').innerHTML = trafficPeriods.map((p, i) => `<option value="${i}">${p.slice(0,4)}년 ${Number(p.slice(5,7))}월</option>`).join('');
       el('monthSelect').value = '1';
       el('weekdaySelect').value = '0';
-      el('trafficPeriodSelect').value = String(state.trafficPeriod);
       el('trafficDisplayMode').value = state.trafficDisplayMode;
     }
 
@@ -654,6 +649,19 @@
         return;
       }
       state.map = L.map('map', { zoomControl: true, minZoom: 8, maxZoom: 15 }).setView([33.38, 126.55], 10);
+      const trafficPanes = [
+        ['trafficGlowPane', 350],
+        ['trafficHaloPane', 360],
+        ['trafficCorePane', 370]
+      ];
+      for (const [name, zIndex] of trafficPanes) {
+        const pane = state.map.getPane(name) || state.map.createPane(name);
+        pane.style.zIndex = String(zIndex);
+      }
+      state.map.getPane('trafficGlowPane').style.pointerEvents = 'none';
+      state.trafficGlowRenderer = L.canvas({ pane: 'trafficGlowPane', padding: .65 });
+      state.trafficHaloRenderer = L.canvas({ pane: 'trafficHaloPane', padding: .65, tolerance: 8 });
+      state.trafficCoreRenderer = L.canvas({ pane: 'trafficCorePane', padding: .65, tolerance: 5 });
       const baseLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
@@ -735,11 +743,6 @@
         state.pendingFit = true;
         render();
       });
-      el('trafficPeriodSelect').addEventListener('change', e => {
-        state.trafficPeriod = Math.max(0, Math.min(11, Number(e.target.value) || 0));
-        state.trafficLoadEpoch++;
-        renderTrafficLayer();
-      });
       el('trafficDisplayMode').addEventListener('change', e => {
         state.trafficDisplayMode = e.target.value === 'jam' ? 'jam' : 'slow';
         renderTrafficLayer();
@@ -757,7 +760,7 @@
     }
 
     function setControlsEnabled(enabled) {
-      document.querySelectorAll('#viewMode button, #metricMode button, #correctionMode button, #monthSelect, #weekdaySelect, #hourRange, #topNRange, #playButton, #exportButton, #trafficPeriodSelect, #trafficDisplayMode, #trafficEnabled').forEach(node => node.disabled = !enabled);
+      document.querySelectorAll('#viewMode button, #metricMode button, #correctionMode button, #monthSelect, #weekdaySelect, #hourRange, #topNRange, #playButton, #exportButton, #trafficDisplayMode, #trafficEnabled').forEach(node => node.disabled = !enabled);
       el('zoneSelect').disabled = !enabled || state.view === 'national';
     }
 
@@ -1304,6 +1307,17 @@
       };
     }
 
+    function activeTrafficPeriodIndex(month = state.month) {
+      const periods = Array.isArray(ROAD_TRAFFIC_PACK.periods) ? ROAD_TRAFFIC_PACK.periods : [];
+      const monthText = String(Math.max(1, Math.min(12, Number(month) || 1))).padStart(2, '0');
+      const index = periods.findIndex(period => String(period).slice(5, 7) === monthText);
+      return index >= 0 ? index : 0;
+    }
+
+    function activeTrafficPeriod(month = state.month) {
+      return ROAD_TRAFFIC_PACK.periods[activeTrafficPeriodIndex(month)] || '';
+    }
+
     function trafficCell(period, weekday, hour, roadIndex) {
       if (!state.trafficBytes || !Number.isFinite(roadIndex)) return null;
       const R = ROAD_TRAFFIC_PACK.roadCount;
@@ -1328,7 +1342,7 @@
         if (state.trafficBytes.length !== ROAD_TRAFFIC_PACK.rawBytes) throw new Error('임베디드 도로 소통 데이터 크기가 예상과 다릅니다.');
         state.trafficRoadIndex = new Map(ROAD_TRAFFIC_PACK.roads.map((r, i) => [String(r.id), i]));
         state.trafficReady = true;
-        el('trafficStatus').textContent = `소통자료 ${ROAD_TRAFFIC_PACK.periods[0].slice(0,4)}-${ROAD_TRAFFIC_PACK.periods[0].slice(5)} ~ ${ROAD_TRAFFIC_PACK.periods[ROAD_TRAFFIC_PACK.periods.length-1].slice(0,4)}-${ROAD_TRAFFIC_PACK.periods[ROAD_TRAFFIC_PACK.periods.length-1].slice(5)} · 498개 도로링크 · 월·요일·시간대별 평균 상태 · 원활 구간은 숨김`;
+        el('trafficStatus').textContent = `소통자료 ${ROAD_TRAFFIC_PACK.periods[0]} ~ ${ROAD_TRAFFIC_PACK.periods[ROAD_TRAFFIC_PACK.periods.length-1]} · ${ROAD_TRAFFIC_PACK.roadCount.toLocaleString()}개 도로링크 · 지도 월·요일·시간에 자동 연동 · 원활 구간 숨김`;
         updateTrafficBadge();
         renderTrafficLayer();
       } catch (error) {
@@ -1347,22 +1361,26 @@
     }
 
     function trafficColor(score, mode) {
-      if (mode === 3 || score >= 55) {
-        const t = Math.max(0, Math.min(1, (score - 55) / 45));
-        return t > .62 ? '#b70d0d' : t > .24 ? '#dc2a1c' : '#ee4b27';
+      const value = Math.max(0, Math.min(100, Number(score) || 0));
+      if (mode === 3) {
+        const t = Math.max(0, Math.min(1, (value - 75) / 25));
+        return t > .72 ? '#a80707' : t > .32 ? '#cf1b12' : '#e73b24';
       }
-      const t = Math.max(0, Math.min(1, score / 55));
-      return t > .66 ? '#f5a623' : '#ffd35b';
+      if (mode === 2) {
+        const t = Math.max(0, Math.min(1, (value - 25) / 45));
+        return t > .72 ? '#e9a400' : t > .32 ? '#f4bd18' : '#ffd84d';
+      }
+      return '#9aa7b3';
     }
 
     function shouldDrawTraffic(cell) {
-      if (!cell || cell.score < 20) return false;
-      if (state.trafficDisplayMode === 'jam') return cell.score >= 55 || cell.mode === 3;
-      return cell.score >= 20 || cell.mode >= 2;
+      if (!cell) return false;
+      if (state.trafficDisplayMode === 'jam') return cell.mode === 3;
+      return cell.mode === 2 || cell.mode === 3;
     }
 
     function trafficTooltipHTML(meta, cell) {
-      const period = ROAD_TRAFFIC_PACK.periods[state.trafficPeriod] || '';
+      const period = activeTrafficPeriod();
       const weekday = WEEKDAYS[state.weekday] || '';
       const jamText = trafficSeverityText(cell.mode);
       return `<div class="traffic-tooltip">\n        <div class="t-title">${escapeHTML(meta.name)}</div>\n        <div class="t-sub">${escapeHTML(meta.start)} → ${escapeHTML(meta.end)}</div>\n        <div class="t-grid">\n          <span>기준</span><span>${period.slice(0,4)}년 ${Number(period.slice(5,7))}월 · ${weekday} · ${String(state.hour).padStart(2,'0')}:00</span>\n          <span>평균 상태</span><span>${jamText}</span>\n          <span>평균 속도</span><span>${cell.speed ? `${cell.speed} km/h` : '–'}</span>\n          <span>혼잡 강도</span><span>${cell.score}/100</span>\n        </div>\n      </div>`;
@@ -1375,38 +1393,71 @@
       let line = state.trafficLines.get(roadId);
       const color = trafficColor(cell.score, cell.mode);
       const t = Math.max(0, Math.min(1, cell.score / 100));
-      const coreWeight = 3.2 + t * 5.8;
-      const haloWeight = coreWeight * 3.8 + 8;
-      const coreOpacity = 0.36 + 0.46 * t;
-      const haloOpacity = 0.05 + 0.18 * t;
+      const coreWeight = (cell.mode === 3 ? 4.2 : 3.4) + t * 3.8;
+      const haloWeight = coreWeight * 2.9 + 7;
+      const glowWeight = coreWeight * 5.2 + 14;
+      const coreOpacity = 0.74 + 0.20 * t;
+      const haloOpacity = (cell.mode === 3 ? 0.12 : 0.10) + 0.20 * t;
+      const glowOpacity = 0.035 + 0.085 * t;
       if (!line) {
-        const halo = L.polyline(geom, { renderer: L.canvas({ padding: .5 }), color, weight: haloWeight, opacity: haloOpacity, lineCap: 'round', lineJoin: 'round', interactive: true });
-        const core = L.polyline(geom, { renderer: L.canvas({ padding: .5 }), color, weight: coreWeight, opacity: coreOpacity, lineCap: 'round', lineJoin: 'round', interactive: true });
-        const bind = e => {
-          const html = trafficTooltipHTML(meta, cell);
+        const glow = L.polyline(geom, {
+          renderer: state.trafficGlowRenderer,
+          color,
+          weight: glowWeight,
+          opacity: glowOpacity,
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: false
+        });
+        const halo = L.polyline(geom, {
+          renderer: state.trafficHaloRenderer,
+          color,
+          weight: haloWeight,
+          opacity: haloOpacity,
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: true
+        });
+        const core = L.polyline(geom, {
+          renderer: state.trafficCoreRenderer,
+          color,
+          weight: coreWeight,
+          opacity: coreOpacity,
+          lineCap: 'round',
+          lineJoin: 'round',
+          interactive: true
+        });
+        line = { glow, halo, core, meta, cell };
+        const showTip = e => {
+          const html = trafficTooltipHTML(line.meta, line.cell);
           L.tooltip({ className: 'traffic-map-tooltip', sticky: true, direction: 'top', opacity: 1 })
             .setLatLng(e.latlng).setContent(html).openOn(state.map);
         };
-        const leave = () => { if (state.map) state.map.closeTooltip(); };
-        halo.on('mousemove', bind); halo.on('mouseout', leave);
-        core.on('mousemove', bind); core.on('mouseout', leave);
-        line = { halo, core };
+        const hideTip = () => { if (state.map) state.map.closeTooltip(); };
+        halo.on('mousemove', showTip); halo.on('mouseout', hideTip);
+        core.on('mousemove', showTip); core.on('mouseout', hideTip);
         state.trafficLines.set(roadId, line);
       }
-      // Re-attach cached layers after a previous time/option change.
+      line.meta = meta;
+      line.cell = cell;
+      if (!state.trafficLayer.hasLayer(line.glow)) line.glow.addTo(state.trafficLayer);
       if (!state.trafficLayer.hasLayer(line.halo)) line.halo.addTo(state.trafficLayer);
       if (!state.trafficLayer.hasLayer(line.core)) line.core.addTo(state.trafficLayer);
+      line.glow.setStyle({ color, weight: glowWeight, opacity: glowOpacity }).bringToFront();
       line.halo.setStyle({ color, weight: haloWeight, opacity: haloOpacity }).bringToFront();
       line.core.setStyle({ color, weight: coreWeight, opacity: coreOpacity }).bringToFront();
-      line.halo._trafficVisible = true; line.core._trafficVisible = true;
+      line.glow._trafficVisible = true;
+      line.halo._trafficVisible = true;
+      line.core._trafficVisible = true;
     }
 
     function hideUnusedTrafficLines(usedIds) {
       for (const [roadId, line] of state.trafficLines) {
         if (usedIds.has(roadId)) continue;
-        if (line && line.halo && state.trafficLayer.hasLayer(line.halo)) state.trafficLayer.removeLayer(line.halo);
-        if (line && line.core && state.trafficLayer.hasLayer(line.core)) state.trafficLayer.removeLayer(line.core);
-        line.halo._trafficVisible = false; line.core._trafficVisible = false;
+        for (const layer of [line.glow, line.halo, line.core]) {
+          if (layer && state.trafficLayer.hasLayer(layer)) state.trafficLayer.removeLayer(layer);
+          if (layer) layer._trafficVisible = false;
+        }
       }
     }
 
@@ -1469,8 +1520,9 @@
         badge.textContent = '도로 소통 OFF'; badge.classList.add('off'); return;
       }
       badge.classList.remove('off');
-      const p = ROAD_TRAFFIC_PACK.periods[state.trafficPeriod] || '';
-      badge.textContent = `${p.slice(0,4)}-${p.slice(5)} · ${String(state.hour).padStart(2,'0')}시 · ${(activeCount ?? 0).toLocaleString()}개 구간`;
+      const p = activeTrafficPeriod();
+      const weekday = WEEKDAYS[state.weekday] || '';
+      badge.textContent = `${p} · ${weekday}요일 · ${String(state.hour).padStart(2,'0')}시 · ${(activeCount ?? 0).toLocaleString()}개 구간`;
     }
 
     function renderTrafficLayer(allowFetch = true) {
@@ -1483,7 +1535,7 @@
       }
       const ids = [];
       const visible = [];
-      const period = Math.max(0, Math.min(11, state.trafficPeriod));
+      const period = activeTrafficPeriodIndex();
       for (let ri = 0; ri < ROAD_TRAFFIC_PACK.roadCount; ri++) {
         const cell = trafficCell(period, state.weekday, state.hour, ri);
         if (!shouldDrawTraffic(cell)) continue;
@@ -1495,7 +1547,7 @@
       visible.sort((a,b) => b.cell.score - a.cell.score);
       const shown = visible.slice(0,180);
       const shownIds = new Set(shown.map(x => x.roadId));
-      for (const item of shown) addTrafficLine(item.roadId, item.meta, item.cell);
+      for (const item of shown.slice().reverse()) addTrafficLine(item.roadId, item.meta, item.cell);
       hideUnusedTrafficLines(shownIds);
       // Put O/D flows / hub markers above traffic heatmap by bringing their Leaflet layers to front after redraw.
       if (state.markerLayer) state.markerLayer.eachLayer(l => l.bringToFront && l.bringToFront());
