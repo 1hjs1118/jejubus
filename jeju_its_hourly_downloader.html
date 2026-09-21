@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>제주 ITS 교통정보 1시간 통계 수집기</title>
+  <style>
+    :root {
+      --fg: #111827;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --primary: #2563eb;
+      --bg-soft: #f9fafb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Pretendard, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--fg);
+      max-width: 820px;
+      margin: 32px auto 64px;
+      padding: 0 16px;
+      line-height: 1.55;
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .panel h2 { font-size: 14px; margin: 0 0 10px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    label { font-size: 13px; font-weight: 600; min-width: 96px; }
+    input[type="month"], input[type="password"], input[type="text"] {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    input[type="password"], input[type="text"] { width: 220px; }
+    button {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .hint { font-size: 12px; color: var(--muted); margin: 2px 0 0 104px; }
+    .note {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: #374151;
+    }
+    .note code { background: #eef2ff; padding: 1px 4px; border-radius: 3px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+    .metric { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+    .metric .k { font-size: 11px; color: var(--muted); }
+    .metric .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    #status { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    #bar { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+    #barFill { height: 100%; width: 0%; background: var(--primary); }
+    #log {
+      margin-top: 10px;
+      font-size: 12px;
+      height: 240px;
+      overflow-y: auto;
+      background: #f5f5f5;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .ok { color: #047857; } .bad { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>제주 ITS 교통정보 1시간 통계 수집기</h1>
+  <p class="sub">선택한 월의 1일 00시부터 말일 23시까지 1시간 단위로 수집하여 CSV로 저장합니다. (요청 간격 3초)</p>
+
+  <div class="panel">
+    <h2>1. 수집 설정</h2>
+    <div class="row">
+      <label for="monthInput">수집 월</label>
+      <input type="month" id="monthInput" />
+      <button id="startBtn" class="primary">수집 시작</button>
+      <button id="stopBtn" disabled>중단</button>
+      <button id="saveBtn" disabled>지금까지 CSV 저장</button>
+    </div>
+    <div class="row">
+      <label for="keyInput">API 키</label>
+      <input type="password" id="keyInput" placeholder="비워두면 Worker의 키 사용" autocomplete="off" />
+      <button id="toggleKeyBtn" type="button">표시</button>
+    </div>
+    <p class="hint">
+      Worker에 키를 환경변수(<code>ITS_KEY</code>)로 저장했다면 <b>비워 두세요</b>. 이 페이지와 저장소 코드에는 키가 남지 않습니다.<br />
+      입력한 키는 브라우저 메모리에만 존재하며 저장·전송 로그에 기록되지 않습니다.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>2. 진행 상황</h2>
+    <div class="metrics">
+      <div class="metric"><div class="k">진행</div><div class="v" id="mDone">0</div></div>
+      <div class="metric"><div class="k">성공</div><div class="v ok" id="mOk">0</div></div>
+      <div class="metric"><div class="k">실패</div><div class="v bad" id="mFail">0</div></div>
+      <div class="metric"><div class="k">누적 행</div><div class="v" id="mRows">0</div></div>
+    </div>
+    <div id="status">대기 중입니다.</div>
+    <div id="bar"><div id="barFill"></div></div>
+    <div id="log"></div>
+  </div>
+
+  <div class="note">
+    <b>프록시 설정</b><br />
+    현재 프록시: <code id="proxyShow"></code><br />
+    로컬 <code>proxy.py</code>로 쓰려면 스크립트 상단의 <code>PROXY_BASE</code>를 빈 문자열(<code>""</code>)로 바꾸세요.
+    미래 시점(예: 오늘 이후)은 원본 데이터가 없어 빈 응답이 올 수 있습니다.
+  </div>
+
+  <script>
+    /* ── 설정 ─────────────────────────────────────────────
+       PROXY_BASE : Cloudflare Worker 주소(끝에 / 없이).
+                    로컬 proxy.py 사용 시 "" 로 변경.
+       API 키는 이 파일에 하드코딩하지 않습니다.
+         - 기본: 키를 보내지 않고 Worker가 환경변수 키를 주입 (방법 ②)
+         - 대안: 위 입력칸에 직접 입력 (방법 ①)
+    ────────────────────────────────────────────────────── */
+    const PROXY_BASE = "https://quiet-cherry-2fd6.hjs1118.workers.dev";
+    const ENDPOINT = PROXY_BASE + "/api/getFrafficInfoHourlyStat";
+
+    const DELAY_MS = 3000;                    // 요청 간 지연
+    const MAX_RETRY = 3;                      // 실패 시 재시도 횟수
+    const RETRY_DELAY_MS = 5000;              // 재시도 대기
+    const ABORT_AFTER_CONSECUTIVE_FAIL = 10;  // 연속 실패 시 자동 중단
+
+    const $ = id => document.getElementById(id);
+    const statusEl = $("status"), logEl = $("log"), barFill = $("barFill");
+    const startBtn = $("startBtn"), stopBtn = $("stopBtn"), saveBtn = $("saveBtn");
+    const monthInput = $("monthInput"), keyInput = $("keyInput"), toggleKeyBtn = $("toggleKeyBtn");
+
+    $("proxyShow").textContent = PROXY_BASE || "(로컬 proxy.py / 상대경로)";
+
+    let allRows = [];
+    let stopRequested = false;
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const toTwo = n => String(n).padStart(2, "0");
+
+    function appendLog(msg) {
+      const t = new Date().toTimeString().slice(0, 8);
+      logEl.textContent += "[" + t + "] " + msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setMetrics(done, ok, fail) {
+      $("mDone").textContent = done;
+      $("mOk").textContent = ok;
+      $("mFail").textContent = fail;
+      $("mRows").textContent = allRows.length;
+    }
+
+    function buildCsv(rows) {
+      const headers = ["request_stat_dt", "link_id", "stat_dt", "tfvl", "sped", "ocpy_rate", "trvl_hh"];
+      let csv = "\uFEFF" + headers.join(",") + "\r\n";
+      for (const row of rows) {
+        csv += headers
+          .map(h => '"' + String(row[h] === undefined || row[h] === null ? "" : row[h]).replace(/"/g, '""') + '"')
+          .join(",") + "\r\n";
+      }
+      return csv;
+    }
+
+    function downloadCsv(content, fileName) {
+      const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      appendLog("CSV 저장: " + fileName);
+    }
+
+    // 키가 입력된 경우에만 code 파라미터를 붙임. 없으면 Worker가 주입.
+    function buildUrl(statDt) {
+      const params = new URLSearchParams();
+      const k = keyInput.value.trim();
+      if (k) params.set("code", k);
+      params.set("statDt", statDt);
+      params.set("type", "L");
+      return ENDPOINT + "?" + params.toString();
+    }
+
+    // 1건 요청(재시도 포함). 성공 시 추가 행 수, 최종 실패 시 -1
+    async function fetchOne(statDt) {
+      const url = buildUrl(statDt);
+
+      for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+        if (stopRequested) return -1;
+        try {
+          const res = await fetch(url, { cache: "no-store" });
+          const text = await res.text();
+
+          if (!res.ok) {
+            throw new Error("HTTP " + res.status + " " + text.slice(0, 80));
+          }
+
+          let json;
+          try {
+            json = JSON.parse(text);
+          } catch (parseErr) {
+            throw new Error("JSON 파싱 실패: " + text.slice(0, 80));
+          }
+
+          if (json.result === "proxy_error") {
+            throw new Error("프록시 오류: " + json.message);
+          }
+
+          if (json.result !== "success" || !Array.isArray(json.Info)) {
+            appendLog("데이터 없음/비정상(result=" + json.result + ") statDt=" + statDt);
+            return 0;
+          }
+
+          for (const it of json.Info) {
+            allRows.push({
+              request_stat_dt: statDt,
+              link_id: it.link_id,
+              stat_dt: it.stat_dt,
+              tfvl: it.tfvl,
+              sped: it.sped,
+              ocpy_rate: it.ocpy_rate,
+              trvl_hh: it.trvl_hh
+            });
+          }
+          return json.Info.length;
+
+        } catch (e) {
+          appendLog("실패(" + attempt + "/" + MAX_RETRY + ") statDt=" + statDt + " - " + e.message);
+          if (attempt < MAX_RETRY) {
+            await sleep(RETRY_DELAY_MS);
+          }
+        }
+      }
+      return -1;
+    }
+
+    async function collect() {
+      const monthValue = monthInput.value;
+      if (!monthValue) {
+        alert("먼저 수집할 월을 선택해주세요.");
+        return;
+      }
+
+      allRows = [];
+      stopRequested = false;
+      logEl.textContent = "";
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      saveBtn.disabled = false;
+
+      const parts = monthValue.split("-");
+      const yearStr = parts[0], monthStr = parts[1];
+      const lastDay = new Date(Number(yearStr), Number(monthStr), 0).getDate();
+      const total = lastDay * 24;
+      const estMin = Math.ceil((total * DELAY_MS) / 60000);
+
+      appendLog("수집 시작: " + monthValue + " (1일~" + lastDay + "일, 총 " + total + "회, 예상 약 " + estMin + "분)");
+      appendLog("API 키: " + (keyInput.value.trim() ? "화면 입력값 사용" : "Worker 환경변수 사용(키 미전송)"));
+
+      let done = 0, okCount = 0, failCount = 0, consecutiveFail = 0;
+
+      outer:
+      for (let day = 1; day <= lastDay; day++) {
+        for (let hour = 0; hour < 24; hour++) {
+          if (stopRequested) {
+            appendLog("사용자가 중단했습니다.");
+            break outer;
+          }
+
+          const statDt = yearStr + monthStr + toTwo(day) + toTwo(hour);
+          statusEl.textContent = "진행 " + (done + 1) + " / " + total + "  (statDt=" + statDt + ")";
+
+          const added = await fetchOne(statDt);
+
+          if (added >= 0) {
+            okCount++;
+            consecutiveFail = 0;
+            if (added > 0) appendLog("성공 statDt=" + statDt + ", 수신 " + added + "건");
+          } else {
+            failCount++;
+            consecutiveFail++;
+            appendLog("포기 statDt=" + statDt + " (재시도 " + MAX_RETRY + "회 모두 실패)");
+            if (consecutiveFail >= ABORT_AFTER_CONSECUTIVE_FAIL) {
+              appendLog("연속 " + ABORT_AFTER_CONSECUTIVE_FAIL + "회 실패 → 자동 중단. Worker/네트워크/API 키를 확인하세요.");
+              break outer;
+            }
+          }
+
+          done++;
+          setMetrics(done, okCount, failCount);
+          barFill.style.width = ((done / total) * 100).toFixed(1) + "%";
+
+          if (done < total && !stopRequested) {
+            await sleep(DELAY_MS);
+          }
+        }
+      }
+
+      statusEl.textContent = "종료: 요청 " + done + "/" + total + ", 성공 " + okCount + ", 실패 " + failCount + ", 총 행 " + allRows.length;
+      appendLog(statusEl.textContent);
+
+      if (allRows.length > 0) {
+        downloadCsv(buildCsv(allRows), "jeju_its_hourly_" + yearStr + monthStr + ".csv");
+      } else {
+        alert("수집된 데이터가 없습니다. 로그를 확인해주세요.");
+      }
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    startBtn.addEventListener("click", collect);
+
+    stopBtn.addEventListener("click", () => {
+      stopRequested = true;
+      appendLog("중단 요청됨 - 현재 요청 완료 후 멈춥니다.");
+    });
+
+    saveBtn.addEventListener("click", () => {
+      if (allRows.length === 0) {
+        alert("아직 저장할 데이터가 없습니다.");
+        return;
+      }
+      const v = (monthInput.value || "").replace("-", "");
+      downloadCsv(buildCsv(allRows), "jeju_its_hourly_" + v + "_partial.csv");
+    });
+
+    toggleKeyBtn.addEventListener("click", () => {
+      const show = keyInput.type === "password";
+      keyInput.type = show ? "text" : "password";
+      toggleKeyBtn.textContent = show ? "숨기기" : "표시";
+    });
+
+    window.addEventListener("beforeunload", e => {
+      if (!startBtn.disabled) return;
+      e.preventDefault();
+      e.returnValue = "";
+    });
+  </script>
+</body>
+</html>
