@@ -158,12 +158,19 @@
     .travel-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c41218, #1a4fb3); }
     .od-flow-canvas { pointer-events: none; }
     .flow-hover-tip {
-      position: absolute; z-index: 1100; display: none; pointer-events: none;
+      position: absolute; z-index: 1200; display: none; pointer-events: none;
       transform: translate(-50%, calc(-100% - 12px));
-      padding: 8px 10px; border-radius: 9px; color: #fff;
-      background: rgba(18,48,74,.93); font-size: 12px; line-height: 1.45;
-      white-space: nowrap; box-shadow: 0 5px 16px rgba(0,0,0,.15);
+      max-width: min(360px, calc(100% - 20px));
+      padding: 9px 11px; border-radius: 9px; color: #fff;
+      background: rgba(18,48,74,.95); font-size: 12px; line-height: 1.45;
+      white-space: normal; word-break: keep-all; box-shadow: 0 6px 18px rgba(0,0,0,.18);
     }
+    .flow-hover-tip .traffic-tooltip { min-width: 210px; }
+    .flow-hover-tip .traffic-tooltip .t-title { font-weight: 900; font-size: 12px; color: #fff; }
+    .flow-hover-tip .traffic-tooltip .t-sub { margin-top: 2px; color: rgba(255,255,255,.76); font-size: 10px; }
+    .flow-hover-tip .traffic-tooltip .t-grid { margin-top: 8px; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 11px; }
+    .flow-hover-tip .traffic-tooltip .t-grid span:nth-child(odd) { color: rgba(255,255,255,.70); }
+    .flow-hover-tip .traffic-tooltip .t-grid span:nth-child(even) { text-align: right; font-weight: 800; color: #fff; }
     .travel-caption { margin-top: 6px; color: #8491a0; font-size: 10px; line-height: 1.4; }
     .legend-note { margin-left: auto; color: #8491a0; }
 
@@ -631,7 +638,10 @@
       trafficCoreRenderer: null,
       trafficDisplayMode: 'slow',
       trafficEnabled: true,
-      trafficLoadEpoch: 0
+      trafficLoadEpoch: 0,
+      hoverSource: null,
+      hoverPinned: false,
+      hoverPoint: null
     };
 
     function initSelectors() {
@@ -660,6 +670,8 @@
         pane.style.zIndex = String(zIndex);
       }
       state.map.getPane('trafficGlowPane').style.pointerEvents = 'none';
+      state.map.getPane('trafficHaloPane').style.pointerEvents = 'auto';
+      state.map.getPane('trafficCorePane').style.pointerEvents = 'none';
       state.trafficGlowRenderer = L.canvas({ pane: 'trafficGlowPane', padding: .65 });
       state.trafficHaloRenderer = L.canvas({ pane: 'trafficHaloPane', padding: .65, tolerance: 8 });
       state.trafficCoreRenderer = L.canvas({ pane: 'trafficCorePane', padding: .65, tolerance: 5 });
@@ -680,21 +692,12 @@
       state.trafficLayer = L.layerGroup().addTo(state.map);
       ensureFlowCanvas();
       state.map.on('mousemove', onFlowHover);
-      state.map.on('mouseout', hideFlowTip);
-      state.map.on('click', ev => {
-        if (!state.loaded || !state.zones.length) return;
-        let nearest = null;
-        let distance = Infinity;
-        for (const zone of state.zones) {
-          if (EXCLUDED_ZONE_IDS.has(zone.id)) continue;
-          const d = state.map.distance(ev.latlng, [zone.lat, zone.lon]);
-          if (d < distance) { distance = d; nearest = zone; }
-        }
-        if (nearest) {
-          setSelectedZone(nearest.id);
-          toast(`가장 가까운 법정동 ‘${nearest.legalDong}’을 선택했습니다.`);
-        }
+      state.map.on('mouseout', () => {
+        state.hoverSource = null;
+        state.hoverPinned = false;
+        hideFlowTip();
       });
+      state.map.on('click', onMapElementClick);
     }
 
     function bindEvents() {
@@ -1018,10 +1021,27 @@
         const hubNote = multi
           ? `<br>${kind0} ${zone.hubs.length}곳 · ${escapeHTML(zone.hubs[0].name)} ${Math.round(hubShareOf(zone.hubs[0]) * 100)}%`
           : '';
-        marker.bindTooltip(`<strong>${escapeHTML(zone.legalDong)}</strong><br>${escapeHTML(zone.city)} · 분석존 ${escapeHTML(zone.analysisZone)}${hubNote}${zone.island ? '<br><b>도서지역 품질주의</b>' : ''}`);
+        const zoneTooltipHTML = `<strong>${escapeHTML(zone.legalDong)}</strong><br>${escapeHTML(zone.city)} · 분석존 ${escapeHTML(zone.analysisZone)}${hubNote}${zone.island ? '<br><b>도서지역 품질주의</b>' : ''}`;
+        marker.on('mouseover', event => {
+          state.hoverSource = `zone:${zone.id}`;
+          showMapHoverTip(zoneTooltipHTML, event.containerPoint, state.hoverSource, false);
+        });
+        marker.on('mousemove', event => {
+          state.hoverSource = `zone:${zone.id}`;
+          showMapHoverTip(zoneTooltipHTML, event.containerPoint, state.hoverSource, false);
+        });
+        marker.on('mouseout', () => {
+          if (state.hoverSource === `zone:${zone.id}` && !state.hoverPinned) {
+            state.hoverSource = null;
+            hideFlowTip();
+          }
+        });
         marker.on('click', event => {
           L.DomEvent.stopPropagation(event);
-          setSelectedZone(zone.id);
+          setSelectedZone(zone.id, { fit: false });
+          state.hoverSource = `zone:${zone.id}`;
+          state.hoverPinned = true;
+          showMapHoverTip(zoneTooltipHTML, event.containerPoint, state.hoverSource, true);
         });
         marker.addTo(state.markerLayer);
         state.markerById.set(zone.id, marker);
@@ -1031,9 +1051,29 @@
             const extra = L.circleMarker([h.lat, h.lon], {
               radius: 3, color: '#fff', weight: 1, fillColor: '#7a93a8', fillOpacity: .8, pane: 'markerPane'
             });
-            extra.bindTooltip(`${escapeHTML(zone.legalDong)} · ${escapeHTML(h.name)}<br>${hubKindLabel(h)} ${Math.round(hubShareOf(h) * 100)}% (${WEEKDAYS[state.weekday]}요일)`);
+            const extraTooltipHTML = `${escapeHTML(zone.legalDong)} · ${escapeHTML(h.name)}<br>${hubKindLabel(h)} ${Math.round(hubShareOf(h) * 100)}% (${WEEKDAYS[state.weekday]}요일)`;
             extra.setStyle({ fillColor: h.kind === 'its' ? '#c56a00' : '#7a93a8' });
-            extra.on('click', event => { L.DomEvent.stopPropagation(event); setSelectedZone(zone.id); });
+            extra.on('mouseover', event => {
+              state.hoverSource = `hub:${zone.id}:${i}`;
+              showMapHoverTip(extraTooltipHTML, event.containerPoint, state.hoverSource, false);
+            });
+            extra.on('mousemove', event => {
+              state.hoverSource = `hub:${zone.id}:${i}`;
+              showMapHoverTip(extraTooltipHTML, event.containerPoint, state.hoverSource, false);
+            });
+            extra.on('mouseout', () => {
+              if (state.hoverSource === `hub:${zone.id}:${i}` && !state.hoverPinned) {
+                state.hoverSource = null;
+                hideFlowTip();
+              }
+            });
+            extra.on('click', event => {
+              L.DomEvent.stopPropagation(event);
+              setSelectedZone(zone.id, { fit: false });
+              state.hoverSource = `hub:${zone.id}:${i}`;
+              state.hoverPinned = true;
+              showMapHoverTip(extraTooltipHTML, event.containerPoint, state.hoverSource, true);
+            });
             extra.addTo(state.markerLayer);
           }
         }
@@ -1046,7 +1086,7 @@
         : { radius: 4, color: '#fff', weight: 1.5, fillColor: '#204f70', fillOpacity: .84 };
     }
 
-    function setSelectedZone(id) {
+    function setSelectedZone(id, options = {}) {
       if (!state.zones.some(z => z.id === id) || EXCLUDED_ZONE_IDS.has(id)) return;
       const previous = state.selectedId;
       state.selectedId = id;
@@ -1056,7 +1096,7 @@
         state.markerById.get(id).setStyle(markerStyle(true)).bringToFront();
       }
       state.hourProgress = 0;
-      state.pendingFit = true;
+      state.pendingFit = options.fit !== false;
       render();
     }
 
@@ -1427,17 +1467,35 @@
           opacity: coreOpacity,
           lineCap: 'round',
           lineJoin: 'round',
-          interactive: true
+          interactive: false
         });
         line = { glow, halo, core, meta, cell };
         const showTip = e => {
-          const html = trafficTooltipHTML(line.meta, line.cell);
-          L.tooltip({ className: 'traffic-map-tooltip', sticky: true, direction: 'top', opacity: 1 })
-            .setLatLng(e.latlng).setContent(html).openOn(state.map);
+          state.hoverSource = `traffic:${roadId}`;
+          state.hoverPinned = false;
+          showMapHoverTip(trafficTooltipHTML(line.meta, line.cell), e.containerPoint || state.map.latLngToContainerPoint(e.latlng), state.hoverSource, false);
         };
-        const hideTip = () => { if (state.map) state.map.closeTooltip(); };
-        halo.on('mousemove', showTip); halo.on('mouseout', hideTip);
-        core.on('mousemove', showTip); core.on('mouseout', hideTip);
+        const hideTip = () => {
+          if (state.hoverSource === `traffic:${roadId}` && !state.hoverPinned) {
+            state.hoverSource = null;
+            hideFlowTip();
+          }
+        };
+        const clickTip = e => {
+          L.DomEvent.stopPropagation(e);
+          state.hoverSource = `traffic:${roadId}`;
+          state.hoverPinned = true;
+          showMapHoverTip(trafficTooltipHTML(line.meta, line.cell), e.containerPoint || state.map.latLngToContainerPoint(e.latlng), state.hoverSource, true);
+        };
+        halo.on('mouseover', showTip);
+        halo.on('mousemove', showTip);
+        halo.on('mouseout', hideTip);
+        halo.on('click', clickTip);
+        // Ensure road-traffic tooltip remains available even when the line is thin or overlapped.
+        glow.on('mouseover', showTip);
+        glow.on('mousemove', showTip);
+        glow.on('mouseout', hideTip);
+        glow.on('click', clickTip);
         state.trafficLines.set(roadId, line);
       }
       line.meta = meta;
@@ -2221,37 +2279,100 @@
       }
     }
 
+    function showMapHoverTip(html, point, source = 'map', pinned = false) {
+      const tip = el('flowHoverTip');
+      if (!tip || !state.map || !point) return;
+      const size = state.map.getSize();
+      const maxX = Math.max(10, size.x - 10);
+      const maxY = Math.max(10, size.y - 10);
+      const x = Math.max(10, Math.min(maxX, Number(point.x) || 0));
+      const y = Math.max(10, Math.min(maxY, Number(point.y) || 0));
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      tip.style.left = `${x}px`;
+      tip.style.top = `${y}px`;
+      state.hoverSource = source;
+      state.hoverPinned = pinned;
+      state.hoverPoint = { x, y };
+    }
+
     function hideFlowTip() {
       const tip = el('flowHoverTip');
       if (tip) tip.style.display = 'none';
+      state.hoverPoint = null;
     }
 
-    function onFlowHover(ev) {
-      const tip = el('flowHoverTip');
-      if (!tip || !state.flowMarkers.length || !state.map) return;
-      const p = ev.containerPoint;
+    function nearestFlowAt(point) {
       let best = null;
       let bestD = Infinity;
-      for (const item of state.flowMarkers) {
+      for (const item of state.flowMarkers || []) {
         const pos = item._screen;
         if (!pos) continue;
-        const d = Math.hypot(pos.x - p.x, pos.y - p.y);
-        if (d < item.radius + 10 && d < bestD) {
+        const d = Math.hypot(pos.x - point.x, pos.y - point.y);
+        if (d < item.radius + 12 && d < bestD) {
           best = item;
           bestD = d;
         }
       }
-      if (!best) {
-        hideFlowTip();
-        return;
-      }
+      return best;
+    }
+
+    function flowTooltipHTML(best) {
       const q = QUALITY[best.quality] || QUALITY[1];
       const oHub = best.origin.hubName && best.origin.hubName !== best.origin.legalDong ? ` · ${escapeHTML(best.origin.hubName)}` : '';
       const dHub = best.destination.hubName && best.destination.hubName !== best.destination.legalDong ? ` · ${escapeHTML(best.destination.hubName)}` : '';
-      tip.innerHTML = `<strong>${best.rank}. ${escapeHTML(best.origin.legalDong)}${oHub} → ${escapeHTML(best.destination.legalDong)}${dHub}</strong><br>${formatValue(best.value)} 통행 · 반지름 ∝ √통행량 · 품질 ${q.letter}`;
-      tip.style.display = 'block';
-      tip.style.left = `${best._screen.x}px`;
-      tip.style.top = `${best._screen.y}px`;
+      return `<strong>${best.rank}. ${escapeHTML(best.origin.legalDong)}${oHub} → ${escapeHTML(best.destination.legalDong)}${dHub}</strong><br>${formatValue(best.value)} 통행 · 반지름 ∝ √통행량 · 품질 ${q.letter}`;
+    }
+
+    function onFlowHover(ev) {
+      const tip = el('flowHoverTip');
+      if (!tip || !state.map) return;
+      if (state.hoverPinned && state.hoverPoint) {
+        const d = Math.hypot(state.hoverPoint.x - ev.containerPoint.x, state.hoverPoint.y - ev.containerPoint.y);
+        if (d > 24) {
+          state.hoverPinned = false;
+          state.hoverSource = null;
+          hideFlowTip();
+        } else {
+          return;
+        }
+      }
+      if (state.hoverSource && /^(traffic|zone|hub):/.test(state.hoverSource)) return;
+      const best = nearestFlowAt(ev.containerPoint);
+      if (!best) {
+        state.hoverSource = null;
+        hideFlowTip();
+        return;
+      }
+      showMapHoverTip(flowTooltipHTML(best), best._screen, `flow:${best.rank}`, false);
+    }
+
+    function onMapElementClick(ev) {
+      if (!state.loaded || !state.map) return;
+      const p = ev.containerPoint;
+      const flow = nearestFlowAt(p);
+      if (flow) {
+        state.hoverSource = `flow:${flow.rank}`;
+        state.hoverPinned = true;
+        showMapHoverTip(flowTooltipHTML(flow), flow._screen, state.hoverSource, true);
+        return;
+      }
+
+      let nearestZone = null;
+      let bestPx = Infinity;
+      for (const zone of state.zones) {
+        if (EXCLUDED_ZONE_IDS.has(zone.id)) continue;
+        const zp = state.map.latLngToContainerPoint([zone.lat, zone.lon]);
+        const d = Math.hypot(zp.x - p.x, zp.y - p.y);
+        if (d < 22 && d < bestPx) { nearestZone = zone; bestPx = d; }
+      }
+      if (nearestZone) {
+        const zoneTooltipHTML = `<strong>${escapeHTML(nearestZone.legalDong)}</strong><br>${escapeHTML(nearestZone.city)} · 분석존 ${escapeHTML(nearestZone.analysisZone)}${nearestZone.island ? '<br><b>도서지역 품질주의</b>' : ''}`;
+        setSelectedZone(nearestZone.id, { fit: false });
+        state.hoverSource = `zone:${nearestZone.id}`;
+        state.hoverPinned = true;
+        showMapHoverTip(zoneTooltipHTML, p, state.hoverSource, true);
+      }
     }
 
     function fitFlowCamera(flows) {
@@ -2353,7 +2474,14 @@
     }
 
     function advanceHour() {
+      const crossedMidnight = state.hour === 23;
       state.hour = (state.hour + 1) % 24;
+      if (crossedMidnight) {
+        // 요일을 고정한 7×24 재생에서 23→00 경계는 다음 요일의 00시로 이어집니다.
+        state.weekday = (state.weekday + 1) % 7;
+        el('weekdaySelect').value = String(state.weekday);
+        state._hubMarkKey = '';
+      }
       el('hourRange').value = String(state.hour);
       el('hourValue').textContent = `${String(state.hour).padStart(2, '0')}:00`;
       render();
