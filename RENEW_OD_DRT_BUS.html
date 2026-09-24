@@ -707,6 +707,7 @@ h1{margin:0;font-size:18px;letter-spacing:-.2px}
 .kpi .l{font-size:11px;color:var(--muted)}
 .kpi .v{font-size:22px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
 .kpi .u{font-size:11px;color:var(--muted);margin-left:2px;font-weight:400}
+.kpi .hint{display:block;margin-top:4px;font-size:10px;line-height:1.35;font-weight:400;color:var(--muted);letter-spacing:-.2px}
 .panelbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;margin-bottom:10px}
 .grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .grp>.lab{font-size:11px;color:var(--muted);margin-right:2px;min-width:38px}
@@ -861,7 +862,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <ul class="note">
       <li>본 시각화의 인-km는 첨부 운행내역의 <b>이용완료</b> 건만 집계하며, 승·하차 좌표 사이 대원거리(haversine) × 이용 인원입니다.</li>
       <li>데이터 기간은 2023-10-31 ~ 2026-08-31입니다. 시범운영 시작일(2023-10-27)부터 10-30은 원본 파일에 없습니다.</li>
-      <li>노쇼·호출취소·예약취소·배차실패는 이용하지 않은 건으로 제외했습니다. 대기시간은 엑셀 N열이 아니라 차량 도착 시각(픽업)−호출시각으로 계산합니다.</li>
+      <li>노쇼·호출취소·예약취소·배차실패는 이용하지 않은 건으로 제외했습니다. 대기시간은 엑셀 N열이 아니라 차량 도착 시각(픽업)−호출시각으로 계산합니다. 평균 대기시간에는 한림읍(예약형) 통행을 포함하지 않습니다.</li>
     </ul>
   </div>
 
@@ -986,16 +987,24 @@ function applyFilter(){
   renderKPI(); renderPkm(); renderTab(); updateHeader();
   resetClock();
 }
+var HALLIM_IDX=(function(){
+  for(var i=0;i<REGS.length;i++){
+    if(REGS[i]==="한림"||REGS[i]==="한림읍") return i;
+  }
+  return -1;
+})();
+function isHallimTrip(i){ return HALLIM_IDX>=0 && TR.r[i]===HALLIM_IDX; }
 function computeStats(){
-  var pax=0, w=0, r=0, pkm=0, days={}, n=idx.length;
+  var pax=0, w=0, r=0, pkm=0, days={}, n=idx.length, nw=0;
   for(var k=0;k<n;k++){
     var i=idx[k], pv=paxFor(i);
-    pax+=pv; w+=TR.w[i]; r+=TR.u[i]; days[TR.y[i]]=1;
+    pax+=pv; r+=TR.u[i]; days[TR.y[i]]=1;
     pkm+=pv*((TR.ds&&TR.ds[i])?TR.ds[i]:0)/1000;
+    if(!isHallimTrip(i)){ w+=TR.w[i]; nw++; }
   }
   var nd=Object.keys(days).length;
   var buses=curPeriod().buses||1;
-  stats={n:n, pax:pax, wait:n?w/n:0, ride:n?r/n/60:0, days:nd, perDay:nd?n/nd:0,
+  stats={n:n, pax:pax, wait:nw?w/nw:null, waitN:nw, ride:n?r/n/60:0, days:nd, perDay:nd?n/nd:0,
          pkm:pkm, pkmDay:nd?pkm/nd:0, pkmBus:nd?pkm/nd/buses:0, buses:buses};
 }
 var agg={od:[],reg:[],hr:[],oCnt:{},dCnt:{}};
@@ -1297,16 +1306,17 @@ function buildFilters(){
     function(v){ st.secPerHour=v; buildFilters(); });
 }
 function renderKPI(){
+  var waitTxt=stats.wait==null?'—':stats.wait.toFixed(1);
   var cards=[
-    ['통행 수', fmt(stats.n), '건'],
-    ['이용 인원', fmt(stats.pax), '명'],
-    ['일평균 통행', stats.perDay.toFixed(1), '건/일'],
-    ['평균 대기시간', stats.wait.toFixed(1), '분'],
-    ['평균 이동시간', stats.ride.toFixed(1), '분'],
-    ['평균 재차인원', (stats.n?stats.pax/stats.n:0).toFixed(2), '명/건']
+    ['통행 수', fmt(stats.n), '건', ''],
+    ['이용 인원', fmt(stats.pax), '명', ''],
+    ['일평균 통행', stats.perDay.toFixed(1), '건/일', ''],
+    ['평균 대기시간', waitTxt, '분', '한림읍은 예약형이라 제외'],
+    ['평균 이동시간', stats.ride.toFixed(1), '분', ''],
+    ['평균 재차인원', (stats.n?stats.pax/stats.n:0).toFixed(2), '명/건', '']
   ];
   document.getElementById('kpis').innerHTML=cards.map(function(c){
-    return '<div class="kpi"><div class="l">'+c[0]+'</div><div class="v">'+c[1]+'<span class="u">'+c[2]+'</span></div></div>';
+    return '<div class="kpi"><div class="l">'+c[0]+'</div><div class="v">'+c[1]+'<span class="u">'+c[2]+'</span></div>'+(c[3]?'<div class="hint">'+c[3]+'</div>':'')+'</div>';
   }).join('');
 }
 var curTab='od';
@@ -1343,7 +1353,7 @@ function renderTab(){
       '<li>운행내역: (비식별화)제주도_driving_history_20231031-20260831.xlsx — 배차분류 ‘이용완료’만 사용</li>'+
       '<li>정류장 좌표: 운행내역의 승차지·하차지 위경도. 기존 시각화 정류장 목록과 이름·근접거리(120m)로 매칭해 도로경로(RP)를 재사용</li></ul>'+
       '<b>처리 기준</b><ul>'+
-      '<li>이용 인원 = 성인 + 청소년 + 어린이. ‘합승인원’은 사용하지 않았습니다. 평균 대기시간 = 차량 도착 시각(픽업) − 호출시각(엑셀 N열 값이 아니라 두 시각의 차이).</li>'+
+      '<li>이용 인원 = 성인 + 청소년 + 어린이. ‘합승인원’은 사용하지 않았습니다. 평균 대기시간 = 차량 도착 시각(픽업) − 호출시각(엑셀 N열 값이 아니라 두 시각의 차이). 한림읍은 예약형이라 평균 대기시간 집계에서 제외합니다.</li>'+
       '<li>제주 영역 밖 좌표·직선거리 80km 초과 10건, 이동시간 30초 미만 또는 4시간 초과 1,089건, 23시 픽업 2건을 제외했습니다. 노쇼·호출취소·예약취소·배차실패 55,781건은 이용하지 않은 건으로 제외했습니다.</li>'+
       '<li>기간 드롭다운 4단계는 운영 정책 시행일(23.10.27 / 24.7.15 / 25.5.28 / 26.2.25) 기준입니다. 기본 조회는 2026.2.25~8.31 전체 월입니다.</li>'+
       '<li>점의 반지름은 인원수의 제곱근에 비례합니다. 점은 ‘차량 도착 시각(픽업)’에 출발해 ‘하차시각’에 도착합니다. 호출시각은 대기시간 산출에만 쓰고 지도에는 표시하지 않습니다. 모든 날짜의 통행을 한 가상 하루에 겹쳐 재생합니다.</li></ul>'+
