@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>제주 옵서버스 실제 이용객 분석 | 중복 승객ID 제거</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#10213a;--muted:#6b7a90;--line:#e4eaf2;--accent:#2563eb;--accent2:#14b8a6;--phone:#2563eb;--app:#14b8a6;--other:#94a3b8;--shadow:0 14px 40px rgba(20,35,65,.08)}
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:linear-gradient(180deg,#eef4fb 0,#f7f9fc 220px,#f4f7fb 100%);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}button{font:inherit} 
+.wrap{max-width:1440px;margin:0 auto;padding:28px 24px 54px}.hero{padding:22px 0 18px}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--accent);margin-bottom:10px}.hero h1{font-size:34px;line-height:1.16;margin:0 0 10px;letter-spacing:-.04em}.hero p{margin:0;color:var(--muted);font-size:15px}.hero .note{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 11px;border-radius:999px;background:#eaf1ff;color:#244577;font-size:12px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0 20px}.kpi{background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:18px;padding:17px 18px;box-shadow:var(--shadow)}.kpi .label{font-size:12px;color:var(--muted);font-weight:700}.kpi .value{font-size:27px;font-weight:850;letter-spacing:-.03em;margin-top:8px}.kpi .sub{font-size:11px;color:var(--muted);margin-top:4px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0 18px}.seg{display:inline-flex;background:#eef3f8;border:1px solid var(--line);padding:4px;border-radius:12px}.seg button{border:0;background:transparent;padding:9px 15px;border-radius:9px;color:#65758b;font-weight:800;cursor:pointer}.seg button.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(20,35,65,.08)}.control-note{font-size:12px;color:var(--muted);margin-left:auto}
+.grid2{display:grid;grid-template-columns:1.35fr .95fr;gap:18px;margin-top:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;min-width:0}.head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:10px}.title{font-size:16px;font-weight:850;letter-spacing:-.02em}.desc{font-size:12px;color:var(--muted);margin-top:4px}.chart-wrap{position:relative;overflow:auto;border-radius:12px}.chart{width:100%;min-width:780px;height:355px}.chart svg{width:100%;height:100%;display:block}.legend{display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 8px}.legend span{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:#526178;font-weight:700}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.dot.phone{background:var(--phone)}.dot.app{background:var(--app)}.dot.other{background:var(--other)}
+.tooltip{position:fixed;z-index:30;pointer-events:none;background:#12243e;color:#fff;border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.45;box-shadow:0 10px 26px rgba(15,30,52,.25);opacity:0;transform:translate(-50%,-120%);transition:opacity .08s}.tooltip.show{opacity:1}.policy-caption{margin-top:7px;font-size:10px;color:#8b6a22;background:#fff9e9;border:1px solid #f5e4ae;border-radius:8px;padding:6px 8px;display:inline-block}.policy-marker text{user-select:none}.policy-marker:hover line{opacity:1;stroke-width:2}.policy-marker:hover circle{fill:#fff7df}
+.donutbox{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center}.donut{width:150px;height:150px}.method-list{display:grid;gap:8px}.method-row{display:grid;grid-template-columns:92px 1fr 60px;gap:8px;align-items:center;font-size:12px}.method-row .name{font-weight:800}.bar{height:9px;background:#edf1f5;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%}.pct{text-align:right;font-weight:850}.method-meta{margin-top:10px;font-size:11px;color:var(--muted);line-height:1.55}
+.table-card{margin-top:18px}.table-wrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px}.tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:760px}.tbl th{position:sticky;top:0;background:#f7f9fc;color:#5e6e85;text-align:right;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:1}.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl td{padding:10px 12px;border-bottom:1px solid #edf1f5;text-align:right;white-space:nowrap}.tbl tr:last-child td{border-bottom:0}.tbl tbody tr:hover{background:#f8fbff}.positive{color:#0f8b73}.negative{color:#b54c4c}
+.meta{margin-top:18px;display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.info{background:#f8fafc;border:1px solid var(--line);border-radius:16px;padding:15px 16px}.info h3{font-size:13px;margin:0 0 8px}.info p{font-size:11px;line-height:1.7;color:#5d6c81;margin:5px 0}.info code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px;background:#eef2f7;padding:2px 4px;border-radius:5px;color:#31445e}.export{border:1px solid var(--line);background:#fff;padding:9px 12px;border-radius:10px;font-size:11px;font-weight:800;color:#42556f;cursor:pointer}.export:hover{background:#f7faff}
+@media(max-width:1020px){.grid2,.meta{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.control-note{width:100%;margin-left:0}}@media(max-width:620px){.wrap{padding:18px 12px 36px}.hero h1{font-size:27px}.kpis{grid-template-columns:1fr}.chart{min-width:680px;height:320px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">JEJU TRANSPORT DATA · UNIQUE RIDERS</div>
+    <h1>중복 탑승객을 제외한 실제 이용객 분석</h1>
+    <p><b>2023. 10. 31. ~ 2026. 8. 31.</b> 운행내역에서 <b>승객ID</b>를 기준으로 중복을 제거해 월별·요일별 실제 이용객과 호출방법 구성을 확인합니다.</p>
+    <span class="note">이용완료 + 유효 승객ID만 집계 · 같은 승객ID는 해당 집계기간에서 1명으로 계산</span>
+  </section>
+
+  <section class="kpis">
+    <div class="kpi"><div class="label">기간 전체 고유 이용객</div><div class="value" id="kUnique">-</div><div class="sub">중복 제거 승객ID</div></div>
+    <div class="kpi"><div class="label">이용완료 기록</div><div class="value" id="kDone">-</div><div class="sub">승객ID·날짜 유효 행 기준</div></div>
+    <div class="kpi"><div class="label">중복 포함 대비 감소</div><div class="value" id="kReduce">-</div><div class="sub">단순 기록 수와 기간 전체 고유 이용객 비교</div></div>
+    <div class="kpi"><div class="label">최근월 고유 이용객</div><div class="value" id="kLatest">-</div><div class="sub" id="kLatestSub">-</div></div>
+  </section>
+
+  <div class="controls">
+    <div class="seg" aria-label="분석 단위"><button id="mMonthly" class="active">월별</button><button id="mWeekday">요일별</button></div>
+    <div class="seg" aria-label="호출방법 표시"><button id="mAll" class="active">전체 호출방법</button><button id="mRealtime">전화·앱 실시간만</button></div>
+    <button class="export" id="exportCsv">현재 표 CSV 저장</button>
+    <span class="control-note">요일별 수치는 해당 요일에 1회 이상 이용한 고유 승객ID입니다. 월·요일 간 합계는 기간 전체 고유 이용객과 다를 수 있습니다.</span>
+  </div>
+
+  <div class="grid2">
+    <section class="card">
+      <div class="head"><div><div class="title" id="trendTitle">월별 실제 이용객</div><div class="desc" id="trendDesc">각 월에 1회 이상 이용한 고유 승객ID 수</div><div class="policy-caption">▣ 그래프 상단의 주황색 점선은 옵서버스 정책 시행일입니다. 마우스를 올리면 운영지역·노선·차량 변화를 볼 수 있습니다.</div></div></div>
+      <div class="chart-wrap"><div id="trendChart" class="chart"></div></div>
+    </section>
+    <section class="card">
+      <div class="head"><div><div class="title">기간 전체 호출방법 구성</div><div class="desc">기간 전체 고유 이용객을 호출방법별로 한 번씩 분류</div></div></div>
+      <div class="donutbox"><div id="donut" class="donut"></div><div id="methodList" class="method-list"></div></div>
+      <div class="method-meta">‘기타’에는 전화(예약), 앱(예약), 호출벨(실시간/예약), 현장(실시간) 등이 포함됩니다. 동일 이용객이 <b>앱(실시간)+앱(예약)</b>을 모두 이용한 57명은 앱(실시간)으로 분류했습니다.</div>
+    </section>
+  </div>
+
+  <section class="card table-card">
+    <div class="head"><div><div class="title" id="tableTitle">월별 집계표</div><div class="desc">고유 이용객과 호출방법별 고유 이용객을 함께 표시합니다.</div></div><div class="desc" id="rowCount">-</div></div>
+    <div class="table-wrap"><table class="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+
+  <section class="meta">
+    <div class="info">
+      <h3>산출 기준</h3>
+      <p>① 분석 원자료: <code>제주도_driving_history_20231031-20260831.xlsx</code> · 시트 <code>운행내역(콜)</code></p>
+      <p>② 실제 이용객: <code>배차분류 = 이용완료</code>이면서 <code>승객ID</code>와 <code>날짜</code>가 유효한 행을 대상으로, <code>승객ID</code> 중복을 제거했습니다.</p>
+      <p>③ 월별: 같은 달에 여러 번 이용한 승객은 1명으로 계산합니다. 요일별: 전체 기간에서 같은 요일에 여러 번 이용한 승객은 해당 요일에서 1명으로 계산합니다.</p>
+      <p>④ 호출방법 비율: 고유 승객ID를 기준으로 <code>전화(실시간)</code>, <code>앱(실시간)</code>, <code>기타</code>로 분류합니다. 기간 전체에서 전화(실시간)와 앱(실시간)을 동시에 사용한 승객ID는 확인되지 않았습니다.</p>
+    </div>
+    <div class="info">
+      <h3>원자료 검증 메모</h3>
+      <p id="statusMemo">-</p>
+      <p>주의: ‘고유 이용객’은 사람 수의 개념이며, 운행완료 건수(이용 횟수)와 동일하지 않습니다. 한 사람이 여러 번 이용한 경우 이용완료 기록은 여러 건, 고유 이용객은 1명으로 집계됩니다.</p>
+    </div>
+  </section>
+</div>
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+const DATA={"meta":{"date_start":"2023-10-31","date_end":"2026-08-31","rows":273338,"completed_rows":217499,"unique_ids":80235,"missing_pid_completed":58,"status":{"노쇼":8126,"호출취소":46000,"이용완료":217557,"배차실패":1,"예약취소(확정후)":431,"예약취소(확정전)":1223},"all_calls":{"전화(실시간)":79019,"앱(실시간)":176351,"전화(예약)":3386,"앱(예약)":14415,"호출벨(실시간)":84,"현장(실시간)":81,"호출벨(예약)":2},"completed_call_rows":null,"global_method_partition":{"전화(실시간)":69667,"앱(실시간)":7314,"기타":3254},"method_history_patterns":{"전화(실시간)":69667,"앱(실시간)":7257,"앱(실시간)+앱(예약)":57,"전화(예약)":2553,"앱(예약)":546,"호출벨(실시간)":73,"현장(실시간)":80,"호출벨(예약)":2},"peak_month":"2026-07","low_month":"2023-10","latest_month":"2026-08"},"months":{"2023-10":{"unique":35,"phone":22,"app":13,"other":0,"phone_pct":62.857142857142854,"app_pct":37.142857142857146,"other_pct":0.0,"rows":39,"rows_per_user":1.1142857142857143,"change_pct":null},"2023-11":{"unique":1073,"phone":924,"app":149,"other":0,"phone_pct":86.11369990680335,"app_pct":13.886300093196645,"other_pct":0.0,"rows":1595,"rows_per_user":1.4864864864864864,"change_pct":2965.714285714286},"2023-12":{"unique":1140,"phone":958,"app":182,"other":0,"phone_pct":84.03508771929825,"app_pct":15.964912280701753,"other_pct":0.0,"rows":1715,"rows_per_user":1.5043859649122806,"change_pct":6.2441752096924485},"2024-01":{"unique":1120,"phone":900,"app":220,"other":0,"phone_pct":80.35714285714286,"app_pct":19.642857142857142,"other_pct":0.0,"rows":1977,"rows_per_user":1.7651785714285715,"change_pct":-1.7543859649122862},"2024-02":{"unique":942,"phone":753,"app":189,"other":0,"phone_pct":79.93630573248409,"app_pct":20.063694267515924,"other_pct":0.0,"rows":1572,"rows_per_user":1.6687898089171975,"change_pct":-15.892857142857142},"2024-03":{"unique":1053,"phone":853,"app":200,"other":0,"phone_pct":81.00664767331433,"app_pct":18.99335232668566,"other_pct":0.0,"rows":1820,"rows_per_user":1.728395061728395,"change_pct":11.783439490445868},"2024-04":{"unique":1171,"phone":968,"app":203,"other":0,"phone_pct":82.66438941076004,"app_pct":17.335610589239966,"other_pct":0.0,"rows":1994,"rows_per_user":1.7028181041844577,"change_pct":11.206077872744547},"2024-05":{"unique":924,"phone":685,"app":239,"other":0,"phone_pct":74.13419913419914,"app_pct":25.865800865800864,"other_pct":0.0,"rows":1822,"rows_per_user":1.9718614718614718,"change_pct":-21.09308283518361},"2024-06":{"unique":846,"phone":623,"app":223,"other":0,"phone_pct":73.64066193853428,"app_pct":26.35933806146572,"other_pct":0.0,"rows":1689,"rows_per_user":1.99645390070922,"change_pct":-8.441558441558438},"2024-07":{"unique":1489,"phone":992,"app":383,"other":114,"phone_pct":66.62189388851579,"app_pct":25.721961047683006,"other_pct":7.656145063801209,"rows":2758,"rows_per_user":1.852249832102082,"change_pct":76.0047281323877},"2024-08":{"unique":1894,"phone":1269,"app":447,"other":178,"phone_pct":67.00105596620908,"app_pct":23.600844772967264,"other_pct":9.398099260823653,"rows":3888,"rows_per_user":2.0527983104540657,"change_pct":27.199462726662183},"2024-09":{"unique":1887,"phone":1272,"app":417,"other":198,"phone_pct":67.40858505564388,"app_pct":22.098569157392685,"other_pct":10.492845786963434,"rows":3961,"rows_per_user":2.099099099099099,"change_pct":-0.36958817317845893},"2024-10":{"unique":2023,"phone":1375,"app":444,"other":204,"phone_pct":67.96836381611469,"app_pct":21.94760257043994,"other_pct":10.084033613445378,"rows":4305,"rows_per_user":2.1280276816608996,"change_pct":7.2072072072072},"2024-11":{"unique":1887,"phone":1306,"app":407,"other":174,"phone_pct":69.21038685744568,"app_pct":21.568627450980394,"other_pct":9.220985691573928,"rows":3948,"rows_per_user":2.0922098569157392,"change_pct":-6.72268907563025},"2024-12":{"unique":1948,"phone":1307,"app":443,"other":198,"phone_pct":67.09445585215606,"app_pct":22.741273100616016,"other_pct":10.164271047227926,"rows":4099,"rows_per_user":2.1042094455852154,"change_pct":3.232644409114993},"2025-01":{"unique":1845,"phone":1242,"app":411,"other":192,"phone_pct":67.31707317073172,"app_pct":22.276422764227643,"other_pct":10.40650406504065,"rows":3567,"rows_per_user":1.9333333333333333,"change_pct":-5.287474332648867},"2025-02":{"unique":1875,"phone":1301,"app":405,"other":169,"phone_pct":69.38666666666666,"app_pct":21.6,"other_pct":9.013333333333334,"rows":3396,"rows_per_user":1.8112,"change_pct":1.6260162601626105},"2025-03":{"unique":2288,"phone":1634,"app":437,"other":217,"phone_pct":71.41608391608392,"app_pct":19.09965034965035,"other_pct":9.484265734265735,"rows":4228,"rows_per_user":1.847902097902098,"change_pct":22.02666666666666},"2025-04":{"unique":2281,"phone":1650,"app":417,"other":214,"phone_pct":72.33669443226654,"app_pct":18.281455501972818,"other_pct":9.38185006576063,"rows":4183,"rows_per_user":1.8338448049101272,"change_pct":-0.30594405594405183},"2025-05":{"unique":2484,"phone":1713,"app":554,"other":217,"phone_pct":68.96135265700482,"app_pct":22.302737520128822,"other_pct":8.735909822866345,"rows":4579,"rows_per_user":1.8433977455716586,"change_pct":8.899605436212177},"2025-06":{"unique":4327,"phone":3206,"app":938,"other":183,"phone_pct":74.09290501502196,"app_pct":21.677836838456205,"other_pct":4.22925814652184,"rows":8183,"rows_per_user":1.8911486018026347,"change_pct":74.19484702093398},"2025-07":{"unique":4714,"phone":3480,"app":1054,"other":180,"phone_pct":73.82265591854052,"app_pct":22.358930844293592,"other_pct":3.8184132371658888,"rows":9610,"rows_per_user":2.038608400509122,"change_pct":8.943840998382257},"2025-08":{"unique":4543,"phone":3256,"app":1134,"other":153,"phone_pct":71.67070217917676,"app_pct":24.961479198767332,"other_pct":3.3678186220559105,"rows":9553,"rows_per_user":2.1027955095751705,"change_pct":-3.6274925753075893},"2025-09":{"unique":4364,"phone":3096,"app":1115,"other":153,"phone_pct":70.94408799266728,"app_pct":25.549954170485794,"other_pct":3.505957836846929,"rows":9691,"rows_per_user":2.2206691109074246,"change_pct":-3.940127668941229},"2025-10":{"unique":4260,"phone":2920,"app":1189,"other":151,"phone_pct":68.54460093896714,"app_pct":27.910798122065728,"other_pct":3.544600938967136,"rows":9268,"rows_per_user":2.175586854460094,"change_pct":-2.383134738771764},"2025-11":{"unique":4131,"phone":2790,"app":1190,"other":151,"phone_pct":67.53812636165577,"app_pct":28.80658436213992,"other_pct":3.655289276204309,"rows":9800,"rows_per_user":2.372306947470346,"change_pct":-3.028169014084503},"2025-12":{"unique":4063,"phone":2626,"app":1251,"other":186,"phone_pct":64.63204528673394,"app_pct":30.790056608417427,"other_pct":4.577898104848634,"rows":10151,"rows_per_user":2.498400196898843,"change_pct":-1.6460905349794275},"2026-01":{"unique":3963,"phone":2577,"app":1212,"other":174,"phone_pct":65.02649507948523,"app_pct":30.582891748675245,"other_pct":4.390613171839516,"rows":9052,"rows_per_user":2.2841281857178903,"change_pct":-2.4612355402412023},"2026-02":{"unique":3853,"phone":2562,"app":1150,"other":141,"phone_pct":66.49364131845316,"app_pct":29.84687256683104,"other_pct":3.6594861147158055,"rows":7895,"rows_per_user":2.049052686218531,"change_pct":-2.775674993691646},"2026-03":{"unique":5376,"phone":3592,"app":1589,"other":195,"phone_pct":66.81547619047619,"app_pct":29.557291666666668,"other_pct":3.6272321428571432,"rows":12465,"rows_per_user":2.318638392857143,"change_pct":39.52764079937712},"2026-04":{"unique":5330,"phone":3531,"app":1636,"other":163,"phone_pct":66.24765478424015,"app_pct":30.69418386491557,"other_pct":3.0581613508442778,"rows":12376,"rows_per_user":2.321951219512195,"change_pct":-0.8556547619047672},"2026-05":{"unique":5731,"phone":3782,"app":1781,"other":168,"phone_pct":65.99197347757809,"app_pct":31.076600942243935,"other_pct":2.9314255801779794,"rows":12722,"rows_per_user":2.2198569185133485,"change_pct":7.523452157598509},"2026-06":{"unique":5637,"phone":3599,"app":1858,"other":180,"phone_pct":63.84601738513393,"app_pct":32.96079474897996,"other_pct":3.1931878658861095,"rows":12792,"rows_per_user":2.2692921766897287,"change_pct":-1.6402024079567257},"2026-07":{"unique":5738,"phone":3512,"app":2038,"other":188,"phone_pct":61.205995120250954,"app_pct":35.51760195189962,"other_pct":3.276402927849425,"rows":13839,"rows_per_user":2.4118159637504357,"change_pct":1.79173319141388},"2026-08":{"unique":5558,"phone":3391,"app":1986,"other":181,"phone_pct":61.011155091759626,"app_pct":35.73227779776898,"other_pct":3.2565671104713925,"rows":12967,"rows_per_user":2.3330334652752787,"change_pct":-3.1369815266643397}},"weekdays":{"월":{"unique":14628,"phone":10783,"app":3266,"other":579,"phone_pct":73.71479354662291,"app_pct":22.32704402515723,"other_pct":3.958162428219852,"rows":null,"rows_per_user":0.0},"화":{"unique":14662,"phone":10648,"app":3350,"other":664,"phone_pct":72.62310735233937,"app_pct":22.848178966034645,"other_pct":4.528713681625971,"rows":null,"rows_per_user":0.0},"수":{"unique":14698,"phone":10680,"app":3378,"other":640,"phone_pct":72.66294733977412,"app_pct":22.982718737243164,"other_pct":4.354333922982718,"rows":null,"rows_per_user":0.0},"목":{"unique":14865,"phone":10874,"app":3349,"other":642,"phone_pct":73.15169862092162,"app_pct":22.529431550622267,"other_pct":4.318869828456105,"rows":null,"rows_per_user":0.0},"금":{"unique":14971,"phone":10892,"app":3441,"other":638,"phone_pct":72.7539910493621,"app_pct":22.98443657738294,"other_pct":4.2615723732549595,"rows":null,"rows_per_user":0.0},"토":{"unique":11760,"phone":8029,"app":3208,"other":523,"phone_pct":68.27380952380952,"app_pct":27.27891156462585,"other_pct":4.447278911564625,"rows":null,"rows_per_user":0.0},"일":{"unique":11296,"phone":7761,"app":3081,"other":454,"phone_pct":68.70573654390935,"app_pct":27.27514164305949,"other_pct":4.019121813031162,"rows":null,"rows_per_user":0.0}}};
+const META=DATA.meta;
+const months=Object.entries(DATA.months);
+const weekdays=Object.entries(DATA.weekdays);
+const fmt=n=>Number(n||0).toLocaleString('ko-KR');
+const pct=n=>Number(n||0).toFixed(1)+'%';
+const escapeHtml=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let unit='monthly'; let methodMode='all';
+const WEEK=weekdays;
+const COLORS={phone:'#2563eb',app:'#14b8a6',other:'#94a3b8'};
+
+function setText(id,txt){document.getElementById(id).textContent=txt;}
+setText('kUnique',fmt(META.unique_ids));
+setText('kDone',fmt(META.completed_rows));
+setText('kReduce',((1-META.unique_ids/META.completed_rows)*100).toFixed(1)+'%');
+setText('kLatest',fmt(DATA.months[META.latest_month].unique));
+setText('kLatestSub',META.latest_month.replace('-', '년 ')+'월 · 전월 대비 '+(DATA.months[META.latest_month].change_pct==null?'—':(DATA.months[META.latest_month].change_pct>=0?'+':'')+DATA.months[META.latest_month].change_pct.toFixed(1)+'%'));
+setText('statusMemo','총 '+fmt(META.rows)+'행 중 이용완료는 '+fmt(META.status['이용완료'])+'건입니다. 이 가운데 승객ID와 날짜가 유효한 이용완료 행은 '+fmt(META.completed_rows)+'건, 기간 전체 고유 승객ID는 '+fmt(META.unique_ids)+'명입니다. 승객ID가 없는 이용완료 행은 '+fmt(META.missing_pid_completed)+'건이라 고유 이용객 집계에서 제외했습니다.');
+
+function dataForUnit(){return unit==='monthly'?months:WEEK;}
+function labelFor(k){return unit==='monthly'?k.replace('-', '년 ')+'월':k+'요일';}
+function xLabel(k){return unit==='monthly'?k.slice(2):k;}
+function updateHead(){
+ const monthly=unit==='monthly';
+ setText('trendTitle',monthly?'월별 실제 이용객':'요일별 실제 이용객');
+ setText('trendDesc',monthly?'각 월에 1회 이상 이용한 고유 승객ID 수':'전체 기간에서 해당 요일에 1회 이상 이용한 고유 승객ID 수');
+ setText('tableTitle',monthly?'월별 집계표':'요일별 집계표');
+ setText('rowCount',(monthly?months.length:WEEK.length)+'개 구간');
+}
+const POLICY_EVENTS=[
+ {date:'2023-10-27',short:'23.10.27',stage:'시범운영',areas:'애월 · 남원',areaCount:'2개 읍면',routes:'7개 노선',buses:'8대',note:'옵서버스 시범운영 시작'},
+ {date:'2024-07-15',short:'24.07.15',stage:'본격운영',areas:'애월 · 남원 · 한림 · 한경 · 성산 · 표선',areaCount:'6개 읍면',routes:'14개 노선',buses:'16대',note:'한경·표선 신규 운영 포함'},
+ {date:'2025-05-28',short:'25.05.28',stage:'본격운영',areas:'애월 · 남원 · 한림 · 한경 · 성산 · 표선(통합) · 구좌 · 조천',areaCount:'8개 읍면',routes:'27개 노선',buses:'32대',note:'성산·표선 통합권역 운영 (권역 수 7개)'},
+ {date:'2026-02-25',short:'26.02.25',stage:'본격운영',areas:'애월 · 남원 · 한림 · 한경 · 성산 · 표선(분리) · 구좌 · 조천 · 대정 · 안덕',areaCount:'10개 읍면',routes:'32개 노선',buses:'42대',note:'성산·표선 분리 운영 · 장거리운행 발생'},
+];
+function policyX(date,arr,p,w){
+ const [y,m,d]=date.split('-').map(Number);
+ const target=new Date(y,m-1,d).getTime();
+ const first=new Date(arr[0][0]+'-01').getTime();
+ const [ly,lm]=arr[arr.length-1][0].split('-').map(Number);
+ const last=new Date(ly,lm,0).getTime();
+ const ratio=Math.max(0,Math.min(1,(target-first)/(last-first)));
+ return p.l+(w-p.l-p.r)*ratio;
+}
+function tooltipShow(e,html){const t=document.getElementById('tooltip');t.innerHTML=html;t.classList.add('show');t.style.left=(e.clientX||0)+'px';t.style.top=(e.clientY||0)+'px';}
+function tooltipHide(){document.getElementById('tooltip').classList.remove('show');}
+
+function renderTrend(){
+ const arr=dataForUnit(); const vals=arr.map(([k,d])=>d.unique); const max=Math.max(...vals)*1.10 || 1; const w=Math.max(860,arr.length*38),h=390,p={l:62,r:20,t:82,b:46};
+ let svg='<svg viewBox=\"0 0 '+w+' '+h+'\" preserveAspectRatio=\"none\">';
+ // 정책 시행일 밴드
+ if(unit==='monthly'){
+   POLICY_EVENTS.forEach((ev,idx)=>{
+     const x=policyX(ev.date,arr,p,w);
+     const ly=idx%2===0?18:46;
+     const lineY=idx%2===0?54:72;
+     svg+='<g class=\"policy-marker\" data-policy=\"'+idx+'\" cursor=\"pointer\">';
+     svg+='<line x1=\"'+x+'\" y1=\"'+lineY+'\" x2=\"'+x+'\" y2=\"'+h+'\" stroke=\"#f59e0b\" stroke-width=\"1.5\" stroke-dasharray=\"5 5\" opacity=\".72\"/>';
+     svg+='<circle cx=\"'+x+'\" cy=\"'+lineY+'\" r=\"4\" fill=\"#fff\" stroke=\"#f59e0b\" stroke-width=\"2\"/>';
+     svg+='<text x=\"'+x+'\" y=\"'+ly+'\" fill=\"#a16207\" font-size=\"10\" font-weight=\"800\" text-anchor=\"middle\">'+ev.short+'</text>';
+     svg+='<text x=\"'+x+'\" y=\"'+(ly+13)+'\" fill=\"#7c5a1a\" font-size=\"9\" font-weight=\"700\" text-anchor=\"middle\">'+ev.stage+' · '+ev.areaCount+'</text>';
+     svg+='</g>';
+   });
+ }
+ for(let i=0;i<=4;i++){const y=p.t+(h-p.t-p.b)*(i/4);const v=max-(max*i/4);svg+='<line x1=\"'+p.l+'\" y1=\"'+y+'\" x2=\"'+(w-p.r)+'\" y2=\"'+y+'\" stroke=\"#e8edf4\" stroke-width=\"1\"/><text x=\"'+(p.l-9)+'\" y=\"'+(y+4)+'\" fill=\"#8190a5\" font-size=\"10\" text-anchor=\"end\">'+fmt(Math.round(v))+'</text>'}
+ let pts=[];arr.forEach(([k,d],i)=>{const x=p.l+(w-p.l-p.r)*(arr.length===1?.5:i/(arr.length-1));const y=p.t+(h-p.t-p.b)*(1-d.unique/max);pts.push([x,y,k,d]);});
+ svg+='<polyline fill=\"none\" stroke=\"#2563eb\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" points=\"'+pts.map(q=>q[0]+','+q[1]).join(' ')+'\"/>';
+ pts.forEach(([x,y,k,d],i)=>{const show=arr.length<=10||i%Math.ceil(arr.length/12)===0||i===arr.length-1; svg+='<circle cx=\"'+x+'\" cy=\"'+y+'\" r=\"4.5\" fill=\"#fff\" stroke=\"#2563eb\" stroke-width=\"2\" class=\"pt\" data-k=\"'+escapeHtml(k)+'\"/>'; if(show)svg+='<text x=\"'+x+'\" y=\"'+(h-17)+'\" fill=\"#718097\" font-size=\"10\" text-anchor=\"middle\">'+escapeHtml(xLabel(k))+'</text>';});
+ svg+='</svg>';document.getElementById('trendChart').innerHTML=svg;
+ document.querySelectorAll('#trendChart .pt').forEach(el=>{el.addEventListener('mousemove',e=>{const k=el.dataset.k,d=(unit==='monthly'?DATA.months[k]:DATA.weekdays[k]);tooltipShow(e,'<b>'+escapeHtml(labelFor(k))+'</b><br>고유 이용객: <b>'+fmt(d.unique)+'</b>명'+(unit==='monthly'?'<br>이용완료 기록: '+fmt(d.rows)+'건':'')+'<br>전화(실시간): '+fmt(d.phone)+'명 · '+pct(d.phone_pct)+'<br>앱(실시간): '+fmt(d.app)+'명 · '+pct(d.app_pct)+'<br>기타: '+fmt(d.other)+'명 · '+pct(d.other_pct));});el.addEventListener('mouseleave',tooltipHide)});
+ document.querySelectorAll('#trendChart .policy-marker').forEach(el=>{el.addEventListener('mousemove',e=>{const ev=POLICY_EVENTS[Number(el.dataset.policy)];tooltipShow(e,'<b>옵서버스 정책 변경 · '+ev.date+'</b><br><b>'+ev.stage+'</b> · '+ev.areaCount+'<br>운영지역: '+escapeHtml(ev.areas)+'<br>운영 노선 수: '+ev.routes+' · 운행대수: '+ev.buses+'<br>'+escapeHtml(ev.note));});el.addEventListener('mouseleave',tooltipHide)});
+}
+
+function renderMethod(){
+ const arr=dataForUnit(); const w=Math.max(860,arr.length*38),h=340,p={l:62,r:20,t:22,b:48}; let svg='<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">';
+ const innerH=h-p.t-p.b;
+ for(let i=0;i<=4;i++){const y=p.t+innerH*(i/4);const lab=100-i*25;svg+='<line x1="'+p.l+'" y1="'+y+'" x2="'+(w-p.r)+'" y2="'+y+'" stroke="#edf1f5"/><text x="'+(p.l-9)+'" y="'+(y+4)+'" fill="#8794a7" font-size="10" text-anchor="end">'+lab+'%</text>'}
+ const step=(w-p.l-p.r)/Math.max(arr.length,1); const bw=Math.max(12,step*.68);
+ arr.forEach(([k,d],i)=>{const x=p.l+i*step+(step-bw)/2; let cur=p.t+innerH; const vals=methodMode==='all'?[['phone',d.phone_pct,d.phone],['app',d.app_pct,d.app],['other',d.other_pct,d.other]]:[['phone',d.phone/(d.phone+d.app)*100,d.phone],['app',d.app/(d.phone+d.app)*100,d.app]]; vals.forEach(([type,share,count])=>{const hh=innerH*share/100;cur-=hh;svg+='<rect x="'+x+'" y="'+cur+'" width="'+bw+'" height="'+Math.max(0,hh)+'" fill="'+COLORS[type]+'" class="barseg" data-k="'+escapeHtml(k)+'" data-type="'+type+'" data-share="'+share.toFixed(1)+'" data-count="'+count+'"/>'}); const show=arr.length<=10||i%Math.ceil(arr.length/12)===0||i===arr.length-1;if(show)svg+='<text x="'+(x+bw/2)+'" y="'+(h-17)+'" fill="#718097" font-size="10" text-anchor="middle">'+escapeHtml(xLabel(k))+'</text>'; });
+ svg+='</svg>'; const title=(methodMode==='all'?'전체 호출방법 비율':'전화·앱 실시간 간 비율');
+ const card=document.querySelectorAll('.card')[1]; let chartEl=card.querySelector('#methodMini');
+ // Reuse the right card: inject compact 100% chart under the donut only once.
+ let mount=card.querySelector('#methodMini');
+ if(!mount){mount=document.createElement('div');mount.id='methodMini';mount.style.marginTop='14px';card.appendChild(mount)}
+ mount.innerHTML='<div class="legend"><span><i class="dot phone"></i>전화(실시간)</span><span><i class="dot app"></i>앱(실시간)</span>'+(methodMode==='all'?'<span><i class="dot other"></i>기타</span>':'')+'</div><div class="chart-wrap"><div id="methodChart" class="chart" style="height:300px"></div></div>';
+ document.getElementById('methodChart').innerHTML=svg;
+ document.querySelectorAll('#methodChart .barseg').forEach(el=>{el.addEventListener('mousemove',e=>{const k=el.dataset.k,d=(unit==='monthly'?DATA.months[k]:DATA.weekdays[k]);const type=el.dataset.type;const name=type==='phone'?'전화(실시간)':type==='app'?'앱(실시간)':'기타';tooltipShow(e,'<b>'+escapeHtml(labelFor(k))+'</b><br>'+name+': <b>'+fmt(Number(el.dataset.count))+'명</b><br>구성비: <b>'+el.dataset.share+'%</b>');});el.addEventListener('mouseleave',tooltipHide)});
+}
+
+function renderDonut(){
+ const g=META.global_method_partition; const total=Object.values(g).reduce((a,b)=>a+b,0); const items=[['전화(실시간)',g['전화(실시간)'],'phone'],['앱(실시간)',g['앱(실시간)'],'app'],['기타',g['기타'],'other']];
+ const cx=75,cy=75,r=56,circ=2*Math.PI*r; let acc=0, svg='<svg viewBox="0 0 150 150" class="donut"><circle cx="75" cy="75" r="56" fill="none" stroke="#edf1f5" stroke-width="18"/>';
+ const arcs=[]; items.forEach(([name,val,type])=>{const share=val/total;const len=circ*share;arcs.push({name,val,type,share});svg+='<circle cx="75" cy="75" r="56" fill="none" stroke="'+COLORS[type]+'" stroke-width="18" stroke-dasharray="'+len+' '+(circ-len)+'" stroke-dashoffset="'+(-acc)+'" transform="rotate(-90 75 75)"/>';acc+=len});svg+='<text x="75" y="70" text-anchor="middle" fill="#10213a" font-size="17" font-weight="850">'+fmt(total)+'</text><text x="75" y="90" text-anchor="middle" fill="#7a8799" font-size="10">기간 고유 이용객</text></svg>';document.getElementById('donut').innerHTML=svg;
+ document.getElementById('methodList').innerHTML=arcs.map(x=>'<div class="method-row"><div class="name">'+x.name+'</div><div class="bar"><i style="width:'+((x.val/total)*100).toFixed(1)+'%;background:'+COLORS[x.type]+'"></i></div><div class="pct">'+pct(x.val/total*100)+'</div></div>').join('');
+ document.getElementById('methodList').style.display='grid';
+}
+
+function renderTable(){
+ const arr=dataForUnit(); const h=unit==='monthly'?'<tr><th>기간</th><th>고유 이용객</th><th>이용완료</th><th>전화(실시간)</th><th>앱(실시간)</th><th>기타</th><th>전화 비율</th><th>앱 비율</th><th>전월/전요일 변화</th></tr>':'<tr><th>요일</th><th>고유 이용객</th><th>전화(실시간)</th><th>앱(실시간)</th><th>기타</th><th>전화 비율</th><th>앱 비율</th></tr>';
+ document.getElementById('thead').innerHTML=h;
+ document.getElementById('tbody').innerHTML=arr.map(([k,d])=>{const ch=d.change_pct;return unit==='monthly'?'<tr><td>'+escapeHtml(labelFor(k))+'</td><td>'+fmt(d.unique)+'</td><td>'+fmt(d.rows)+'</td><td>'+fmt(d.phone)+'</td><td>'+fmt(d.app)+'</td><td>'+fmt(d.other)+'</td><td>'+pct(d.phone_pct)+'</td><td>'+pct(d.app_pct)+'</td><td class="'+(ch==null?'':ch>=0?'positive':'negative')+'">'+(ch==null?'—':(ch>=0?'+':'')+ch.toFixed(1)+'%')+'</td></tr>':'<tr><td>'+escapeHtml(labelFor(k))+'</td><td>'+fmt(d.unique)+'</td><td>'+fmt(d.phone)+'</td><td>'+fmt(d.app)+'</td><td>'+fmt(d.other)+'</td><td>'+pct(d.phone_pct)+'</td><td>'+pct(d.app_pct)+'</td></tr>'}).join('');
+}
+function render(){updateHead();renderTrend();renderDonut();renderMethod();renderTable();}
+function toggleButtons(){document.getElementById('mMonthly').classList.toggle('active',unit==='monthly');document.getElementById('mWeekday').classList.toggle('active',unit==='weekday');document.getElementById('mAll').classList.toggle('active',methodMode==='all');document.getElementById('mRealtime').classList.toggle('active',methodMode==='realtime')}
+document.getElementById('mMonthly').onclick=()=>{unit='monthly';toggleButtons();render()};
+document.getElementById('mWeekday').onclick=()=>{unit='weekday';toggleButtons();render()};
+document.getElementById('mAll').onclick=()=>{methodMode='all';toggleButtons();render()};
+document.getElementById('mRealtime').onclick=()=>{methodMode='realtime';toggleButtons();render()};
+document.getElementById('exportCsv').onclick=()=>{const arr=dataForUnit();const lines=[];lines.push(unit==='monthly'?'기간,고유 이용객,이용완료,전화(실시간),앱(실시간),기타,전화 비율,앱 비율,변화율':'요일,고유 이용객,전화(실시간),앱(실시간),기타,전화 비율,앱 비율');arr.forEach(([k,d])=>{lines.push(unit==='monthly'?[labelFor(k),d.unique,d.rows,d.phone,d.app,d.other,d.phone_pct.toFixed(1)+'%',d.app_pct.toFixed(1)+'%',d.change_pct==null?'':d.change_pct.toFixed(1)+'%'].join(','):[labelFor(k),d.unique,d.phone,d.app,d.other,d.phone_pct.toFixed(1)+'%',d.app_pct.toFixed(1)+'%'].join(','))});const blob=new Blob([new Uint8Array([0xEF,0xBB,0xBF]),lines.join('\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(unit==='monthly'?'월별':'요일별')+'_실제이용객_집계.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)};
+render();
+</script>
+</body>
+</html>
