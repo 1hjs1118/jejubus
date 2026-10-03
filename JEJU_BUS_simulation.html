@@ -97,6 +97,17 @@
     .bus-icon { width:28px; height:18px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
     .bus-wrap { display:flex; flex-direction:column; align-items:center; transform-origin:center center; }
     .bus-no { font-size:9px; font-weight:800; color:#12304a; background:rgba(255,255,255,.92); border-radius:4px; padding:0 3px; line-height:13px; margin-top:-2px; }
+    .route-type-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .route-type-head > label:first-child { color:var(--muted); font-size:11px; font-weight:800; }
+    .direct-toggle { display:inline-flex; align-items:center; gap:6px; color:var(--navy); font-size:11px; font-weight:900; white-space:nowrap; }
+    .direct-toggle input { margin:0; accent-color:var(--blue); }
+    .direct-route-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; align-items:stretch; }
+    .direct-route-row button { border:0; border-radius:10px; padding:10px 14px; background:#12304a; color:#fff; font-weight:900; font-size:12px; white-space:nowrap; }
+    .direct-route-row button:hover { filter:brightness(1.05); }
+    .direct-route-row button:disabled { opacity:.48; cursor:not-allowed; filter:none; }
+    .direct-route-row input { min-width:0; }
+    .direct-route-row input:disabled { background:#f3f5f7; color:#98a4af; cursor:not-allowed; }
+    .route-highlight { filter: drop-shadow(0 1px 2px rgba(180,25,25,.22)); }
     @media (max-width:1160px) {
       .workspace { grid-template-columns:1fr; }
       .control-card { position:static; }
@@ -172,8 +183,19 @@
           <label class="hint" style="display:flex;gap:8px;align-items:center;"><input id="showBuses" type="checkbox" checked> 버스 표시</label>
         <label class="hint" style="display:flex;gap:8px;align-items:center;"><input id="lightBuses" type="checkbox" checked> 경량 모드 (점 표시, 권장)</label>
           <div class="field">
-            <label for="busTypeSelect">노선 유형</label>
+            <div class="route-type-head">
+              <label for="busTypeSelect">노선 유형</label>
+              <label class="direct-toggle"><input id="directRouteToggle" type="checkbox"> 직접입력</label>
+            </div>
             <select id="busTypeSelect"><option value="all">전체 노선</option></select>
+          </div>
+          <div id="directRouteBox" class="field direct-route-box" hidden>
+            <label for="directRouteInput">노선번호 직접입력</label>
+            <div class="direct-route-row">
+              <input id="directRouteInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="예: 611 635" disabled>
+              <button id="directRouteBtn" type="button" disabled>조회</button>
+            </div>
+            <div id="directRouteHint" class="hint" style="margin-top:6px">여러 노선은 띄어쓰기로 구분합니다.</div>
           </div>
           <div class="range-head"><span>동시 표시 버스</span><strong id="busCapValue">70대</strong></div>
           <input id="busCapRange" type="range" min="10" max="600" step="10" value="70">
@@ -271,7 +293,8 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       city: 'all', dong: 'all', topN: 80, showAll: false, hideStops: false,
       selectedId: null, timer: null, map: null, layer: null, busLayer: null,
       lookup: new Map(), showBuses: true, busCap: 70, busType: 'all', speed: 0.6,
-      busMarkers: new Map(), lightBuses: true, tripIndex: null
+      busMarkers: new Map(), lightBuses: true, tripIndex: null,
+      directRoutes: [], routeHighlightLayer: null, routeHighlightKey: '', directRouteRestoreBusType: 'all'
     };
     STOPS.forEach(s => state.lookup.set(s.id, s));
 
@@ -339,6 +362,11 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       const ts = $('busTypeSelect');
       ts.innerHTML = '<option value="all">전체 노선</option>' +
         TRIP.types.map((t,i) => `<option value="${i}">${t}</option>`).join('');
+      ts.disabled = false;
+      $('directRouteToggle').checked = false;
+      $('directRouteBox').hidden = true;
+      $('directRouteInput').disabled = true;
+      $('directRouteBtn').disabled = true;
     }
     function rebuildDongSelect() {
       const sel = $('dongSelect');
@@ -359,6 +387,7 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       }).addTo(state.map);
       state.canvas = L.canvas({ padding: 0.5 });
       state.layer = L.layerGroup().addTo(state.map);
+      state.routeHighlightLayer = L.layerGroup().addTo(state.map);
       state.busLayer = L.layerGroup().addTo(state.map);
       state.map.on('moveend', () => { if (state.showBuses) updateBuses(); });
     }
@@ -368,6 +397,148 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       [...$('metricMode').children].forEach(b => b.classList.toggle('active', b.dataset.value === metric));
       document.querySelectorAll('.legend-btn').forEach(b => b.classList.toggle('active', b.dataset.metric === metric));
       render(false);
+    }
+
+    function normalizeRouteToken(v) {
+      return String(v ?? '').trim().replace(/번$/i,'').replace(/[^0-9A-Za-z가-힣_-]/g,'');
+    }
+    function routeSetFromInput() {
+      const raw = $('directRouteInput').value.trim();
+      const tokens = raw.split(/\s+/).map(normalizeRouteToken).filter(Boolean);
+      return [...new Set(tokens)];
+    }
+    function routeTrips(route) {
+      return TRIP.trips.filter(t => String(t.r) === String(route));
+    }
+    function customRouteSegments(routes) {
+      const out = [];
+      const seen = new Set();
+      routes.forEach(route => {
+        routeTrips(route).forEach(tr => {
+          for (let i = 1; i < tr.p.length; i++) {
+            const a = tr.p[i-1][1], b = tr.p[i][1];
+            if (a === b) continue;
+            const k = route + '|' + a + '-' + b;
+            if (!seen.has(k)) {
+              seen.add(k);
+              out.push({ route: String(route), a, b, key: a + '-' + b });
+            }
+          }
+        });
+      });
+      return out;
+    }
+    function redrawCustomRouteHighlights(fit) {
+      if (!state.routeHighlightLayer) return;
+      state.routeHighlightLayer.clearLayers();
+      const routes = state.directRoutes || [];
+      if (!routes.length) return;
+      const segments = customRouteSegments(routes);
+      const bounds = L.latLngBounds([]);
+      let shown = 0;
+      segments.forEach(seg => {
+        const path = segmentPath(seg.a, seg.b, false);
+        if (!path || path.length < 2) return;
+        const line = L.polyline(path, {
+          color: '#e53935',
+          opacity: 0.50,
+          weight: 8,
+          lineCap: 'round',
+          lineJoin: 'round',
+          className: 'route-highlight'
+        });
+        line.bindTooltip(`${escapeHTML(seg.route)}번 · OSRM 도로 경로`, {sticky:true, direction:'top'});
+        line.addTo(state.routeHighlightLayer);
+        path.forEach(pt => bounds.extend(pt));
+        shown++;
+      });
+      if (fit && shown && bounds.isValid() && state.map) {
+        state.map.fitBounds(bounds.pad(0.08), {padding:[18,18], maxZoom:14});
+      }
+    }
+    function loadCustomRouteOsrm(routes) {
+      const segments = customRouteSegments(routes);
+      const missing = segments.filter(seg => {
+        if (TRIP.geoms[seg.key] && TRIP.geoms[seg.key].length >= 2) return false;
+        const rev = seg.b + '-' + seg.a;
+        return !(TRIP.geoms[rev] && TRIP.geoms[rev].length >= 2);
+      });
+      if (!missing.length) {
+        redrawCustomRouteHighlights(true);
+        return;
+      }
+      const currentKey = routes.join('|');
+      const CK = 'sim-osrm-custom-v1';
+      let cache = {};
+      try { cache = JSON.parse(localStorage.getItem(CK) || '{}'); } catch (e) { cache = {}; }
+      const todo = missing.slice();
+      let done = 0;
+      const save = () => { try { localStorage.setItem(CK, JSON.stringify(cache)); } catch (e) {} };
+      const next = () => {
+        const seg = todo.shift();
+        if (!seg) {
+          save();
+          redrawCustomRouteHighlights(true);
+          $('directRouteHint').textContent = `${routes.join(' · ')}번 경로 강조 완료 · OSRM ${done}/${missing.length}구간 반영`;
+          return;
+        }
+        const cached = cache[seg.key];
+        if (cached && cached.length >= 2) {
+          TRIP.geoms[seg.key] = cached;
+          done++;
+          redrawCustomRouteHighlights(false);
+          setTimeout(next, 30);
+          return;
+        }
+        const A = stopById.get(seg.a), B = stopById.get(seg.b);
+        if (!A || !B) { setTimeout(next, 20); return; }
+        const url = 'https://router.project-osrm.org/route/v1/driving/' + A.lon + ',' + A.lat + ';' + B.lon + ',' + B.lat +
+          '?overview=full&geometries=geojson&alternatives=false&steps=false';
+        fetch(url).then(r => r.ok ? r.json() : null).then(j => {
+          if (j && j.routes && j.routes[0] && j.routes[0].geometry && j.routes[0].geometry.coordinates) {
+            const path = j.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            if (path.length >= 2) {
+              TRIP.geoms[seg.key] = path;
+              cache[seg.key] = path;
+              done++;
+              if (state.routeHighlightKey === currentKey) redrawCustomRouteHighlights(false);
+            }
+          }
+        }).catch(() => {}).then(() => setTimeout(next, 280));
+      };
+      if (state.routeHighlightKey === currentKey) redrawCustomRouteHighlights(true);
+      next();
+    }
+    function clearCustomRouteSelection() {
+      state.directRoutes = [];
+      state.routeHighlightKey = '';
+      if (state.routeHighlightLayer) state.routeHighlightLayer.clearLayers();
+      $('directRouteHint').textContent = '여러 노선은 띄어쓰기로 구분합니다.';
+    }
+    function applyDirectRoutes() {
+      if (!$('directRouteToggle').checked) return;
+      const routes = routeSetFromInput();
+      if (!routes.length) {
+        toast('노선번호를 입력해주세요.');
+        clearCustomRouteSelection();
+        updateBuses();
+        return;
+      }
+      const found = routes.filter(r => routeTrips(r).length);
+      const missing = routes.filter(r => !routeTrips(r).length);
+      state.directRoutes = found;
+      state.routeHighlightKey = found.join('|');
+      redrawCustomRouteHighlights(true);
+      updateBuses();
+      if (!found.length) {
+        toast('입력한 노선을 찾지 못했습니다.');
+        $('directRouteHint').textContent = '입력한 노선이 데이터에 없습니다.';
+        return;
+      }
+      loadCustomRouteOsrm(found);
+      $('directRouteHint').textContent = `${found.join(' · ')}번 ${missing.length ? '· 미등록: ' + missing.join(', ') : ''}`;
+      if (missing.length) toast(`조회됨: ${found.join(', ')}번 · 미등록: ${missing.join(', ')}번`);
+      else toast(`${found.join(', ')}번 노선을 조회했습니다.`);
     }
 
     function bind() {
@@ -409,7 +580,40 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
         $('busCapValue').textContent = state.busCap + '대';
         updateBuses();
       });
-      $('busTypeSelect').addEventListener('change', e => { state.busType = e.target.value; updateBuses(); });
+      $('busTypeSelect').addEventListener('change', e => {
+        state.busType = e.target.value;
+        if (!$('directRouteToggle').checked) clearCustomRouteSelection();
+        updateBuses();
+      });
+      $('directRouteToggle').addEventListener('change', e => {
+        const on = e.target.checked;
+        const sel = $('busTypeSelect');
+        const box = $('directRouteBox');
+        const input = $('directRouteInput');
+        const btn = $('directRouteBtn');
+        if (on) {
+          state.directRouteRestoreBusType = sel.value || 'all';
+          sel.disabled = true;
+          state.busType = 'direct';
+          box.hidden = false;
+          input.disabled = false;
+          btn.disabled = false;
+          input.focus();
+          updateBuses();
+          toast('직접입력 모드입니다. 노선번호를 입력한 뒤 조회하세요.');
+        } else {
+          sel.disabled = false;
+          sel.value = state.directRouteRestoreBusType || 'all';
+          state.busType = sel.value;
+          box.hidden = true;
+          input.disabled = true;
+          btn.disabled = true;
+          clearCustomRouteSelection();
+          updateBuses();
+        }
+      });
+      $('directRouteBtn').addEventListener('click', applyDirectRoutes);
+      $('directRouteInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyDirectRoutes(); });
       $('exportButton').addEventListener('click', exportCsv);
       $('saveHtmlBtn').addEventListener('click', saveHtml);
       $('saveHtmlBtn2').addEventListener('click', saveHtml);
@@ -821,7 +1025,9 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
         for (let i=0;i<pool.length;i++) {
           const tr = pool[i];
           if (!tripRunsToday(tr)) continue;
-          if (wantType !== null && tr.k !== wantType) continue;
+          if (state.busType === 'direct') {
+            if (!state.directRoutes.length || state.directRoutes.indexOf(String(tr.r)) < 0) continue;
+          } else if (wantType !== null && tr.k !== wantType) continue;
           if (tr.p[0][0] <= minute && minute <= tr.p[tr.p.length-1][0]) active.push(tr);
         }
       }
@@ -958,7 +1164,7 @@ function togglePlay() {
     // OSRM 경로가 늦게 도착하더라도 현재 시뮬레이션 화면을 즉시 재계산할 수 있게 공개 훅을 둡니다.
     window.__SIM_REFRESH = function () { render(false); };
     window.addEventListener('sim-osrm-updated', function () {
-      try { render(false); } catch (e) {}
+      try { render(false); redrawCustomRouteHighlights(false); } catch (e) {}
     });
     initSelectors();
     initMap();
