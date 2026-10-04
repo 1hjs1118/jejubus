@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>제주 버스 정류장·차량 시뮬레이터 (주중·주말 시간표)</title>
+  <title>제주 버스 정류장·차량 시뮬레이터 (주중·주말 시간표) · 12fixed</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root {
@@ -137,7 +137,7 @@
         <span class="hero-badge">정류장 4299개</span>
         <span class="hero-badge">버스 운행 7654회</span>
         <span class="hero-badge">단위: 명</span>
-        <button id="saveHtmlBtn" class="file-button" type="button">9fixed.html 저장</button>
+        <button id="saveHtmlBtn" class="file-button" type="button">11fixed.html 저장</button>
       </div>
     </header>
     <section class="warning-banner">
@@ -219,7 +219,7 @@
           <label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="showAll" type="checkbox"> 나머지 정류장도 작은 점으로</label>
         <label class="hint" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="hideStops" type="checkbox"> 정류장 미표시</label>
           <button id="exportButton" class="export-button" type="button">현재 TOP 정류장 CSV</button>
-          <button id="saveHtmlBtn2" class="export-button" type="button">9fixed.html 저장</button>
+          <button id="saveHtmlBtn2" class="export-button" type="button">11fixed.html 저장</button>
         </section>
       </aside>
       <section class="main-column">
@@ -945,12 +945,17 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       mid.push(EAST_CORRIDOR[ib]);
       return [a].concat(mid, [b]);
     }
-    function segmentPath(idA, idB, forceOsrm) {
+    function segmentPath(idA, idB, forceOsrm, routeScope) {
       const key = idA + '-' + idB;
       const a = stopById.get(idA), b = stopById.get(idB);
       if (!a || !b) return null;
       let path = null;
-      if (forceOsrm === 3) {
+      if (forceOsrm === 4) {
+        const scopedKey = String(routeScope || '') + '|' + key;
+        const scoped = TRIP._routeGeoms && TRIP._routeGeoms[scopedKey];
+        if (!scoped || scoped.length < 2) return null;
+        path = scoped.slice();
+      } else if (forceOsrm === 3) {
         // Target routes use their in-file geometry first; only missing embedded edges
         // may use a verified OSRM path. Never fall back to a straight line while pending.
         const revKey = idB + '-' + idA;
@@ -978,7 +983,16 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
         }
         if (!path) path = [[a.lat, a.lon], [b.lat, b.lon]];
       }
-      if (pathHitsAir(path)) path = wrapAirport([a.lat, a.lon], [b.lat, b.lon]);
+      // Do not replace a legitimate airport-area road path with a long synthetic perimeter detour.
+      // Prefer a verified OSRM road path when it avoids the airport polygon; otherwise retain
+      // the route geometry as-is. Timetable minute values in trip.p are never changed here.
+      if (pathHitsAir(path)) {
+        const verified = TRIP._osrmVerified && (TRIP._osrmVerified[idA + '-' + idB] || TRIP._osrmVerified[idB + '-' + idA]);
+        if (verified && verified.length >= 2) {
+          const candidate = TRIP._osrmVerified[idA + '-' + idB] ? verified : verified.slice().reverse();
+          if (!pathHitsAir(candidate)) path = candidate.slice();
+        }
+      }
       path[0] = [a.lat, a.lon];
       path[path.length - 1] = [b.lat, b.lon];
       if (AIRPORT_STOP_IDS.has(idA)) path.splice(1, 0, [a.lat, a.lon]);
@@ -1011,12 +1025,13 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
     function bearing(a, b) {
       return Math.atan2(b[1]-a[1], b[0]-a[0]) * 180 / Math.PI;
     }
-    function segmentMetric(idA, idB, forceOsrm) {
-      const modeKey = forceOsrm === 2 ? '2' : (forceOsrm === 3 ? '3' : (forceOsrm ? '1' : '0'));
+    function segmentMetric(idA, idB, forceOsrm, routeScope) {
+      const modeKey = forceOsrm === 4 ? '4:' + String(routeScope || '') :
+        (forceOsrm === 2 ? '2' : (forceOsrm === 3 ? '3' : (forceOsrm ? '1' : '0')));
       const key = modeKey + ':' + idA + '-' + idB;
       let metric = state.segmentMetrics.get(key);
       if (metric) return metric;
-      const path = segmentPath(idA, idB, forceOsrm);
+      const path = segmentPath(idA, idB, forceOsrm, routeScope);
       if (!path || path.length < 2) return null;
       const lengths = new Array(path.length);
       lengths[0] = 0;
@@ -1057,8 +1072,11 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       const label = String(trip.l || '');
       const embeddedFirst = routeId === '221' || routeId === '222' ||
         (routeId === '111' && (label.indexOf('111번') >= 0 || label.indexOf('111-1') >= 0));
-      const mode = embeddedFirst ? 3 : (trip.osm === 2 ? 2 : trip.osm === 1);
-      const metric = segmentMetric(p[i][1], p[i+1][1], mode);
+      const routeScoped = routeId === '452' || routeId === '452-1' || routeId === '111-1' ||
+        (routeId === '111' && label.indexOf('111-1') >= 0);
+      const routeScope = routeScoped ? routeId + ':' + String(trip.d || '') + ':' + label : '';
+      const mode = routeScoped ? 4 : (embeddedFirst ? 3 : (trip.osm === 2 ? 2 : (trip.osm === 1)));
+      const metric = segmentMetric(p[i][1], p[i+1][1], mode, routeScope);
       if (!metric) return null;
       const here = pointOnMetric(metric, frac);
       const nxt = pointOnMetric(metric, Math.min(1, frac + 0.04));
@@ -1410,9 +1428,9 @@ function togglePlay() {
       const blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = '9fixed.html';
+      a.download = '11fixed.html';
       document.body.appendChild(a); a.click(); a.remove();
-      toast('9fixed.html 파일을 저장했습니다.');
+      toast('11fixed.html 파일을 저장했습니다.');
     }
 
     // OSRM 경로가 늦게 도착하더라도 현재 시뮬레이션 화면을 즉시 재계산할 수 있게 공개 훅을 둡니다.
@@ -1635,5 +1653,84 @@ function togglePlay() {
     if (todo.length) next();
   })();
   </script>
+<script>
+(function () {
+  'use strict';
+  var TRIP = window.TRIP_DATA;
+  var DATA = window.BUS_DATA;
+  if (!TRIP || !Array.isArray(TRIP.trips) || !DATA || !Array.isArray(DATA.stops)) return;
+  var byId = {};
+  DATA.stops.forEach(function (stop) { byId[String(stop.id)] = stop; });
+  TRIP._routeGeoms = TRIP._routeGeoms || {};
+  var cacheKey = 'sim-osrm-route-scoped-v2-111452';
+  var cache = {};
+  try { cache = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch (e) { cache = {}; }
+  function isTarget(t) {
+    var r = String(t.r || ''), l = String(t.l || '');
+    return r === '452' || r === '452-1' || r === '111-1' || (r === '111' && l.indexOf('111-1') >= 0);
+  }
+  function scopeOf(t) { return String(t.r || '') + ':' + String(t.d || '') + ':' + String(t.l || ''); }
+  function distance(a, b) { return Math.hypot(a[0]-b[0], (a[1]-b[1])*0.83); }
+  function acceptable(aId, bId, path) {
+    var A = byId[String(aId)], B = byId[String(bId)];
+    if (!A || !B || !Array.isArray(path) || path.length < 2) return false;
+    var straight = distance([A.lat,A.lon], [B.lat,B.lon]), total = 0;
+    for (var i=1; i<path.length; i++) {
+      if (!Array.isArray(path[i-1]) || !Array.isArray(path[i]) ||
+          !Number.isFinite(path[i][0]) || !Number.isFinite(path[i][1])) return false;
+      total += distance(path[i-1], path[i]);
+    }
+    return distance(path[0], [A.lat,A.lon]) < 0.004 &&
+      distance(path[path.length-1], [B.lat,B.lon]) < 0.004 && total < straight*4 + 0.008;
+  }
+  function add(a, b, scope, path) {
+    if (!acceptable(a,b,path)) return false;
+    var anchored = path.map(function (p) { return [p[0],p[1]]; });
+    var A = byId[String(a)], B = byId[String(b)];
+    anchored[0] = [A.lat,A.lon];
+    anchored[anchored.length-1] = [B.lat,B.lon];
+    var k = scope + '|' + a + '-' + b;
+    TRIP._routeGeoms[k] = anchored;
+    cache[k] = anchored;
+    return true;
+  }
+  var seen = {}, todo = [];
+  TRIP.trips.forEach(function (t) {
+    if (!isTarget(t) || !Array.isArray(t.p)) return;
+    var scope = scopeOf(t);
+    for (var i=1; i<t.p.length; i++) {
+      var a = String(t.p[i-1][1]), b = String(t.p[i][1]);
+      if (!a || !b || a===b) continue;
+      var k = scope + '|' + a + '-' + b;
+      if (seen[k]) continue;
+      seen[k] = true;
+      if (acceptable(a,b,cache[k])) add(a,b,scope,cache[k]);
+      else todo.push({a:a,b:b,scope:scope});
+    }
+  });
+  function save() { try { localStorage.setItem(cacheKey, JSON.stringify(cache)); } catch (e) {} }
+  function next() {
+    var item = todo.shift();
+    if (!item) { save(); return; }
+    var A=byId[item.a], B=byId[item.b];
+    if (!A || !B) { setTimeout(next,40); return; }
+    var url='https://router.project-osrm.org/route/v1/driving/'+A.lon+','+A.lat+';'+B.lon+','+B.lat+
+      '?overview=full&geometries=geojson&alternatives=false&steps=false';
+    fetch(url)
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (json) {
+        var coords=json && json.routes && json.routes[0] && json.routes[0].geometry && json.routes[0].geometry.coordinates;
+        if (!coords) return;
+        var path=coords.map(function (p) { return [p[1],p[0]]; });
+        if (add(item.a,item.b,item.scope,path)) {
+          try { window.dispatchEvent(new Event('sim-osrm-updated')); } catch (e) {}
+        }
+      })
+      .catch(function () {})
+      .then(function () { setTimeout(next,350); });
+  }
+  if (todo.length) next();
+})();
+</script>
 </body>
 </html>
