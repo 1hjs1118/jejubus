@@ -756,7 +756,7 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
           row = { id: routeId, label: String(tr.l || (routeId + '번')), sum: 0, buses: 0 };
           routes.set(routeId, row);
         }
-        row.sum += onboardOf(tr, { seg: seg });
+        row.sum += onboardOf(tr, { seg: seg, minute: minute });
         row.buses += 1;
       }
       const rows = Array.from(routes.values()).map(r => ({
@@ -1043,7 +1043,7 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       if (!metric) return null;
       const here = pointOnMetric(metric, frac);
       const nxt = pointOnMetric(metric, Math.min(1, frac + 0.04));
-      return { lat: here[0], lon: here[1], ang: bearing(here, nxt), from: p[i][1], to: p[i+1][1], seg: i, frac: frac };
+      return { lat: here[0], lon: here[1], ang: bearing(here, nxt), from: p[i][1], to: p[i+1][1], seg: i, frac: frac, minute: minute };
     }
     const TYPE_WEIGHT = [1.3, 0.9, 1.2, 1.2, 0.7, 0.45, 0.08, 0.5, 0.06, 0.04];
     const TYPE_CAP = [46, 46, 46, 48, 39, 25, 45, 46, 25, 12];
@@ -1129,170 +1129,409 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
       const m=state.month<0?0:state.month,day=state.dayType?5:0;
       return Math.max(0.001,(info?info.ma[m]:0.001)*Math.max(0.05,profile&&profile[day]?profile[day][h]||0:1));
     }
-    function buildAllocation(){
-      const key=occupancyKey();if(state.allocationKey===key)return;
-      const rows=new Map(),wanted=new Map(Object.keys(window.ROUTE_DEMAND||{}).map(r=>[r,Math.max(0,demandOf(r))]));
-      const targets=new Map(),supply=new Map();
-      for(const s of STOPS){targets.set(s.id,Math.max(0,dailyOf(s)));supply.set(s.id,0);}
-      TRIP.trips.forEach(tr=>{
-        tr._boards3333=new Float64Array(tr.p.length);tr._alights5555=new Float64Array(tr.p.length);tr._occKey=null;
-        tr._vehCap=(window.ROUTE_CAP&&window.ROUTE_CAP[tr.r])||TYPE_CAP[tr.k]||40;
-        if(!tripRunsToday(tr)||tr.p.length<2)return;
-        if(!rows.has(tr.r))rows.set(tr.r,[]);
-        const row=rows.get(tr.r);
-        for(let i=0;i<tr.p.length-1;i++){
-          if(tr._repairHiddenEdges&&tr._repairHiddenEdges.indexOf(i)>=0)continue;
-          const s=stopById.get(tr.p[i][1]);if(!s)continue;
-          const h=Math.floor(tr.p[i][0]/60)%24;
-          let near=0;for(const c of nearby5555(s))if(c.s.id!==s.id)near+=Math.max(0,metricsOf(c.s,h).b)/(1+8*c.km);
-          row.push({tr,i,s,h,v:0,cap:tr._vehCap,w:Math.max(0.001,metricsOf(s,h).b+0.16*near+0.02)*hourBoost(h)});
+    // ---- 경로 경유 정류장 확장 + 정원 상한 IPF 배분 (2026-10-07 개정) ----
+    // 1) 각 운행은 시간표 시각 정류장뿐 아니라 도로 경로가 지나는 모든 정류장(경로 25m 이내, 직선 보정 구간 35m)에서
+    //    승하차할 수 있습니다. 통과 시각은 앞뒤 시각 정류장 사이를 경로 거리 비율로 보간합니다.
+    // 2) 노선별 일 승차와 정류장별 일 승차(원본)를 동시에 맞추는 IPF로 운행·정류장별 승차를 배분합니다.
+    //    1.2km 근접 정류장 대체는 사용하지 않습니다.
+    // 3) 정원 제약: 한 정류장에서 한 운행의 승차는 정원 이하이고, 재차가 정원을 넘는 운행은 승차 가중치를 낮춰
+    //    같은 노선의 다른 운행·같은 정류장의 다른 노선으로 승차를 다시 배분합니다.
+    //    하차(추정치)는 최소 1정류장 승차 후 읍면동 하차 비중으로 배분하고, 남는 초과분만 하차 조정으로 처리해 따로 집계합니다.
+    const PASS_ROAD_M=25,PASS_STRAIGHT_M=35,PASS_SIDE_FREE_M=6,PASS_END_M=30;
+    state.expandVer=1;state.passCache=new Map();
+    function tripMode5555(trip){
+      const routeId=String(trip.r||''),label=String(trip.l||'');
+      const embeddedFirst=routeId==='221'||routeId==='222'||
+        (routeId==='111'&&(label.indexOf('111번')>=0||label.indexOf('111-1')>=0));
+      const roadStrictRoutes=['300','316','331','332','342','347','360','365','454','475'];
+      const routeScoped=roadStrictRoutes.indexOf(routeId)>=0||routeId==='452'||routeId==='452-1'||
+        routeId==='111-1'||(routeId==='111'&&label.indexOf('111-1')>=0);
+      return {
+        mode:routeScoped?4:(embeddedFirst?3:(trip.osm===2?2:(trip.osm===1))),
+        scope:routeScoped?routeId+':'+String(trip.d||'')+':'+label:''
+      };
+    }
+    function baseName5555(s){
+      if(s._bn==null)s._bn=String(s.name||s.id).replace(/\s*[\[(][^\])]*[\])]\s*$/,'').trim()||String(s.id);
+      return s._bn;
+    }
+    function hasTwin5555(s){
+      if(s._twin!=null)return s._twin;
+      const bn=baseName5555(s);
+      s._twin=nearby5555(s).some(c=>c.s.id!==s.id&&c.km<=0.08&&baseName5555(c.s)===bn);
+      return s._twin;
+    }
+    function passStops5555(idA,idB,mode,scope){
+      const key=String(mode)+'|'+scope+'|'+idA+'-'+idB;
+      const hit=state.passCache.get(key);
+      if(hit)return hit;
+      let out=[];
+      const A=stopById.get(idA),B=stopById.get(idB);
+      const metric=A&&B?segmentMetric(idA,idB,mode,scope):null;
+      if(metric){
+        const lat0=A.lat,lon0=A.lon,KY=111000,KX=111000*Math.cos(lat0*Math.PI/180);
+        const pts=[];
+        let minLa=Infinity,maxLa=-Infinity,minLo=Infinity,maxLo=-Infinity;
+        for(const q of metric.path){
+          const x=(q[1]-lon0)*KX,y=(q[0]-lat0)*KY,last=pts[pts.length-1];
+          if(!last||Math.hypot(x-last[0],y-last[1])>0.5)pts.push([x,y]);
+          if(q[0]<minLa)minLa=q[0];
+          if(q[0]>maxLa)maxLa=q[0];
+          if(q[1]<minLo)minLo=q[1];
+          if(q[1]>maxLo)maxLo=q[1];
         }
-      });
-      let allocated=0,missingRouteTotal=0,capacityInfeasible=0;
-      const routeRows=[],missingRoutes=[],routeDeficits=[],all=[];
-      wanted.forEach((daily,r)=>{
-        const ev=rows.get(r)||[];let left=daily,available=ev;
-        for(let pass=0;pass<20&&left>1e-8&&available.length;pass++){
-          let w=0;for(const e of available)w+=e.w;
-          if(!(w>0))break;
-          let used=0;const next=[];
-          for(const e of available){
-            const room=e.cap-e.v,add=Math.min(room,left*e.w/w);
-            e.v+=add;used+=add;if(room-add>1e-8)next.push(e);
-          }left=Math.max(0,left-used);available=next;
-        }
-        allocated+=daily-left;missingRouteTotal+=left;
-        if(!ev.length&&daily>0)missingRoutes.push(r);
-        if(ev.length&&left>0.001){capacityInfeasible+=left;routeDeficits.push([r,left]);}
-        routeRows.push([r,daily,daily-left,-left]);
-        for(const e of ev){e.tr._boards3333[e.i]=e.v;all.push(e);}
-      });
-      let exactMatched=0,nearMatched=0,routeUnattributed=0;
-      for(const e of all){
-        let left=e.v;
-        for(const c of nearby5555(e.s)){
-          if(left<=1e-9)break;
-          const id=c.s.id,remain=Math.max(0,targets.get(id)-supply.get(id));
-          const take=Math.min(left,remain);
-          if(take<=0)continue;
-          supply.set(id,supply.get(id)+take);left-=take;
-          if(id===e.s.id)exactMatched+=take;else nearMatched+=take;
-        }routeUnattributed+=left;
-      }
-      let stopDaily=0,stopServed=0,stopAbsError=0;
-      const stopRows=[];
-      for(const s of STOPS){
-        const target=targets.get(s.id),got=supply.get(s.id);
-        stopDaily+=target;stopServed+=got;stopAbsError+=Math.abs(target-got);
-        if(Math.abs(target-got)>0.005)stopRows.push([s.id,s.name,s.city,s.dong,target,got,got-target]);
-      }
-      let peakRatio=0,maxExcess=0,alightTotal=0;
-      const alightByHour=new Map();
-      TRIP.trips.forEach(tr=>{
-        const n=tr.p.length,occ=new Float64Array(n),boards=tr._boards3333;
-        let aboard=0,boardSum=0;
-        for(let i=0;i<n;i++)boardSum+=boards[i]||0;
-        for(let i=0;i<n;i++){
-          const stop=stopById.get(tr.p[i][1]),h=Math.floor(tr.p[i][0]/60)%24;
-          const splitStart=i>0&&tr._repairHiddenEdges&&tr._repairHiddenEdges.indexOf(i-1)>=0;
-          const splitEnd=i<n-1&&tr._repairHiddenEdges&&tr._repairHiddenEdges.indexOf(i)>=0;
-          if(splitStart)aboard=0;
-          let alight=0;
-          if(i>0&&aboard>0){
-            if(i===n-1||splitEnd)alight=aboard;
-            else{
-              let future=0;
-              for(let j=i;j<n;j++){
-                if(j>i&&tr._repairHiddenEdges&&tr._repairHiddenEdges.indexOf(j-1)>=0)break;
-                future+=od5555(stopById.get(tr.p[j][1]),Math.floor(tr.p[j][0]/60)%24)*(j===n-1?2:1);
+        const cum=[0];
+        for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+        const total=cum[cum.length-1]||0;
+        const straight=pts.length<=2;
+        const tol=straight?PASS_STRAIGHT_M:PASS_ROAD_M;
+        if(pts.length>=2&&total>2*PASS_END_M){
+          const best=new Map(),pad=0.0005,bnA=baseName5555(A),bnB=baseName5555(B);
+          for(let gy=Math.floor((minLa-pad)*100);gy<=Math.floor((maxLa+pad)*100);gy++){
+            for(let gx=Math.floor((minLo-pad)*100);gx<=Math.floor((maxLo+pad)*100);gx++){
+              for(const s of grid5555.get(gy+':'+gx)||[]){
+                if(s.id===idA||s.id===idB)continue;
+                if(s.lat<minLa-pad||s.lat>maxLa+pad||s.lon<minLo-pad||s.lon>maxLo+pad)continue;
+                const bn=baseName5555(s);
+                if(bn===bnA||bn===bnB)continue;
+                const px=(s.lon-lon0)*KX,py=(s.lat-lat0)*KY;
+                let bd=Infinity,bl=0,bc=0;
+                for(let i=1;i<pts.length;i++){
+                  const ax=pts[i-1][0],ay=pts[i-1][1],dx=pts[i][0]-ax,dy=pts[i][1]-ay,L2=dx*dx+dy*dy;
+                  let u=L2?((px-ax)*dx+(py-ay)*dy)/L2:0;
+                  u=Math.max(0,Math.min(1,u));
+                  const d=Math.hypot(px-(ax+dx*u),py-(ay+dy*u));
+                  if(d<bd){
+                    bd=d;
+                    bl=cum[i-1]+Math.sqrt(L2)*u;
+                    bc=dx*(py-ay)-dy*(px-ax);
+                  }
+                }
+                if(bd>tol||bl<PASS_END_M||bl>total-PASS_END_M)continue;
+                // 우측 통행: 진행 방향 왼쪽 정류장은 같은 이름의 맞은편 정류장이 80m 안에 있으면 반대 방향 승강장으로 보고 제외합니다.
+                const left=!straight&&bd>PASS_SIDE_FREE_M&&bc>0;
+                if(left&&hasTwin5555(s))continue;
+                const score=bd+(left?30:0),prev=best.get(bn);
+                if(!prev||score<prev.score)best.set(bn,{id:s.id,f:bl/total,score});
               }
-              const prior=od5555(stop,h)/Math.max(1e-9,future);
-              alight=Math.min(aboard,aboard*prior);
-              alight=Math.max(alight,Math.max(0,aboard+(boards[i]||0)-tr._vehCap));
             }
           }
-          tr._alights5555[i]=alight;
-          aboard=Math.max(0,aboard-alight+(boards[i]||0));
-          if(i===n-1||splitEnd)aboard=0;
-          occ[i]=aboard;
-          if(stop&&alight){const k=stop.id+':'+h;alightByHour.set(k,(alightByHour.get(k)||0)+alight);alightTotal+=alight;}
-          peakRatio=Math.max(peakRatio,aboard/tr._vehCap);
-          maxExcess=Math.max(maxExcess,aboard-tr._vehCap);
-        }tr._occ=occ;tr._boardAll=boardSum;tr._occKey=key;
+          out=[...best.values()].sort((x,y)=>x.f-y.f).map(c=>({id:c.id,f:c.f}));
+        }
+      }
+      state.passCache.set(key,out);
+      return out;
+    }
+    function expandTrip5555(tr){
+      if(tr._xv===state.expandVer&&tr._xn)return tr._xn;
+      const p=tr.p,n=p.length,md=tripMode5555(tr),hidden=tr._repairHiddenEdges||[];
+      const sid=[],tt=[],seg=[],fl=[];
+      // fl 비트: 1=시간표 시각 정류장, 2=운행(분할 구간) 종점, 4=분할 구간 시작
+      for(let i=0;i<n;i++){
+        const split=i>0&&hidden.indexOf(i-1)>=0;
+        const endHere=i===n-1||hidden.indexOf(i)>=0;
+        sid.push(p[i][1]);tt.push(p[i][0]);seg.push(i);fl.push(1|(endHere?2:0)|(split?4:0));
+        if(endHere)continue;
+        const t0=p[i][0],t1=p[i+1][0];
+        for(const c of passStops5555(p[i][1],p[i+1][1],md.mode,md.scope)){
+          if(c.id===sid[sid.length-1]||c.id===p[i+1][1])continue;
+          sid.push(c.id);tt.push(t0+(t1-t0)*c.f);seg.push(i);fl.push(0);
+        }
+      }
+      tr._xn={sid,t:Float64Array.from(tt),seg:Int32Array.from(seg),fl:Uint8Array.from(fl),n:sid.length};
+      tr._xv=state.expandVer;
+      return tr._xn;
+    }
+    function buildAllocation(){
+      const key=occupancyKey();if(state.allocationKey===key)return;
+      const dt=state.dayType;
+      const wanted=new Map(Object.keys(window.ROUTE_DEMAND||{}).map(r=>[r,Math.max(0,demandOf(r))]));
+      const targets=new Map();
+      for(const s of STOPS)targets.set(s.id,Math.max(0,dailyOf(s)));
+      // 1) 정차 기회(운행 × 경유 정류장)
+      const running=[],eTripA=[],eNodeA=[],eStopA=[],eRouteA=[],eHourA=[];
+      const shCount=new Map();
+      let timepointNodes=0,passNodes=0;
+      TRIP.trips.forEach(tr=>{
+        tr._vehCap=(window.ROUTE_CAP&&window.ROUTE_CAP[tr.r])||TYPE_CAP[tr.k]||40;
+        tr._occKey=null;tr._occ=null;tr._boardAll=0;
+        if(!tripRunsToday(tr)||!tr.p||tr.p.length<2)return;
+        const x=expandTrip5555(tr),ti=running.length;
+        running.push(tr);
+        tr._boards3333=new Float64Array(x.n);tr._alights5555=new Float64Array(x.n);
+        for(let j=0;j<x.n;j++){
+          if(x.fl[j]&1)timepointNodes++;else passNodes++;
+          if(x.fl[j]&2)continue;
+          const s=stopById.get(x.sid[j]);if(!s)continue;
+          const h=Math.floor(x.t[j]/60)%24;
+          eTripA.push(ti);eNodeA.push(j);eStopA.push(s.id);eRouteA.push(String(tr.r));eHourA.push(h);
+          const k=s.id*24+h;shCount.set(k,(shCount.get(k)||0)+1);
+        }
       });
+      const nE=eTripA.length;
+      const stopList=[],stopIx=new Map(),routeList=[],routeIx=new Map();
+      const eS=new Int32Array(nE),eR=new Int32Array(nE),eT=Int32Array.from(eTripA),w=new Float64Array(nE);
+      for(let e=0;e<nE;e++){
+        const sid=eStopA[e],r=eRouteA[e];
+        if(!stopIx.has(sid)){stopIx.set(sid,stopList.length);stopList.push(sid);}
+        if(!routeIx.has(r)){routeIx.set(r,routeList.length);routeList.push(r);}
+        eS[e]=stopIx.get(sid);eR[e]=routeIx.get(r);
+        const s=stopById.get(sid),h=eHourA[e];
+        const share=(BOARD_SHARE[s.di]&&BOARD_SHARE[s.di][dt]&&BOARD_SHARE[s.di][dt][h])||0;
+        // 시간대 승차 비중을 같은 정류장·시간대의 정차 기회 수로 나눠 사전가중치로 씁니다.
+        w[e]=Math.max(0.002,share)/shCount.get(sid*24+h);
+      }
+      const nS=stopList.length,nR=routeList.length;
+      const T=new Float64Array(nS),R=new Float64Array(nR);
+      for(let i=0;i<nS;i++)T[i]=targets.get(stopList[i])||0;
+      for(let i=0;i<nR;i++)R[i]=wanted.get(routeList[i])||0;
+      // 위치 코드만 있는 가상정류소 승차는 같은 이름의 실제 승강장(400m 이내)에 나눠 연결합니다.
+      let virtualLinked=0;
+      for(const s of STOPS){
+        const t=targets.get(s.id);
+        if(!(t>0)||stopIx.has(s.id)||String(s.name).indexOf('가상정류소')<0)continue;
+        const bn=baseName5555(s);
+        const mates=nearby5555(s).filter(c=>c.km<=0.4&&stopIx.has(c.s.id)&&baseName5555(c.s)===bn);
+        if(!mates.length)continue;
+        for(const c of mates)T[stopIx.get(c.s.id)]+=t/mates.length;
+        virtualLinked+=t;
+      }
+      const a=new Float64Array(nR).fill(1),b=new Float64Array(nS).fill(1),sumS=new Float64Array(nS),sumR=new Float64Array(nR);
+      const cntR=new Float64Array(nR),wR=new Float64Array(nR),fPrev=new Float64Array(nR).fill(1);
+      for(let e=0;e<nE;e++)cntR[eR[e]]++;
+      const ub=new Float64Array(nE),pen=new Float64Array(nE).fill(1),xv=new Float64Array(nE),wp=new Float64Array(nE);
+      for(let e=0;e<nE;e++)ub[e]=running[eT[e]]._vehCap;
+      // 정원 상한 IPF. 두 원본 총량은 서로 정확히 일치하지 않으므로 마지막 단계는 노선 총량(차량 승차)에 맞춥니다.
+      function ipf(iters){
+        for(let e=0;e<nE;e++)wp[e]=w[e]*pen[e];
+        for(let it=0;it<iters;it++){
+          sumS.fill(0);
+          for(let e=0;e<nE;e++){
+            const v=wp[e]*a[eR[e]]*b[eS[e]];
+            sumS[eS[e]]+=v<ub[e]?v:ub[e];
+          }
+          for(let i=0;i<nS;i++){
+            if(T[i]<=0){b[i]=0;continue;}
+            if(b[i]<=0)b[i]=1;
+            b[i]*=sumS[i]>0?Math.max(0.05,Math.min(20,T[i]/sumS[i])):20;
+          }
+          sumR.fill(0);wR.fill(0);
+          for(let e=0;e<nE;e++){
+            const r=eR[e],u=wp[e]*b[eS[e]],v=u*a[r];
+            sumR[r]+=v<ub[e]?v:ub[e];
+            wR[r]+=u;
+          }
+          let delta=0,lg=0,ng=0;
+          for(let i=0;i<nR;i++){
+            if(R[i]<=0){a[i]=0;continue;}
+            if(!(sumR[i]>0))continue;
+            const f=Math.max(0.05,Math.min(20,R[i]/sumR[i]));
+            delta=Math.max(delta,Math.abs(Math.log(f)));
+            a[i]*=f;lg+=Math.log(a[i]);ng++;
+          }
+          if(ng){
+            const g=Math.exp(lg/ng);
+            for(let i=0;i<nR;i++)a[i]/=g;
+            for(let i=0;i<nS;i++)b[i]*=g;
+          }
+          if(it>3&&delta<2e-3)break;
+        }
+        for(let e=0;e<nE;e++){
+          const r=eR[e];
+          if(wR[r]>0){
+            const v=wp[e]*a[r]*b[eS[e]];
+            xv[e]=v<ub[e]?v:ub[e];
+          } else xv[e]=R[r]>0?Math.min(ub[e],R[r]/cntR[r]):0;
+        }
+        // 노선 총량 잔여분(상한에 막힌 몫)은 같은 노선의 상한 여유에 비례해 채웁니다.
+        sumR.fill(0);
+        const room=new Float64Array(nR);
+        for(let e=0;e<nE;e++){sumR[eR[e]]+=xv[e];room[eR[e]]+=ub[e]-xv[e];}
+        for(let e=0;e<nE;e++){
+          const r=eR[e],left=R[r]-sumR[r];
+          if(left>1e-9&&room[r]>0)xv[e]+=(ub[e]-xv[e])*Math.min(1,left/room[r]);
+          else if(left<-1e-9)xv[e]*=R[r]/sumR[r];
+        }
+      }
+      // 하차 사전비중(읍면동 하차 비중 × 시간대), 분할 구간 단위 누적합
+      const odPrior=running.map(tr=>{
+        const x=tr._xn,pr=new Float64Array(x.n),suf=new Float64Array(x.n);
+        for(let j=0;j<x.n;j++)pr[j]=od5555(stopById.get(x.sid[j]),Math.floor(x.t[j]/60)%24)*((x.fl[j]&2)?2:1);
+        let acc=0;
+        for(let j=x.n-1;j>=0;j--){
+          if(j<x.n-1&&(x.fl[j+1]&4))acc=0;
+          acc+=pr[j];suf[j]=acc;
+        }
+        return {pr,suf};
+      });
+      function simulate(force,record){
+        let peakRatio=0,maxExcess=0,forced=0,overN=0,alightTotal=0;
+        const over=[];
+        const alightByHour=record?new Map():null;
+        for(let ti=0;ti<running.length;ti++){
+          const tr=running[ti],x=tr._xn,bd=tr._boards3333,al=tr._alights5555,cap=tr._vehCap,op=odPrior[ti];
+          const occ=record?new Float64Array(x.n):null;
+          let aboard=0,fresh=0,peak=0,peakJ=-1,partStart=0,tripOver=false;
+          for(let j=0;j<x.n;j++){
+            if(x.fl[j]&4){aboard=0;fresh=0;partStart=j;}
+            let alight=0;
+            if(j>partStart&&aboard>0){
+              if(x.fl[j]&2)alight=aboard;
+              else{
+                // 직전 정류장에서 탄 승객은 내리지 않습니다(최소 1정류장 승차).
+                const eligible=Math.max(0,aboard-fresh);
+                alight=Math.min(eligible,eligible*op.pr[j]/Math.max(1e-12,op.suf[j]));
+              }
+            }
+            const brd=(x.fl[j]&2)?0:bd[j];
+            if(force&&!(x.fl[j]&2)){
+              const excess=aboard-alight+brd-cap;
+              if(excess>1e-9){
+                const extra=Math.min(aboard-alight,excess);
+                alight+=extra;forced+=extra;
+              }
+            }
+            aboard=Math.max(0,aboard-alight+brd);fresh=brd;
+            if(x.fl[j]&2){aboard=0;fresh=0;}
+            if(record){
+              al[j]=alight;occ[j]=aboard;
+              if(alight>0){
+                const k=x.sid[j]+':'+(Math.floor(x.t[j]/60)%24);
+                alightByHour.set(k,(alightByHour.get(k)||0)+alight);
+                alightTotal+=alight;
+              }
+            }
+            if(aboard>peak){peak=aboard;peakJ=j;}
+            if(aboard>cap+1e-6)tripOver=true;
+          }
+          if(tripOver){overN++;over.push([ti,peak,peakJ]);}
+          peakRatio=Math.max(peakRatio,peak/cap);
+          maxExcess=Math.max(maxExcess,peak-cap);
+          if(record){tr._occ=occ;tr._occKey=key;}
+        }
+        return {peakRatio,maxExcess,forced,overN,over,alightByHour,alightTotal};
+      }
+      const eNode=Int32Array.from(eNodeA);
+      function writeBoards(){
+        for(const tr of running)tr._boards3333.fill(0);
+        for(let e=0;e<nE;e++)running[eT[e]]._boards3333[eNode[e]]=xv[e];
+      }
+      const tripE=running.map(()=>[]);
+      for(let e=0;e<nE;e++)tripE[eT[e]].push(e);
+      // 2) 정원 제약 반복
+      let rounds=0,firstOver=0,lastOver=0;
+      const MAX_ROUNDS=8;
+      for(;rounds<MAX_ROUNDS;rounds++){
+        ipf(rounds===0?60:25);writeBoards();
+        const sim=simulate(false,false);
+        if(rounds===0)firstOver=sim.overN;
+        lastOver=sim.overN;
+        if(!sim.overN)break;
+        // 초과 운행은 초과 지점까지의 승차 가중치를 낮춰 다음 IPF에서 다른 운행·노선으로 넘깁니다.
+        for(const item of sim.over){
+          const ti=item[0],peak=item[1],peakJ=item[2];
+          const x=running[ti]._xn,f=Math.max(0.5,0.97*running[ti]._vehCap/peak);
+          let start=0;
+          for(let j=peakJ;j>=0;j--)if(x.fl[j]&4){start=j;break;}
+          for(const e of tripE[ti]){
+            const j=eNode[e];
+            if(j>=start&&j<=peakJ)pen[e]*=f;
+          }
+        }
+      }
+      const fin=simulate(true,true);
+      // 3) 정합성 집계
+      const assigned=new Float64Array(nS),routeGot=new Float64Array(nR);
+      for(let e=0;e<nE;e++){assigned[eS[e]]+=xv[e];routeGot[eR[e]]+=xv[e];}
+      for(const tr of running){
+        let sum=0;for(let j=0;j<tr._boards3333.length;j++)sum+=tr._boards3333[j];
+        tr._boardAll=sum;
+      }
+      let allocated=0,missingRouteTotal=0,capacityInfeasible=0;
+      const routeRows=[],missingRoutes=[],routeDeficits=[];
+      wanted.forEach((daily,r)=>{
+        const ix=routeIx.get(r),got=ix==null?0:routeGot[ix],left=Math.max(0,daily-got);
+        allocated+=got;missingRouteTotal+=left;
+        if(ix==null&&daily>0)missingRoutes.push(r);
+        else if(left>0.01){capacityInfeasible+=left;routeDeficits.push([r,left]);}
+        routeRows.push([r,daily,got,got-daily]);
+      });
+      let stopDaily=0,stopServed=0,stopAbsError=0,routeUnattributed=0,noPassTarget=0,noPassStops=0;
+      const stopRows=[];
+      for(const s of STOPS){
+        const target=targets.get(s.id),ix=stopIx.get(s.id),got=ix==null?0:assigned[ix];
+        stopDaily+=target;
+        if(ix==null&&target>0&&String(s.name).indexOf('가상정류소')<0){noPassTarget+=target;noPassStops++;}
+        if(Math.abs(target-got)>0.005)stopRows.push([s.id,s.name,s.city,s.dong,target,got,got-target]);
+      }
+      for(let i=0;i<nS;i++){
+        stopServed+=Math.min(T[i],assigned[i]);
+        stopAbsError+=Math.abs(T[i]-assigned[i]);
+        routeUnattributed+=Math.max(0,assigned[i]-T[i]);
+      }
+      const nodeTotal=timepointNodes+passNodes;
       const audit={month:state.month===-1?'12개월 일평균':MONTHS[state.month],dayType:state.dayType===0?'주중':'주말/공휴일',
-        routeTarget:[...wanted.values()].reduce((a,b)=>a+b,0),allocated,assignedAtStops:stopServed,
+        routeTarget:[...wanted.values()].reduce((p,q)=>p+q,0),allocated,assignedAtStops:stopServed,
         missingRouteTotal,missingRoutes,capacityInfeasible,routeDeficits,
         stopDaily,stopServed,stopUnserved:stopDaily-stopServed,stopAbsError,
-        exactMatched,nearMatched,routeUnattributed,alightTotal,peakRatio,maxExcess,routeRows,stopRows};
-      state.adjustedAlight5555=alightByHour;
+        exactMatched:stopServed,nearMatched:0,routeUnattributed,
+        noPassTarget,noPassStops,virtualLinked,timepointNodes,passNodes,
+        nodesPerTrip:running.length?nodeTotal/running.length:0,
+        capacityRounds:Math.min(rounds+1,MAX_ROUNDS),overTripsBefore:firstOver,overTripsAfter:lastOver,forcedAlight:fin.forced,
+        alightTotal:fin.alightTotal,peakRatio:fin.peakRatio,maxExcess:Math.max(0,fin.maxExcess),routeRows,stopRows};
+      state.adjustedAlight5555=fin.alightByHour;
       state.allocationKey=key;window.__SIM_AUDIT_3333=audit;window.__SIM_AUDIT_5555=audit;
       const el=$('audit3333');
-      if(el)el.textContent=`${audit.month} ${audit.dayType} · 노선 원본 ${fmt(audit.routeTarget)} / 차량 배분 ${fmt(allocated)} / 미배분 ${fmt(missingRouteTotal)} (정원·운행기회 부족 ${fmt(capacityInfeasible)}). 정류장 원본 ${fmt(stopDaily)} / 출처 매칭 ${fmt(stopServed)} (실제정차 ${fmt(exactMatched)}, 1.2km 근접 ${fmt(nearMatched)}) / 잔여 ${fmt(stopDaily-stopServed)}. 차량 승차 중 출처 미확정 ${fmt(routeUnattributed)}. 재차/정원 최대 ${peakRatio.toFixed(4)}, 초과 ${fmt(maxExcess)}. 두 원본 총량은 변경하지 않습니다.`;
+      if(el)el.textContent=`${audit.month} ${audit.dayType} · 노선 원본 ${fmt(audit.routeTarget)} / 차량 배분 ${fmt(allocated)} / 미배분 ${fmt(missingRouteTotal)}. `+
+        `정류장 원본 ${fmt(stopDaily)} / 경로 경유 정류장 배분 ${fmt(stopServed)} (${(stopDaily?100*stopServed/stopDaily:0).toFixed(1)}%, 가상정류소 연결 ${fmt(virtualLinked)} 포함) / 경유 운행 없는 정류장 ${fmt(noPassTarget)}. `+
+        `운행당 정차 기회 ${audit.nodesPerTrip.toFixed(1)}개. 정원 초과 운행 ${fmt(firstOver)}→${fmt(lastOver)}회(승차 재배분 ${audit.capacityRounds}회), 하차 조정 ${fmt(fin.forced)}명, 재차/정원 최대 ${fin.peakRatio.toFixed(3)}. 두 원본 총량은 변경하지 않습니다.`;
     }
     function loadProfile(trip){buildAllocation();return trip._occ||[];}
     function onboardOf(trip, pos) {
       const occ = loadProfile(trip);
-      if (!occ || !occ.length) return 0;
-      const i = Math.max(0, Math.min(occ.length - 1, pos.seg || 0));
-      return occ[i] || 0;
+      const x = trip._xn;
+      if (!occ || !occ.length || !x) return 0;
+      let j = 0;
+      if (pos && Number.isFinite(pos.minute)) {
+        let lo = 0, hi = x.n - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (x.t[mid] <= pos.minute) lo = mid;
+          else hi = mid - 1;
+        }
+        j = lo;
+      } else {
+        const sg = (pos && pos.seg) || 0;
+        while (j < x.n - 1 && x.seg[j] < sg) j++;
+      }
+      if (pos) pos.node = j;
+      return occ[Math.min(occ.length - 1, j)] || 0;
+    }
+    const ROUTE_OPERATOR_LIST = {"151": [["극동여객(주)", "064-753-0310"]], "251-1": [["극동여객(주)", "064-753-0310"]], "251": [["극동여객(주)", "064-753-0310"]], "252": [["극동여객(주)", "064-753-0310"]], "253": [["극동여객(주)", "064-753-0310"]], "254": [["극동여객(주)", "064-753-0310"]], "255": [["극동여객(주)", "064-753-0310"]], "270": [["극동여객(주)", "064-753-0310"]], "300": [["극동여객(주)", "064-753-0310"], ["(주)삼영교통", "064-713-7000"]], "301": [["극동여객(주)", "064-753-0310"], ["(주)삼영교통", "064-713-7000"]], "325": [["극동여객(주)", "064-753-0310"]], "43-1": [["극동여객(주)", "064-753-0310"]], "43-2": [["극동여객(주)", "064-753-0310"]], "43-3": [["극동여객(주)", "064-753-0310"]], "411": [["극동여객(주)", "064-753-0310"]], "412": [["극동여객(주)", "064-753-0310"]], "425": [["극동여객(주)", "064-753-0310"]], "426": [["극동여객(주)", "064-753-0310"]], "431": [["극동여객(주)", "064-753-0310"]], "432": [["극동여객(주)", "064-753-0310"]], "131": [["(주)동진여객", "064-757-5714"]], "132": [["(주)동진여객", "064-757-5714"]], "181": [["(주)동진여객", "064-757-5714"]], "231": [["(주)동진여객", "064-757-5714"]], "232": [["(주)동진여객", "064-757-5714"]], "281": [["(주)동진여객", "064-757-5714"]], "345": [["(주)동진여객", "064-757-5714"]], "346": [["(주)동진여객", "064-757-5714"]], "347": [["(주)동진여객", "064-757-5714"]], "434": [["(주)동진여객", "064-757-5714"]], "435": [["(주)동진여객", "064-757-5714"]], "436": [["(주)동진여객", "064-757-5714"]], "437": [["(주)동진여객", "064-757-5714"]], "451": [["(주)동진여객", "064-757-5714"]], "452": [["(주)동진여객", "064-757-5714"]], "453": [["(주)동진여객", "064-757-5714"]], "454": [["(주)동진여객", "064-757-5714"]], "471": [["(주)동진여객", "064-757-5714"]], "472": [["(주)동진여객", "064-757-5714"]], "473": [["(주)동진여객", "064-757-5714"]], "475": [["(주)동진여객", "064-757-5714"]], "477": [["(주)동진여객", "064-757-5714"]], "182": [["(주)삼화여객", "064-753-1621"]], "240": [["(주)삼화여객", "064-753-1621"]], "282": [["(주)삼화여객", "064-753-1621"]], "800": [["(주)삼화여객", "064-753-1621"]], "801": [["(주)삼화여객", "064-753-1621"]], "311": [["(주)삼화여객", "064-753-1621"]], "312": [["(주)삼화여객", "064-753-1621"]], "415": [["(주)삼화여객", "064-753-1621"]], "440": [["(주)삼화여객", "064-753-1621"]], "441": [["(주)삼화여객", "064-753-1621"]], "442": [["(주)삼화여객", "064-753-1621"]], "444": [["(주)삼화여객", "064-753-1621"]], "445": [["(주)삼화여객", "064-753-1621"]], "446": [["(주)삼화여객", "064-753-1621"]], "447": [["(주)삼화여객", "064-753-1621"]], "455": [["(주)삼화여객", "064-753-1621"]], "461": [["(주)삼화여객", "064-753-1621"]], "462": [["(주)삼화여객", "064-753-1621"]], "465": [["(주)삼화여객", "064-753-1621"]], "466": [["(주)삼화여객", "064-753-1621"]], "490": [["(주)삼화여객", "064-753-1621"]], "102": [["제주여객(주)", "064-753-2056"]], "121": [["제주여객(주)", "064-753-2056"]], "122": [["제주여객(주)", "064-753-2056"]], "202": [["제주여객(주)", "064-753-2056"]], "221": [["제주여객(주)", "064-753-2056"]], "222": [["제주여객(주)", "064-753-2056"]], "291": [["제주여객(주)", "064-753-2056"]], "292": [["제주여객(주)", "064-753-2056"]], "293": [["제주여객(주)", "064-753-2056"]], "315": [["제주여객(주)", "064-753-2056"]], "316": [["제주여객(주)", "064-753-2056"]], "302": [["(주)삼영교통", "064-713-7000"]], "600": [["(주)삼영교통", "064-713-7000"]], "601": [["(주)삼영교통", "064-713-7000"]], "320": [["(주)삼영교통", "064-713-7000"]], "335": [["(주)삼영교통", "064-713-7000"]], "336": [["(주)삼영교통", "064-713-7000"]], "341": [["(주)삼영교통", "064-713-7000"]], "342": [["(주)삼영교통", "064-713-7000"]], "351": [["(주)삼영교통", "064-713-7000"]], "355": [["(주)삼영교통", "064-713-7000"]], "356": [["(주)삼영교통", "064-713-7000"]], "360": [["(주)삼영교통", "064-713-7000"]], "365": [["(주)삼영교통", "064-713-7000"]], "366": [["(주)삼영교통", "064-713-7000"]], "367": [["(주)삼영교통", "064-713-7000"]], "368": [["(주)삼영교통", "064-713-7000"]], "369": [["(주)삼영교통", "064-713-7000"]], "370": [["(주)삼영교통", "064-713-7000"]], "380": [["(주)삼영교통", "064-713-7000"]], "810-1": [["(주)삼영교통 · 관광지순환버스", "064-746-7310"]], "810-2": [["(주)삼영교통 · 관광지순환버스", "064-746-7310"]], "820-1": [["(주)삼영교통 · 관광지순환버스", "064-746-7310"]], "820-2": [["(주)삼영교통 · 관광지순환버스", "064-746-7310"]], "820-3": [["(주)삼영교통 · 관광지순환버스", "064-746-7310"]], "202-1": [["(주)삼영교통 · 임시버스", "064-713-7000"]], "202-2": [["(주)삼영교통 · 임시버스", "064-713-7000"]], "491": [["(주)삼영교통 · 임시버스", "064-713-7000"]], "3001": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3002": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3003": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3004": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3005": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3006": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3007": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "3008": [["(주)삼영교통 · 제주시 심야버스", "064-713-7000"]], "101": [["금남여객(주)", "064-753-4423"]], "111": [["금남여객(주)", "064-753-4423"]], "201": [["금남여객(주)", "064-753-4423"]], "211": [["금남여객(주)", "064-753-4423"]], "212": [["금남여객(주)", "064-753-4423"]], "260": [["금남여객(주)", "064-753-4423"]], "295": [["금남여객(주)", "064-753-4423"]], "331": [["금남여객(주)", "064-753-4423"]], "332": [["금남여객(주)", "064-753-4423"]], "421": [["금남여객(주)", "064-753-4423"]], "422": [["금남여객(주)", "064-753-4423"]], "423": [["금남여객(주)", "064-753-4423"]], "424": [["금남여객(주)", "064-753-4423"]], "611": [["금남여객(주) 서귀포지사", "064-767-0667"]], "612": [["금남여객(주) 서귀포지사", "064-767-0667"]], "615": [["금남여객(주) 서귀포지사", "064-767-0667"]], "633": [["금남여객(주) 서귀포지사", "064-767-0667"]], "641": [["금남여객(주) 서귀포지사", "064-767-0667"]], "642": [["금남여객(주) 서귀포지사", "064-767-0667"]], "643": [["금남여객(주) 서귀포지사", "064-767-0667"]], "644": [["금남여객(주) 서귀포지사", "064-767-0667"]], "651": [["금남여객(주) 서귀포지사", "064-767-0667"]], "652": [["금남여객(주) 서귀포지사", "064-767-0667"]], "655": [["금남여객(주) 서귀포지사", "064-767-0667"]], "500": [["서귀포운수(구 동서교통)", "064-732-4934"]], "510": [["서귀포운수(구 동서교통)", "064-732-4934"]], "520": [["서귀포운수(구 동서교통)", "064-732-4934"]], "521": [["서귀포운수(구 동서교통)", "064-732-4934"]], "531": [["서귀포운수(구 동서교통)", "064-732-4934"]], "532": [["서귀포운수(구 동서교통)", "064-732-4934"]], "621": [["서귀포운수(구 동서교통)", "064-732-4934"]], "623": [["서귀포운수(구 동서교통)", "064-732-4934"]], "624": [["서귀포운수(구 동서교통)", "064-732-4934"]], "625": [["서귀포운수(구 동서교통)", "064-732-4934"]], "630": [["서귀포운수(구 동서교통)", "064-732-4934"]], "635": [["서귀포운수(구 동서교통)", "064-732-4934"]], "645": [["서귀포운수(구 동서교통)", "064-732-4934"]], "5001": [["서귀포운수(구 동서교통)", "064-732-4934"]], "5002": [["서귀포운수(구 동서교통)", "064-732-4934"]], "5003": [["서귀포운수(구 동서교통)", "064-732-4934"]], "5004": [["서귀포운수(구 동서교통)", "064-732-4934"]], "5005": [["서귀포운수(구 동서교통)", "064-732-4934"]], "5006": [["서귀포운수(구 동서교통)", "064-732-4934"]], "701-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "701-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "702-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "702-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "703-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "703-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "704-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "704-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "704-3": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "704-4": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "705": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "711-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "711-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "771-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "771-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "772-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "772-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "781-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "781-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "782-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "782-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "783-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "783-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "784-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "784-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "785": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "791": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "792-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "792-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "793-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "793-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "794-1": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "794-2": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "795": [["제주시공영버스(제주시 교통행정과)", "064-728-3211~3"]], "880": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "622": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "627": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "690": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "691": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "692": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "721-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "721-3": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "722-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "722-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "731-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "731-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "732-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "732-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "732-3": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "741-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "741-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "742-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "742-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "743": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "744": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "751-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "751-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "752-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "752-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "761-1": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "761-2": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]], "761-3": [["서귀포시공영버스(서귀포시 교통행정과)", "064-760-3111~3"]]};
+    const ROUTE_DRT_LIST = {"703-1": 1, "703-2": 1, "781-1": 1, "781-2": 1, "782-1": 1, "782-2": 1, "743": 1, "744": 1, "761-1": 1, "761-3": 1};
+    function operatorHtml(t){
+      const rid=String(t.r||'').trim();
+      let list=ROUTE_OPERATOR_LIST[rid],note='';
+      if(!list){
+        const m=String(t.l||'').match(/(\d{2,4}(?:-\d)?)/);
+        if(m&&ROUTE_OPERATOR_LIST[m[1]])list=ROUTE_OPERATOR_LIST[m[1]];
+      }
+      if(!list)return '<br>운수사: 목록에 업체 정보 없음';
+      if(ROUTE_DRT_LIST[rid])note=' (수요응답형 교통수단 운행 노선)';
+      return list.map(o=>`<br>운수사: ${escapeHTML(o[0])} · ☏${escapeHTML(o[1])}`).join('')+note;
     }
     function busRadius(occ, cap) {
       const c = Math.max(12, cap || 46);
       const u = Math.sqrt(Math.max(0, Math.min(occ, c)) / c);
       return 3.4 + 16.2 * u;
     }
-    // 업체 목록은 사용자가 제공한 운수업체별 노선 현황을 기준으로 합니다.
-    const BUS_OPERATORS_BY_ROUTE = Object.create(null);
-    function registerBusOperator(routes, name, phone) {
-      routes.forEach(route => {
-        const key = String(route);
-        if (!BUS_OPERATORS_BY_ROUTE[key]) BUS_OPERATORS_BY_ROUTE[key] = [];
-        BUS_OPERATORS_BY_ROUTE[key].push({ name, phone: phone || '' });
-      });
-    }
-    registerBusOperator(['151','251-1','251','252','253','254','255','270','300','301','325','43-1','43-2','43-3','411','412','425','426','431','432'], '극동여객(주)', '064-753-0310');
-    registerBusOperator(['131','132','181','231','232','281','345','346','347','434','435','436','437','451','452','453','454','471','472','473','475','477'], '(주)동진여객', '064-757-5714');
-    registerBusOperator(['182','240','282','800','801','311','312','415','440','441','442','444','445','446','447','455','461','462','465','466','490'], '(주)삼화여객', '064-753-1621');
-    registerBusOperator(['102','121','122','202','221','222','291','292','293','315','316'], '제주여객(주)', '064-753-2056');
-    registerBusOperator(['300','301','302','600','601','320','335','336','341','342','351','355','356','360','365','366','367','368','369','370','380'], '(주)삼영교통', '064-713-7000');
-    registerBusOperator(['810-1','810-2','820-1','820-2','820-3'], '관광지순환버스', '064-746-7310');
-    registerBusOperator(['202-1','202-2','491'], '임시버스 (업체명 미기재)', '');
-    registerBusOperator(['3001','3002','3003','3004','3005','3006','3007','3008'], '심야버스 (업체명 미기재)', '');
-    registerBusOperator(['101','111','201','211','212','260','295','331','332','421','422','423','424','611','612','615','633','641','642','643','644','651','652','655'], '금남여객(주)', '064-753-4423');
-    registerBusOperator(['500','510','520','521','531','532','621','623','624','625','630','635','645','5001','5002','5003','5004','5005','5006'], '서귀포운수 (예전 이름: 동서교통(주))', '064-732-4934');
-    registerBusOperator(['701-1','701-2','702-1','702-2','703-1','703-2','704-1','704-2','704-3','704-4','705','711-1','711-2','771-1','771-2','772-1','772-2','781-1','781-2','782-1','782-2','783-1','783-2','784-1','784-2','785','791','792-1','792-2','793-1','793-2','794-1','794-2','795'], '제주시공영버스 · 제주시교통행정과', '064-728-3211~3');
-    registerBusOperator(['880','622','627','690','691','692','721-2','721-3','722-1','722-2','731-1','731-2','732-1','732-2','732-3','741-1','741-2','742-1','742-2','743','744','751-1','751-2','752-1','752-2','761-1','761-2','761-3'], '서귀포시공영버스 · 서귀포시교통행정과', '064-760-3111~3');
-    registerBusOperator(['703-1','703-2','781-1','781-2','782-1','782-2','743','744','761-1','761-3'], '수요응답형 교통수단 (업체명 미기재)', '');
-    function busOperatorInfo(t) {
-      const routeText = String(t.r || '') + ' ' + String(t.l || '');
-      const candidates = routeText.match(/\d+(?:-\d+)?/g) || [];
-      const matches = [];
-      const seen = new Set();
-      candidates.forEach(route => {
-        (BUS_OPERATORS_BY_ROUTE[route] || []).forEach(operator => {
-          const key = operator.name + '|' + operator.phone;
-          if (!seen.has(key)) {
-            seen.add(key);
-            matches.push(operator);
-          }
-        });
-      });
-      if (!matches.length) return '목록에 업체 정보 없음';
-      return matches.map(operator => {
-        const name = escapeHTML(operator.name);
-        const phone = operator.phone ? ` · ☏ ${escapeHTML(operator.phone)}` : '';
-        return `${name}${phone}`;
-      }).join('<br>');
-    }
-
     function busTooltip(t, occ) {
       const cap = (t._vehCap != null) ? t._vehCap : 46;
       return `<strong>${escapeHTML(t.l || t.r)}</strong><br>${TRIP.types[t.k] || ''}`
         + `<br>운행 전체 구간 승차 ${fmt((t._boardAll != null) ? t._boardAll : 0)}명`
         + `<br>재차(추정): ${fmt(occ)}명`
         + `<br>정원 ${cap}명`
-        + `<br>운수사: ${busOperatorInfo(t)}`;
+        + operatorHtml(t);
     }
 
     function updateBuses(minuteValue, options) {
@@ -1385,11 +1624,10 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
             });
           }
           marker.bindTooltip(busTooltip(t, occ), { className: 'bus-tip', sticky: true });
-          marker.bindPopup(busTooltip(t, occ), { className: 'bus-info-popup', autoPan: false });
           marker.addTo(state.busLayer);
           marker._light = light;
           marker._r = r;
-          marker._seg = pos.seg;
+          marker._seg = pos.node;
           marker._infoMinute = wholeMinute;
           state.busMarkers.set(id, marker);
           return;
@@ -1413,10 +1651,9 @@ window.TRIP_DATA = {"types":["급행","리무진","일반간선","간선","지�
           const scale = Math.max(0.7, r / 8);
           if (wrap) wrap.style.transform = 'rotate(' + (pos.ang || 0) + 'deg) scale(' + scale + ')';
         }
-        if (refreshInfo || marker._seg !== pos.seg) {
+        if (refreshInfo || marker._seg !== pos.node) {
           if (marker.getTooltip()) marker.setTooltipContent(busTooltip(t, occ));
-          if (marker.getPopup()) marker.setPopupContent(busTooltip(t, occ));
-          marker._seg = pos.seg;
+          marker._seg = pos.node;
           marker._infoMinute = wholeMinute;
         }
       });
@@ -1514,11 +1751,16 @@ function togglePlay() {
       state.routeTripKey = null;
       state.allocationKey = null;
       state.segmentMetrics.clear();
+      state.expandVer++;
+      state.passCache.clear();
       render(false);
     };
     window.addEventListener('sim-osrm-updated', function () {
       try {
         state.segmentMetrics.clear();
+        state.expandVer++;
+        state.passCache.clear();
+        state.allocationKey = null;
         render(false);
         redrawCustomRouteHighlights(false);
       } catch (e) {}
