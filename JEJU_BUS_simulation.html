@@ -163,6 +163,8 @@
         <span class="hero-badge">OSRM 우회 교체</span>
         <span class="hero-badge">131·132 점검</span>
         <span class="hero-badge">시청 방향 수정</span>
+        <span class="hero-badge">경로 표시 수정</span>
+        
         
         
         
@@ -1174,7 +1176,6 @@ window.__ROUTE_SCOPED_EXTRA = ["651","703-1","701-1","325","131","132","182-1","
           else if (fbv && fbv.length >= 2) path = fbv.slice();
           else return null;
         } else path = scoped.slice();
-        path = scoped.slice();
       } else if (forceOsrm === 3) {
         // Target routes use their in-file geometry first; only missing embedded edges
         // may use a verified OSRM path. Never fall back to a straight line while pending.
@@ -1998,9 +1999,9 @@ function togglePlay() {
       const blob = new Blob([document.documentElement.outerHTML], {type:'text/html;charset=utf-8'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'v17-3.html';
+      a.download = 'v18.html';
       document.body.appendChild(a); a.click(); a.remove();
-      toast('v17-3.html 파일을 저장했습니다.');
+      toast('v18.html 파일을 저장했습니다.');
     }
 
     const auditButton3333 = $('auditDownload3333');
