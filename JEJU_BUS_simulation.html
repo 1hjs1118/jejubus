@@ -15,6 +15,7 @@
     html, body { margin:0; min-height:100%; background:#edf3f7; color:var(--ink);
       font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif; }
     button, select, input { font: inherit; }
+    .sim-stop-canvas { position:absolute; left:0; top:0; }
     button { cursor: pointer; }
     .app-shell { max-width:1680px; margin:0 auto; padding:22px; }
     .hero { display:flex; justify-content:space-between; gap:24px; padding:25px 28px; color:#fff;
@@ -651,7 +652,13 @@ window.__ROUTE_SCOPED_EXTRA = ["651", "652", "703-1", "701-1", "325", "131", "13
         maxZoom: 18, attribution: '&copy; OpenStreetMap'
       }).addTo(state.map);
       state.canvas = L.canvas({ padding: 0.5 });
-      state.layer = L.layerGroup().addTo(state.map);
+      // 정류장 원 전용 pane/캔버스 레이어(마커 수천 개 대신 캔버스 1장). 버스·DRT 캔버스(400)보다 아래에 둡니다.
+      state.map.createPane('stopsPane').style.zIndex = 399;
+      state.stopLayer = new StopLayer({
+        latLng: i => [STOPS[i].lat, STOPS[i].lon],
+        tipHtml: stopTipHtml,
+        onClick: i => selectStop(STOPS[i], false)
+      }).addTo(state.map);
       state.routeHighlightLayer = L.layerGroup().addTo(state.map);
       state.busLayer = L.layerGroup().addTo(state.map);
       state.map.on('moveend', () => { if (state.showBuses) updateBuses(); });
@@ -779,7 +786,22 @@ window.__ROUTE_SCOPED_EXTRA = ["651", "652", "703-1", "701-1", "325", "131", "13
         state.minute = Number(e.target.value);
         state.busMinute = state.minute;
         $('hourValue').textContent = clockLabel(state.minute);
-        render(false);
+        // 슬라이더 입력은 프레임당 최대 1회만 반영. 정류장 데이터는 시 단위라 시가 바뀔 때만 다시 계산·그립니다.
+        if (!state._sliderRaf) state._sliderRaf = requestAnimationFrame(() => { state._sliderRaf = 0; render(); });
+      });
+      // 순위표 행 클릭 / 시간대 막대 클릭은 위임 방식으로 한 번만 등록 (재렌더 때마다 리스너를 다시 달지 않음)
+      $('rankingBody').addEventListener('click', e => {
+        const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+        const s = state.lookup.get(Number(tr.dataset.id));
+        if (s) selectStop(s, true);
+      });
+      $('bars').addEventListener('click', e => {
+        const el = e.target.closest('.bar'); if (!el) return;
+        state.minute = Number(el.dataset.h) * 60;
+        state.busMinute = state.minute;
+        $('minuteRange').value = String(state.minute);
+        $('hourValue').textContent = clockLabel(state.minute);
+        render();
       });
       $('playButton').addEventListener('click', togglePlay);
       $('speedSelect').addEventListener('change', e => { state.speed = Number(e.target.value); });
@@ -860,76 +882,446 @@ window.__ROUTE_SCOPED_EXTRA = ["651", "652", "703-1", "701-1", "325", "131", "13
       });
     }
 
-    function ranked(hour) {
-      const rows = STOPS.filter(inScope).map(s => {
-        const m = metricsOf(s, hour);
-        return { s, m, v: metricValue(m), abs: Math.abs(metricValue(m)) };
-      });
-      rows.sort((a,b) => b.abs - a.abs);
-      return rows;
-    }
-
-    function colorOf(v) {
-      if (state.metric === 'alight') return '#c56a00';
-      if (state.metric === 'net') return v >= 0 ? '#087f5b' : '#d64545';
-      return '#1f6feb';
-    }
-
-    function render(redrawStops) {
-      buildAllocation();
-      const hour = Math.floor((((state.minute % 1440) + 1440) % 1440) / 60);
-      const rows = ranked(hour);
-      const top = rows.slice(0, state.topN);
-      state.current = top;
-      const sumB = rows.reduce((s,r) => s + r.m.b, 0);
-      const sumA = rows.reduce((s,r) => s + r.m.a, 0);
-      $('kpiBoard').textContent = fmt(sumB);
-      $('kpiAlight').textContent = fmt(sumA);
-      if (top[0]) {
-        $('kpiTop').textContent = top[0].s.name;
-        $('kpiTopNote').textContent = fmt(top[0].v) + '명 · ' + top[0].s.dong;
+    // =====================================================================
+    // 정류장 원 경량 렌더링
+    //  - 정류장 데이터는 1시간 단위이므로 (월·요일유형) 별로 24시간치 승·하차 표를 한 번만 만들고,
+    //    시(hour)·지표·범위·TOP N 등이 실제로 바뀔 때만 순위·표·지도를 다시 계산합니다.
+    //  - 정류장 원은 Leaflet 마커 수천 개 대신 캔버스 한 장(StopLayer)에 일괄로 그립니다.
+    //  - 분(minute) 단위 이동(시간 흐름·슬라이더)은 시가 바뀌지 않으면 정류장 쪽을 건드리지 않습니다.
+    // =====================================================================
+    const NSTOP = STOPS.length;
+    const TABLE_MAX_ROWS = 300;                      // 순위표 DOM 상한 (CSV는 TOP N 전체)
+    const STOP_PALETTE = ['#1f6feb', '#c56a00', '#087f5b', '#d64545'];
+    const STOP_INDEX = new Map(STOPS.map((s, i) => [s.id, i]));
+    // 정류장 좌표를 웹메르카토르 단위좌표(0~1)로 한 번만 변환해 둡니다. 줌마다 곱셈만 하면 화면 좌표가 됩니다.
+    const STOP_UX = new Float64Array(NSTOP), STOP_UY = new Float64Array(NSTOP);
+    (function () {
+      for (let i = 0; i < NSTOP; i++) {
+        const s = STOPS[i];
+        const lat = Math.max(Math.min(s.lat, 85.0511287798), -85.0511287798);
+        const sin = Math.sin(lat * Math.PI / 180);
+        STOP_UX[i] = (s.lon + 180) / 360;
+        STOP_UY[i] = 0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI);
       }
+    })();
+
+    function hourOf(minute) { return Math.floor((((minute % 1440) + 1440) % 1440) / 60); }
+    function stopColorIdx(v) { return state.metric === 'alight' ? 1 : state.metric === 'net' ? (v >= 0 ? 2 : 3) : 0; }
+
+    // (월·요일유형) 기준 정류장×24시간 승차/하차 표. 기존 metricsOf()와 같은 값을 미리 계산해 둡니다.
+    function ensureStopTable() {
+      alightCalibrated(STOPS[0], 0);                 // 하차 보정이 현재 월·요일 기준이 아니면 여기서 1회 재계산
+      const key = state._alightCalKey;
+      if (state._tbl && state._tblKey === key) return state._tbl;
+      const B = new Float64Array(NSTOP * 24), A = new Float64Array(NSTOP * 24), D = new Float64Array(NSTOP);
+      const cal = state._alightCal;
+      for (let i = 0; i < NSTOP; i++) {
+        const s = STOPS[i];
+        const daily = dailyOf(s);
+        D[i] = daily;
+        const share = BOARD_SHARE[s.di] && BOARD_SHARE[s.di][state.dayType];
+        const o = i * 24;
+        for (let h = 0; h < 24; h++) {
+          B[o + h] = daily * ((share && share[h]) || 0);
+          A[o + h] = cal.get(s.id + ':' + h) || 0;
+        }
+      }
+      state._tbl = { B: B, A: A, D: D };
+      state._tblKey = key;
+      state._tblVer = (state._tblVer || 0) + 1;
+      return state._tbl;
+    }
+
+    // 현재 도시/읍면동 범위에 속한 정류장 인덱스 (범위가 바뀔 때만 다시 계산)
+    function ensureScope() {
+      const key = state.city + '|' + state.dong;
+      if (state._scope && state._scopeKey === key) return state._scope;
+      const idx = [];
+      for (let i = 0; i < NSTOP; i++) if (inScope(STOPS[i])) idx.push(i);
+      state._scope = Int32Array.from(idx);
+      state._scopeKey = key;
+      return state._scope;
+    }
+
+    // 해당 시간대·지표 기준 순위 (시 또는 지표/범위가 바뀔 때만 호출됨)
+    function computeRank(tbl, hour) {
+      const scope = ensureScope();
+      const v = new Float64Array(NSTOP), abs = new Float64Array(NSTOP);
+      const metric = state.metric;
+      let sumB = 0, sumA = 0;
+      for (let k = 0; k < scope.length; k++) {
+        const i = scope[k], o = i * 24 + hour;
+        const b = tbl.B[o], a = tbl.A[o];
+        sumB += b; sumA += a;
+        const x = metric === 'alight' ? a : metric === 'net' ? b - a : b;
+        v[i] = x; abs[i] = Math.abs(x);
+      }
+      const order = Int32Array.from(scope);
+      order.sort((p, q) => abs[q] - abs[p] || p - q);
+      state._rank = { order: order, v: v, abs: abs, sumB: sumB, sumA: sumA, hour: hour };
+    }
+
+    function rowOf(i, hour) {
+      const t = state._tbl, r = state._rank, o = i * 24 + hour;
+      const b = t.B[o], a = t.A[o];
+      return { s: STOPS[i], m: { b: b, a: a, n: b - a, daily: t.D[i] }, v: r.v[i], abs: r.abs[i] };
+    }
+    function currentTopRows() {
+      const r = state._rank;
+      if (!r) return [];
+      const n = Math.min(state.topN, r.order.length), out = new Array(n);
+      for (let k = 0; k < n; k++) out[k] = rowOf(r.order[k], r.hour);
+      return out;
+    }
+
+    function stopTipHtml(i) {
+      const s = STOPS[i], t = state._tbl, o = i * 24 + state._rank.hour;
+      const b = t.B[o], a = t.A[o];
+      return `<strong>${escapeHTML(s.name)}</strong><br>${escapeHTML(s.city)} · ${escapeHTML(s.dong)}<br>승차 ${fmt(b)}명 · 하차 ${fmt(a)}명 · 순 ${fmt(b - a)}명`;
+    }
+
+    // ---- 정류장 전용 단일 캔버스 레이어 -------------------------------------
+    const StopLayer = L.Layer.extend({
+      options: { pane: 'stopsPane', padding: 0.4 },
+      initialize: function (opts) {
+        L.setOptions(this, opts);
+        this._d = null; this._bounds = null; this._hn = 0;
+        this._hx = this._hy = this._hr = null; this._hi = null;
+        this._hoverIdx = -1; this._lp = null; this._raf = 0; this._cursor = false;
+      },
+      onAdd: function () {
+        if (!this._canvas) {
+          const c = this._canvas = L.DomUtil.create('canvas', 'sim-stop-canvas');
+          c.style.pointerEvents = 'none';            // 마우스 이벤트는 지도 쪽에서 받아 직접 판정
+          this._ctx = c.getContext('2d');
+          if (this._zoomAnimated) L.DomUtil.addClass(c, 'leaflet-zoom-animated');
+          this._tip = L.tooltip({ className: 'stop-tip', direction: 'top', opacity: 1 });
+        }
+        this.getPane().appendChild(this._canvas);
+        this._reset();
+      },
+      onRemove: function () {
+        this._closeTip();
+        L.DomUtil.remove(this._canvas);
+      },
+      getEvents: function () {
+        const ev = {
+          viewreset: this._reset, zoom: this._onZoom, moveend: this._update,
+          mousemove: this._onMouseMove, mouseout: this._onMouseOut, click: this._onClick,
+          dragstart: this._onMouseOut, zoomstart: this._onMouseOut
+        };
+        if (this._zoomAnimated) ev.zoomanim = this._onAnimZoom;
+        return ev;
+      },
+      _onAnimZoom: function (e) { this._updateTransform(e.center, e.zoom); },
+      _onZoom: function () { this._updateTransform(this._map.getCenter(), this._map.getZoom()); },
+      _updateTransform: function (center, zoom) {
+        const map = this._map;
+        const scale = map.getZoomScale(zoom, this._zoom);
+        const viewHalf = map.getSize().multiplyBy(0.5 + this.options.padding);
+        const currentCenterPoint = map.project(this._center, zoom);
+        const topLeftOffset = viewHalf.multiplyBy(-scale).add(currentCenterPoint).subtract(map._getNewPixelOrigin(center, zoom));
+        if (L.Browser.any3d) L.DomUtil.setTransform(this._canvas, topLeftOffset, scale);
+        else L.DomUtil.setPosition(this._canvas, topLeftOffset);
+      },
+      _reset: function () {
+        this._update();
+        this._updateTransform(this._center, this._zoom);
+      },
+      // 지도 이동/줌이 끝났을 때만 캔버스 위치·크기를 갱신하고 다시 그립니다.
+      _update: function () {
+        const map = this._map;
+        if (!map) return;
+        const p = this.options.padding, size = map.getSize();
+        const min = map.containerPointToLayerPoint(size.multiplyBy(-p)).round();
+        const bsize = size.multiplyBy(1 + p * 2).round();
+        this._bounds = L.bounds(min, min.add(bsize));
+        this._center = map.getCenter();
+        this._zoom = map.getZoom();
+        this._origin = map.getPixelOrigin();
+        const dpr = this._dpr = Math.min(2, window.devicePixelRatio || 1);
+        const c = this._canvas;
+        L.DomUtil.setPosition(c, min);
+        const w = Math.round(bsize.x * dpr), h = Math.round(bsize.y * dpr);
+        if (c.width !== w || c.height !== h) {
+          c.width = w; c.height = h;
+          c.style.width = bsize.x + 'px'; c.style.height = bsize.y + 'px';
+        }
+        this._draw();
+      },
+      // data = { ord:Int32Array(정류장 인덱스, 그리는 순서), rad:Float32Array, col:Uint8Array, nSmall, selected }
+      setData: function (d) {
+        this._d = d;
+        if (!this._map) return;
+        this._draw();
+        this._hoverIdx = -1;
+        this._hoverUpdate();                         // 마우스가 올려진 정류장의 툴팁 수치도 새 시간대로 갱신
+      },
+      _draw: function () {
+        const ctx = this._ctx, b = this._bounds, d = this._d;
+        if (!ctx || !b) return;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        this._hn = 0;
+        if (!d || !d.ord.length) return;
+        const dpr = this._dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, -b.min.x * dpr, -b.min.y * dpr);   // 이후 좌표는 layer point 그대로
+        const scale = this._map.options.crs.scale(this._zoom);
+        const ox = this._origin.x, oy = this._origin.y;
+        const ord = d.ord, rad = d.rad, col = d.col, n = ord.length, nSmall = d.nSmall;
+        if (!this._hx || this._hx.length < n) {
+          this._hx = new Float32Array(n); this._hy = new Float32Array(n);
+          this._hr = new Float32Array(n); this._hi = new Int32Array(n); this._hc = new Uint8Array(n);
+        }
+        const hx = this._hx, hy = this._hy, hr = this._hr, hi = this._hi, hc = this._hc;
+        const minX = b.min.x, maxX = b.max.x, minY = b.min.y, maxY = b.max.y;
+        let hn = 0, hs = 0;
+        for (let k = 0; k < n; k++) {                // 화면 밖 정류장은 건너뜀
+          const i = ord[k], r = rad[k];
+          const x = STOP_UX[i] * scale - ox, y = STOP_UY[i] * scale - oy;
+          if (x + r < minX || x - r > maxX || y + r < minY || y - r > maxY) continue;
+          hx[hn] = x; hy[hn] = y; hr[hn] = r; hi[hn] = i; hc[hn] = col[k];
+          if (k < nSmall) hs = hn + 1;
+          hn++;
+        }
+        this._hn = hn;
+        const TAU = Math.PI * 2, pal = STOP_PALETTE;
+        // 1) 나머지 정류장(작은 점): 색상별로 한 번에 채움
+        if (hs > 0) {
+          ctx.lineWidth = 0.4; ctx.strokeStyle = '#fff';
+          for (let c = 0; c < 4; c++) {
+            let any = false;
+            ctx.beginPath();
+            for (let j = 0; j < hs; j++) {
+              if (hc[j] !== c) continue;
+              any = true;
+              ctx.moveTo(hx[j] + hr[j], hy[j]);
+              ctx.arc(hx[j], hy[j], hr[j], 0, TAU);
+            }
+            if (!any) continue;
+            ctx.fillStyle = pal[c]; ctx.globalAlpha = 0.28; ctx.fill();
+            ctx.globalAlpha = 1; ctx.stroke();
+          }
+        }
+        // 2) TOP N 정류장(큰 원): 순위 낮은 것부터 겹쳐 그려 1위가 맨 위
+        ctx.lineWidth = 1; ctx.strokeStyle = '#fff';
+        let lastC = -1;
+        for (let j = hs; j < hn; j++) {
+          if (hc[j] !== lastC) { lastC = hc[j]; ctx.fillStyle = pal[lastC]; }
+          ctx.beginPath();
+          ctx.arc(hx[j], hy[j], hr[j], 0, TAU);
+          ctx.globalAlpha = 0.78; ctx.fill();
+          ctx.globalAlpha = 1; ctx.stroke();
+        }
+        // 3) 선택된 정류장 강조 링
+        if (d.selected >= 0) {
+          for (let j = hn - 1; j >= 0; j--) {
+            if (hi[j] !== d.selected) continue;
+            ctx.beginPath();
+            ctx.arc(hx[j], hy[j], hr[j] + 5, 0, TAU);
+            ctx.lineWidth = 2; ctx.strokeStyle = '#12304a'; ctx.stroke();
+            break;
+          }
+        }
+      },
+      // 마우스 위치에서 가장 위에 그려진 원 찾기 (그려진 것만 선형 탐색, 한 프레임에 최대 1회)
+      _pick: function (lp) {
+        const n = this._hn;
+        if (!n) return -1;
+        const x = lp.x, y = lp.y, hx = this._hx, hy = this._hy, hr = this._hr;
+        for (let j = n - 1; j >= 0; j--) {
+          const dx = hx[j] - x, dy = hy[j] - y, rr = Math.max(hr[j], 5);
+          if (dx * dx + dy * dy <= rr * rr) return j;
+        }
+        return -1;
+      },
+      _onMouseMove: function (e) {
+        this._lp = e.layerPoint;
+        if (this._raf) return;
+        this._raf = requestAnimationFrame(() => { this._raf = 0; this._hoverUpdate(); });
+      },
+      _hoverUpdate: function () {
+        const map = this._map;
+        if (!map) return;
+        const j = this._lp ? this._pick(this._lp) : -1;
+        const el = map.getContainer();
+        if (j < 0) {
+          this._hoverIdx = -1; this._closeTip();
+          if (this._cursor) { el.style.cursor = ''; this._cursor = false; }
+          return;
+        }
+        if (!this._cursor) { el.style.cursor = 'pointer'; this._cursor = true; }
+        const i = this._hi[j];
+        if (i === this._hoverIdx) return;
+        this._hoverIdx = i;
+        const tip = this._tip;
+        tip.options.offset = L.point(0, -this._hr[j]);
+        tip.setContent(this.options.tipHtml(i));
+        tip.setLatLng(this.options.latLng(i));
+        if (!map.hasLayer(tip)) tip.openOn(map);
+      },
+      _onMouseOut: function () {
+        this._lp = null; this._hoverIdx = -1;
+        this._closeTip();
+        if (this._cursor && this._map) { this._map.getContainer().style.cursor = ''; this._cursor = false; }
+      },
+      _closeTip: function () {
+        if (this._tip && this._map && this._map.hasLayer(this._tip)) this._tip.close();
+      },
+      _onClick: function (e) {
+        const j = this._pick(e.layerPoint);
+        if (j >= 0) this.options.onClick(this._hi[j]);
+      }
+    });
+
+    function updateStopLayer() {
+      const layer = state.stopLayer;
+      if (!layer) return;
+      if (state.hideStops) { layer.setData(null); return; }
+      const r = state._rank, n = r.order.length, topN = Math.min(state.topN, n);
+      const maxAbs = Math.max(1, topN ? r.abs[r.order[0]] : 1);
+      let nSmall = 0;
+      if (state.showAll) {                           // 순위는 절대값 내림차순이라 기준 미만이면 바로 중단
+        let k = topN;
+        while (k < n && r.abs[r.order[k]] >= 0.05) k++;
+        nSmall = k - topN;
+      }
+      const total = nSmall + topN;
+      const ord = new Int32Array(total), rad = new Float32Array(total), col = new Uint8Array(total);
+      let p = 0;
+      for (let k = topN; k < topN + nSmall; k++, p++) {
+        const i = r.order[k];
+        ord[p] = i; rad[p] = 3; col[p] = stopColorIdx(r.v[i]);
+      }
+      for (let k = topN - 1; k >= 0; k--, p++) {
+        const i = r.order[k];
+        ord[p] = i; rad[p] = 5 + 22 * Math.sqrt(r.abs[i] / maxAbs); col[p] = stopColorIdx(r.v[i]);
+      }
+      const sel = state.selectedId != null && STOP_INDEX.has(state.selectedId) ? STOP_INDEX.get(state.selectedId) : -1;
+      layer.setData({ ord: ord, rad: rad, col: col, nSmall: nSmall, selected: sel });
+    }
+
+    function updateHeadings(hour) {
+      const hh = String(hour).padStart(2, '0');
       const metricLabel = state.metric === 'alight' ? '하차 추정' : state.metric === 'net' ? '순승차' : '승차';
       const monthLabel = state.month === -1 ? '2025-09~2026-08 평균' : MONTHS[state.month];
       const dayLabel = state.dayType === 0 ? '주중' : '주말';
-      $('mapHeading').textContent = `정류장 ${metricLabel} · ${clockLabel(state.minute)}`;
+      const shown = Math.min(state.topN, state._rank.order.length);
+      $('mapHeading').textContent = `정류장 ${metricLabel} · ${hh}시대`;
       $('mapSubheading').textContent = `${monthLabel} · ${dayLabel} · ${state.city === 'all' ? '제주 전역' : state.city}${state.dong !== 'all' ? ' · ' + state.dong : ''} · TOP ${state.topN}`;
       $('tableTitle').textContent = `${metricLabel} 정류장 순위`;
-      $('tableCaption').textContent = `${clockLabel(state.minute)} · 단위 명`;
-      if (redrawStops !== false) drawMap(top, rows);
-      drawTable(top);
-      drawChart(rows);
-      updateSelectedKpi(hour);
+      $('tableCaption').textContent = `${hh}:00~${hh}:59 · 단위 명` + (shown > TABLE_MAX_ROWS ? ` · 상위 ${TABLE_MAX_ROWS}개만 표시 (CSV는 전체)` : '');
+    }
+
+    // 정류장 데이터는 시 단위 → "시가 바뀌었거나 필터/지표가 바뀐 경우"에만 순위·표·지도를 갱신합니다.
+    // (분 단위 슬라이더 이동·시간 흐름은 여기서 아무 것도 다시 그리지 않고 버스만 갱신)
+    function render() {
+      buildAllocation();
+      const tbl = ensureStopTable();
+      const hour = hourOf(state.minute);
+      const scopeKey = state.city + '|' + state.dong;
+
+      const rankKey = state._tblVer + '|' + hour + '|' + state.metric + '|' + scopeKey;
+      const rankChanged = !state._rank || state._rankKey !== rankKey;
+      if (rankChanged) {
+        computeRank(tbl, hour);
+        state._rankKey = rankKey;
+        const r = state._rank;
+        $('kpiBoard').textContent = fmt(r.sumB);
+        $('kpiAlight').textContent = fmt(r.sumA);
+        if (r.order.length) {
+          const i = r.order[0];
+          $('kpiTop').textContent = STOPS[i].name;
+          $('kpiTopNote').textContent = fmt(r.v[i]) + '명 · ' + STOPS[i].dong;
+        }
+      }
+      const listKey = rankKey + '|' + state.topN + '|' + state.selectedId;
+      if (rankChanged || state._listKey !== listKey) {
+        state._listKey = listKey;
+        updateHeadings(hour);
+        drawTable(hour);
+        updateSelectedKpi(hour);
+      }
+      const stopKey = listKey + '|' + state.showAll + '|' + state.hideStops;
+      if (rankChanged || state._stopKey !== stopKey) {
+        state._stopKey = stopKey;
+        updateStopLayer();
+      }
+      const chartKey = state._tblVer + '|' + state.metric + '|' + scopeKey + '|' + state.selectedId;
+      if (state._chartKey !== chartKey) {
+        state._chartKey = chartKey;
+        drawChart();
+      }
+      updateBarActive(hour);
       updateBuses();
     }
 
-    function drawMap(top, allRows) {
-      state.layer.clearLayers();
-      if (state.hideStops) return;
-      const maxAbs = Math.max(1, top[0] ? top[0].abs : 1);
-      const drawOne = (row, emphasized) => {
-        const r = emphasized ? 5 + 22 * Math.sqrt(row.abs / maxAbs) : 3;
-        const marker = L.circleMarker([row.s.lat, row.s.lon], {
-          renderer: state.canvas, radius: r, color: '#fff', weight: emphasized ? 1 : 0.4,
-          fillColor: colorOf(row.v), fillOpacity: emphasized ? 0.78 : 0.28
-        });
-        marker.bindTooltip(
-          `<strong>${escapeHTML(row.s.name)}</strong><br>${escapeHTML(row.s.city)} · ${escapeHTML(row.s.dong)}<br>승차 ${fmt(row.m.b)}명 · 하차 ${fmt(row.m.a)}명 · 순 ${fmt(row.m.n)}명`,
-          { className: 'stop-tip', sticky: true }
-        );
-        marker.on('click', () => selectStop(row.s, false));
-        marker.addTo(state.layer);
-        if (state.selectedId === row.s.id) {
-          L.circleMarker([row.s.lat, row.s.lon], {
-            renderer: state.canvas, radius: r + 5, color: '#12304a', weight: 2, fillOpacity: 0
-          }).addTo(state.layer);
-        }
-      };
-      if (state.showAll) {
-        const shown = new Set(top.map(r => r.s.id));
-        allRows.forEach(r => { if (!shown.has(r.s.id) && r.abs >= 0.05) drawOne(r, false); });
+    function drawTable(hour) {
+      const body = $('rankingBody'), r = state._rank, t = state._tbl;
+      const n = Math.min(state.topN, r.order.length, TABLE_MAX_ROWS);
+      if (!n) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#7b8895;padding:28px">표시할 인원이 없습니다.</td></tr>';
+        return;
       }
-      top.slice().reverse().forEach(r => drawOne(r, true));
+      const parts = new Array(n);
+      for (let k = 0; k < n; k++) {
+        const i = r.order[k], s = STOPS[i], o = i * 24 + hour;
+        const b = t.B[o], a = t.A[o];
+        parts[k] = `<tr data-id="${s.id}" class="${s.id === state.selectedId ? 'active' : ''}">
+        <td class="rank">${k + 1}</td>
+        <td><strong>${escapeHTML(s.name)}</strong><div style="color:#8491a0;font-size:10px">${s.id}</div></td>
+        <td>${escapeHTML(s.city)} · ${escapeHTML(s.dong)}</td>
+        <td class="num">${fmt(b)}</td>
+        <td class="num">${fmt(a)}</td>
+        <td class="num">${fmt(b - a)}</td>
+        <td class="num hide-mobile">${fmt(t.D[i])}</td>
+      </tr>`;
+      }
+      body.innerHTML = parts.join('');
+    }
+
+    // 시간대 프로파일: 월·요일·지표·범위·선택 정류장이 바뀔 때만 다시 그리고, 시가 바뀌면 활성 막대만 옮깁니다.
+    function drawChart() {
+      const t = state._tbl;
+      const sel = state.selectedId ? state.lookup.get(state.selectedId) : null;
+      const useSel = sel && inScope(sel);
+      const bS = new Float64Array(24), aS = new Float64Array(24);
+      if (useSel) {
+        const o = STOP_INDEX.get(sel.id) * 24;
+        for (let h = 0; h < 24; h++) { bS[h] = t.B[o + h]; aS[h] = t.A[o + h]; }
+      } else {
+        const scope = ensureScope();
+        for (let k = 0; k < scope.length; k++) {
+          const o = scope[k] * 24;
+          for (let h = 0; h < 24; h++) { bS[h] += t.B[o + h]; aS[h] += t.A[o + h]; }
+        }
+      }
+      $('chartTitle').textContent = useSel ? `${sel.name} 시간대 프로파일` : '선택 범위 시간대 프로파일';
+      $('chartCaption').textContent = useSel
+        ? `${sel.city} · ${sel.dong} · 일평균 승차 ${fmt(dailyOf(sel))}명`
+        : ('묶음 하루 하차 ' + (state._alightAudit ? '±' + Math.round(state._alightAudit.band * 100) + '% · 최대 ' + Math.round(state._alightAudit.maxRel * 100) + '%' : '±15%') + ' · 승차 ' + (state._alightAudit ? state._alightAudit.tau.toFixed(1) : '19') + '분 지연');
+      const vals = new Array(24);
+      let maxAbs = 1;
+      for (let h = 0; h < 24; h++) {
+        vals[h] = state.metric === 'alight' ? aS[h] : state.metric === 'net' ? bS[h] - aS[h] : bS[h];
+        if (Math.abs(vals[h]) > maxAbs) maxAbs = Math.abs(vals[h]);
+      }
+      $('bars').innerHTML = vals.map((v, h) => {
+        const hgt = Math.max(2, Math.abs(v) / maxAbs * 90);
+        let cls = 'bar';
+        if (state.metric === 'alight') cls += ' alight';
+        else if (state.metric === 'net') cls += v >= 0 ? ' net-pos' : ' net-neg';
+        return `<div class="${cls}" data-h="${h}" style="height:${hgt}px" title="${String(h).padStart(2, '0')}:00 ${fmt(v)}명"></div>`;
+      }).join('');
+      state._barEls = Array.from($('bars').children);
+      state._barActive = -1;
+    }
+    function updateBarActive(hour) {
+      if (state._barActive === hour || !state._barEls) return;
+      const els = state._barEls;
+      if (els[state._barActive]) els[state._barActive].classList.remove('active');
+      if (els[hour]) els[hour].classList.add('active');
+      state._barActive = hour;
     }
 
     function drawRouteRankings(minuteValue) {
@@ -979,68 +1371,7 @@ window.__ROUTE_SCOPED_EXTRA = ["651", "652", "703-1", "701-1", "325", "131", "13
       fill('routeBottomBody', low);
     }
 
-    function drawTable(top) {
-      const body = $('rankingBody');
-      if (!top.length) {
-        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#7b8895;padding:28px">표시할 인원이 없습니다.</td></tr>';
-        return;
-      }
-      body.innerHTML = top.map((r, i) => `<tr data-id="${r.s.id}" class="${r.s.id===state.selectedId?'active':''}">
-        <td class="rank">${i+1}</td>
-        <td><strong>${escapeHTML(r.s.name)}</strong><div style="color:#8491a0;font-size:10px">${r.s.id}</div></td>
-        <td>${escapeHTML(r.s.city)} · ${escapeHTML(r.s.dong)}</td>
-        <td class="num">${fmt(r.m.b)}</td>
-        <td class="num">${fmt(r.m.a)}</td>
-        <td class="num">${fmt(r.m.n)}</td>
-        <td class="num hide-mobile">${fmt(r.m.daily)}</td>
-      </tr>`).join('');
-      body.querySelectorAll('tr[data-id]').forEach(tr => {
-        tr.addEventListener('click', () => {
-          const s = state.lookup.get(Number(tr.dataset.id));
-          if (s) selectStop(s, true);
-        });
-      });
-    }
-
-    function drawChart(rankedRows) {
-      const sel = state.selectedId ? state.lookup.get(state.selectedId) : null;
-      const useSel = sel && inScope(sel);
-      const series = [];
-      if (useSel) {
-        for (let h=0; h<24; h++) series.push(metricsOf(sel, h));
-      } else {
-        const scope = STOPS.filter(inScope);
-        for (let h=0; h<24; h++) {
-          let b=0,a=0;
-          for (const s of scope) { const m = metricsOf(s,h); b+=m.b; a+=m.a; }
-          series.push({b,a,n:b-a});
-        }
-      }
-      $('chartTitle').textContent = useSel ? `${sel.name} 시간대 프로파일` : '선택 범위 시간대 프로파일';
-      $('chartCaption').textContent = useSel
-        ? `${sel.city} · ${sel.dong} · 일평균 승차 ${fmt(dailyOf(sel))}명`
-        : ('묶음 하루 하차 ' + (state._alightAudit ? '±' + Math.round(state._alightAudit.band*100) + '% · 최대 ' + Math.round(state._alightAudit.maxRel*100) + '%' : '±15%') + ' · 승차 ' + (state._alightAudit ? state._alightAudit.tau.toFixed(1) : '19') + '분 지연');
-
-      const vals = series.map(m => metricValue(m));
-      const maxAbs = Math.max(1, ...vals.map(v => Math.abs(v)));
-      const hour = Math.floor((((state.minute % 1440)+1440)%1440)/60);
-      $('bars').innerHTML = vals.map((v,h) => {
-        const hgt = Math.max(2, Math.abs(v) / maxAbs * 90);
-        let cls = 'bar';
-        if (state.metric === 'alight') cls += ' alight';
-        else if (state.metric === 'net') cls += v >= 0 ? ' net-pos' : ' net-neg';
-        if (h === hour) cls += ' active';
-        return `<div class="${cls}" data-h="${h}" style="height:${hgt}px" title="${String(h).padStart(2,'0')}:00 ${fmt(v)}명"></div>`;
-      }).join('');
-      $('bars').querySelectorAll('.bar').forEach(el => {
-        el.addEventListener('click', () => {
-          state.minute = Number(el.dataset.h) * 60;
-          $('minuteRange').value = String(state.minute);
-          $('hourValue').textContent = clockLabel(state.minute);
-          render(true);
-        });
-      });
-    }
+    // (drawTable / drawChart 는 위의 '정류장 원 경량 렌더링' 블록으로 이동)
 
     function updateSelectedKpi(hour) {
       const sel = state.selectedId ? state.lookup.get(state.selectedId) : null;
@@ -1949,7 +2280,7 @@ function togglePlay() {
     }
 
     function exportCsv() {
-      const rows = state.current || [];
+      const rows = currentTopRows();
       if (!rows.length) return;
       const header = ['시각','월','요일유형','순위','정류장ID','정류장명','시','읍면동','승차_명','하차추정_명','순승차_명'];
       const monthLabel = state.month === 7 ? '1-7월평균' : String(state.month+1);
