@@ -1811,15 +1811,15 @@ const VIC=(function(){let w=null,v=null,armed=false;
   const arm=()=>{if(armed)return;armed=true;['touchstart','pointerdown','keydown'].forEach(e=>document.addEventListener(e,onG,{passive:true,capture:true}))};
   const disarm=()=>{if(!armed)return;armed=false;['touchstart','pointerdown','keydown'].forEach(e=>document.removeEventListener(e,onG,{capture:true}))};
   function stop(){disarm();if(v){try{v.pause();v.removeAttribute('src');v.load()}catch(e){}}if(w)w.remove();w=null;v=null}
-  function start(){stop();if(S.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const scr=$('#scrFinal');if(!scr)return;
+  function start(file){stop();file=file||'victory.mp4';if(S.reduced||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const scr=$('#scrFinal');if(!scr)return;
     w=document.createElement('div');w.id='vicBg';w.setAttribute('aria-hidden','true');v=document.createElement('video');
     v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.autoplay=true;v.preload='auto';['muted','playsinline','webkit-playsinline','autoplay'].forEach(a=>v.setAttribute(a,''));v.disablePictureInPicture=true;v.setAttribute('disableremoteplayback','');
     v.addEventListener('error',stop);v.addEventListener('playing',()=>{if(w)w.classList.add('on')});
-    const sh=document.createElement('div');sh.id='vicShade';w.appendChild(sh);w.insertBefore(v,sh);scr.insertBefore(w,scr.firstChild);v.src='victory.mp4';const p=v.play();if(p&&p.catch)p.catch(e=>{if(e&&e.name==='NotAllowedError')arm()})}
-  return {start,stop,get on(){return !!v},get playing(){return !!(v&&!v.paused&&w&&w.classList.contains('on'))}}})();
+    const sh=document.createElement('div');sh.id='vicShade';w.appendChild(sh);w.insertBefore(v,sh);scr.insertBefore(w,scr.firstChild);v.src=file;w.dataset.file=file;const p=v.play();if(p&&p.catch)p.catch(e=>{if(e&&e.name==='NotAllowedError')arm()})}
+  return {start,stop,get file(){return v?v.getAttribute('src'):null},get on(){return !!v},get playing(){return !!(v&&!v.paused&&w&&w.classList.contains('on'))}}})();
 new MutationObserver(()=>{if(!$('#scrFinal').classList.contains('show'))VIC.stop()}).observe($('#scrFinal'),{attributes:true,attributeFilter:['class']});
 function showFinal(){const ev=cur;if(!ev||!ev.res)return;const rk=repKey();const m=ev.res[rk];const sc=m.score,gr=m.grade;const win=sc>=1000,draw=!win&&gr!=='D';const END=endingOf(m,S.diff);
-  $('#scrFinal').classList.add('show');try{if(gr==='S'&&!/riot/i.test(END.k||''))VIC.start();else VIC.stop()}catch(e){}const fb=$('#finalBanner');fb.textContent=END.t;fb.className='fantasy '+END.c+' end-'+END.k;$('#finalEnding').textContent=END.d;
+  $('#scrFinal').classList.add('show');/* v5-2: 표시 등급이 D면 defeat.mp4, S(민원 폭주 엔딩 제외)면 victory.mp4, 그 밖은 영상 없음(요청도 없음). 민원 폭주 엔딩도 표시 등급이 D일 때만 defeat. */try{if(gr==='S'&&!/riot/i.test(END.k||''))VIC.start('victory.mp4');else if(gr==='D')VIC.start('defeat.mp4');else VIC.stop()}catch(e){}const fb=$('#finalBanner');fb.textContent=END.t;fb.className='fantasy '+END.c+' end-'+END.k;$('#finalEnding').textContent=END.d;
   const g=$('#finalGrade');g.textContent=gr;g.style.color=GRADE_COL[gr];g.classList.remove('reveal');void g.offsetWidth;g.classList.add('reveal');
   $('#finalRepSet').textContent=SETN[rk]+' 세트'+(S.diff==='hard'?' (어려움)':'');
   const fs=$('#finalScore');let t0=performance.now();const anim=t=>{const k=Math.min(1,(t-t0)/(S.reduced?1:1400));fs.textContent=fmt(Math.round(1000+(sc-1000)*(1-Math.pow(1-k,3))));if(k<1)requestAnimationFrame(anim)};requestAnimationFrame(anim);
