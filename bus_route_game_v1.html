@@ -334,6 +334,10 @@ html.t0on #cards .card{pointer-events:none}
 #finalCompWrap.fold .vox{display:none}
 #finalCompTop li.moreBtn{list-style:none;margin:6px 0}
 
+/* v6 보통: 접힌 카드 힌트 */
+.card .hintTgl{display:inline-block;margin-top:6px;padding:3px 9px;border:1px solid rgba(255,255,255,.25);border-radius:999px;font-size:12px;color:#cfe8ff;background:rgba(255,255,255,.06);cursor:pointer;user-select:none}.card .hintTgl:hover,.card .hintTgl:focus-visible{background:rgba(79,195,255,.18);outline:2px solid #4fc3ff55}
+.card .hintBox[hidden]{display:none}
+
 </style>
 </head>
 <body>
@@ -591,7 +595,7 @@ function Engine(D){
 
   /* ---------- 개편안 빌드 ---------- */
   function newPlan(){return {reg:-1,f:new Float32Array(nR*25).fill(1),spd:new Float32Array(nR).fill(1),stopCons:new Uint8Array(nR),boosted:new Uint8Array(nR),
-    drtRep:new Uint8Array(nR*25),trunc:new Uint8Array(nR),circ:[],drt:null,xferMul:1,xferWwMul:1,tauAdj:0,layoverAdd:new Float32Array(nR),regWaitMul:1,
+    drtRep:new Uint8Array(nR*25),trunc:new Uint8Array(nR),circ:[],drt:null,xferMul:1,xferWwMul:1,hubWaitMul:1,tauAdj:0,layoverAdd:new Float32Array(nR),regWaitMul:1,
     added:new Float32Array(NM),addedTrips:0,addedVH:0,strategy:'lowE1',surplus:'peak',donorScope:'all',cut:1,tags:[],notes:[],locked:null}}
   E.newPlan=newPlan;
   /* v5: 차량 쪽 속도 반영 — 같은 운행 횟수라도 1회 운행시간이 1/spd로 짧아지면 동시 운행 대수·차량시간이 그만큼 줄어듦 */
@@ -687,7 +691,7 @@ function Engine(D){
     p.check={hourMax:hm,lim,trips,tripLim,viol:viol2,tripOver:Math.max(0,Math.ceil(trips-tripLim-0.5)),peak:Math.max(...hm),fleetLim:Math.floor(572*p.cut)};
     p.check.ok=viol2.length===0&&p.check.tripOver===0&&p.check.peak<=p.check.fleetLim+0.5;
     // 최소 서비스 위반 (읍면 60분)
-    let ms=0;for(const r of R){if(r.k!==5)continue;for(let h=7;h<21;h++){const k=r.i*25+h;if(p.drtRep[k])continue;const d=r.dep[h]/r.nd;if(d>=1&&d*p.f[k]<0.999)ms++}}
+    let ms=0;for(const r of R){if(r.k!==5)continue;if(p.mergeOf&&p.mergeOf[r.i]>=0)continue; /* v6: 통폐합된 노선 구간은 합친 노선이 최소 서비스를 맡음 */for(let h=7;h<21;h++){const k=r.i*25+h;if(p.drtRep[k])continue;const d=r.dep[h]/r.nd;if(d>=1&&d*p.f[k]<0.999)ms++}}
     p.check.minSvc=ms;
     return p;
   }
@@ -719,7 +723,7 @@ function Engine(D){
         let fqD=0,spd=0,dr=false;for(const s of sv){if(s.fac[j]){if(s.fixedWait)dr=true;else fqD+=s.fq;if(s.spd>spd)spd=s.spd}}
         const ivt=d*C.detour/C.spd*60;let gc;
         if(fqD>0||dr){let w=fqD>0?Math.min(15,60/(2*fqD)):99;if(dr)w=Math.min(w,drtW);gc=wkC+set.ww*w+ivt/(spd||1)}
-        else if(sv.length){if(NET){const k=li*nF+j;const wTr=Math.max(1,Math.min(20,netW[k]-baseWaitLA[li]));gc=wkC+set.ww*wAny+ivt+tau*Math.max(1,netX[k])+set.ww*p.xferWwMul*p.xferMul*wTr}else gc=wkC+set.ww*wAny+ivt+tau+set.ww*p.xferWwMul*xw}
+        else if(sv.length){if(NET){const k=li*nF+j;const wTr=Math.max(1,Math.min(20,netW[k]-baseWaitLA[li]));gc=wkC+set.ww*wAny+ivt+tau*Math.max(1,netX[k])+set.ww*p.xferWwMul*p.hubWaitMul*p.xferMul*wTr}else gc=wkC+set.ww*wAny+ivt+tau+set.ww*p.xferWwMul*p.hubWaitMul*xw}
         else gc=wkC+set.ww*30+ivt+2*tau+60;
         sum+=fw*Math.exp(-C.beta*gc)}
       A[li]=sum}
@@ -742,7 +746,7 @@ function Engine(D){
     const trunkWait=trN?trW/trN:7.5;
     const fTr=new Float32Array(25).fill(1);if(NET&&reg>=0){for(let h=0;h<25;h++){let s=0,n=0;for(const r of R){if(!r.trunk||r.rs[reg]<0.3||!r.dep[h])continue;s+=p.f[r.i*25+h];n++}fTr[h]=n?Math.max(0.3,s/n):1}}
     const hubN=NET&&reg>=0&&reg<ISL?nLA+reg:-1;
-    const netXf=(oz,dzz,h,feedH)=>{const xm=p.xferWwMul*p.xferMul;if(hubN<0)return null;if(IR(zr[oz],reg)&&!IR(zr[dzz],reg)){const d=zNode[dzz];if(d<0)return null;const ii=nidx(hubN,d,bandOf(h));if(NET.X[ii]<0)return null;const x=Math.min(2,NET.X[ii]/10);return tau*(1+x)+set.ww*xm*Math.min(20,NET.W[ii]/fTr[h])}
+    const netXf=(oz,dzz,h,feedH)=>{const xm=p.xferWwMul*p.hubWaitMul*p.xferMul;if(hubN<0)return null;if(IR(zr[oz],reg)&&!IR(zr[dzz],reg)){const d=zNode[dzz];if(d<0)return null;const ii=nidx(hubN,d,bandOf(h));if(NET.X[ii]<0)return null;const x=Math.min(2,NET.X[ii]/10);return tau*(1+x)+set.ww*xm*Math.min(20,NET.W[ii]/fTr[h])}
       return tau+set.ww*xm*Math.min(15,feedH)};
     // DRT 수요/공급 → 혼잡 대기
     let S0=0,S1=0,Q0=0,QL=0,scopeQ1=0;const W_=[[0,0,0,0,0],[0,0,0,0,0]];/* v5-5 전장 안(1)/밖(0): S0,S1,Q0,QL,QLx */const paxMul=new Float32Array(nR).fill(1);const rq0=new Float32Array(nR),rq1=new Float32Array(nR);
@@ -760,11 +764,12 @@ function Engine(D){
       const gc0=wk*C.walk0+set.ww*w0+ivt0;
       let walk=C.walk0,wait,ivt,xf=0;
       const crossing=(!IR(zr[oz],reg))||(!IR(zr[dzz],reg));
-      if(p.drtRep[k]){wait=p.drt.waitEff[set.key]*dwm;ivt=ivt0*C.drtDetour;walk=2;if(crossing){const nx=NET?netXf(oz,dzz,h,p.drt.waitEff[set.key]*dwm*0.5):null;xf=nx!=null?nx:tau+set.ww*p.xferWwMul*Math.min(15,trunkWait*p.xferMul);}}
+      if(p.drtRep[k]){wait=p.drt.waitEff[set.key]*dwm;ivt=ivt0*C.drtDetour;walk=2;if(crossing){const nx=NET?netXf(oz,dzz,h,p.drt.waitEff[set.key]*dwm*0.5):null;xf=nx!=null?nx:tau+set.ww*p.xferWwMul*p.hubWaitMul*Math.min(15,trunkWait*p.xferMul);}}
       else{const f=Math.max(0.05,fCap?Math.min(fCap[r],p.f[k]):p.f[k]);wait=Math.min(15,rr.H[h]/f/2)*(IR(rr.mainReg,reg)?p.regWaitMul:1);ivt=ivt0/p.spd[r];
+        if(p.mergeOf&&p.mergeOf[r]>=0){const a_=p.mergeOf[r],fa=Math.max(0.05,fCap?Math.min(fCap[a_],p.f[a_*25+h]):p.f[a_*25+h]);const comb=f/Math.max(1,rr.H[h])+(R[a_].H[h]>0?fa/R[a_].H[h]:0);wait=Math.min(15,1/(2*Math.max(1e-3,comb)))*(IR(rr.mainReg,reg)?p.regWaitMul:1);ivt*=1.06} // v6 통폐합: 합친 노선 손님은 두 노선 배차를 함께 이용, 경로 절충으로 차내 +6%
         if(p.stopCons[r])walk+=C.stopConsWalk;
         if(p.layoverAdd[r])ivt+=0;
-        if(p.trunc[r]&&crossing){const nx=NET?netXf(oz,dzz,h,Math.min(15,rr.H[h]/f/2)):null;xf=nx!=null?nx:tau+set.ww*p.xferWwMul*Math.min(15,trunkWait*p.xferMul);ivt=ivt0*0.97}}
+        if(p.trunc[r]&&crossing){const nx=NET?netXf(oz,dzz,h,Math.min(15,rr.H[h]/f/2)):null;xf=nx!=null?nx:tau+set.ww*p.xferWwMul*p.hubWaitMul*Math.min(15,trunkWait*p.xferMul);ivt=ivt0*0.97}}
       if(zCD[oz]||zCD[dzz]){if(circLA.has(oz))walk-=1.5;if(circLA.has(dzz))walk-=1.5;if(dz.has(oz)&&!p.drtRep[k])walk-=1}
       walk=Math.max(1,walk);
       const gc1=wk*walk+set.ww*wait+ivt+xf;
@@ -810,9 +815,9 @@ function Engine(D){
   }
   // v2 등급 컷: 노선망 표 반영 후 쉬움 전 경로 분포를 보고 재조정(v1: 1120/1080/1040/1000)
   // v3 등급 컷: 돌발 이벤트·민원 패널티 도입 후 시드별 전체 경로 순회 분포로 재조정. 어려움(비관 세트·이벤트 강도 ×1.35)은 별도 컷
-  const CUTS_BY={easy:{S:1066,A:1040,B:1000,C:962},normal:{S:1064,A:1039,B:999,C:961},hard:{S:1058,A:1021,B:977,C:931}};E.CUTS_BY=CUTS_BY; // v5-5 재조정(전장 가중·신규 이벤트, 시드 24개 전체 경로)
+  const CUTS_BY={easy:{S:1059,A:1029,B:994,C:959},normal:{S:1056,A:1027,B:993,C:957},hard:{S:1053,A:1014,B:971,C:927}};E.CUTS_BY=CUTS_BY; // v6 재조정(신규 카드 4종 포함, 시드 24개 전체 경로)
   /* v5-5: 섬 전역(5) 전용 컷 — 전체 경로 스윕 분포를 다른 전장과 같은 목표 분포에 맞춤 */
-  const CUTS_ISL={easy:{S:1037,A:1020,B:992,C:961},normal:{S:1027,A:1014,B:992,C:957},hard:{S:1042,A:1004,B:969,C:929}};E.CUTS_ISL=CUTS_ISL;
+  const CUTS_ISL={easy:{S:1031,A:1007,B:990,C:959},normal:{S:1022,A:1007,B:988,C:955},hard:{S:1038,A:1002,B:962,C:927}};E.CUTS_ISL=CUTS_ISL;
   const CUTS=CUTS_BY.normal;E.CUTS=CUTS;E.cutsOf=(d,reg)=>(reg===5?CUTS_ISL[d]:CUTS_BY[d])||CUTS;
   function grade(s,d,reg){const C_=E.cutsOf(d,reg);return s>=C_.S?'S':s>=C_.A?'A':s>=C_.B?'B':s>=C_.C?'C':'D'}
   E.grade=grade;
@@ -872,7 +877,7 @@ function Engine(D){
   const NPC=new Map();
   function netPairCtx(p,b){const key=p;let m=NPC.get(key);if(!m){m={};NPC.set(key,m);if(NPC.size>30)NPC.delete(NPC.keys().next().value)}if(m[b])return m[b];const hs=BANDH[b];
     const fr=new Float32Array(nR),drtB=new Uint8Array(nR);for(let r=0;r<nR;r++){let s=0,n=0,dr=0;for(let h=hs[0];h<=hs[1];h++){if(!R[r].dep[h])continue;n++;if(p.drtRep[r*25+h])dr++;else s+=p.f[r*25+h]}fr[r]=n&&n>dr?s/(n-dr):1;drtB[r]=n&&dr*2>=n?1:0}
-    return m[b]={fr,drtB,circLA:new Set(p.circ.map(c=>c.la)),drtW:p.drt?p.drt.waitEff.base:20,xm:p.xferMul}}
+    return m[b]={fr,drtB,circLA:new Set(p.circ.map(c=>c.la)),drtW:p.drt?p.drt.waitEff.base:20,xm:p.xferMul*p.hubWaitMul}} // v6: 허브 연계 시각표는 RAPTOR 표의 환승 대기에도 반영
   /* v5: base를 주면(주민 개인 경로: 실제 출발·도착 좌표로 미리 계산한 현행 T·W·환승·차내시간·노선) 표값 대신 그 값에 같은 카드 효과식을 얹음. o·d는 권역 판정·거점 대기 조회용 생활권. */
   function netPair(p,o,d,b,base){if(!NET||o<0||d<0||o>=nLA||d>=nLA||(o===d&&!base))return null;const nN=NET.nN,reg=p.reg;const c=netPairCtx(p,b);const i=nidx(o,d,b);
     const xr=base?(base.reach?Math.round(base.x0*10):-1):NET.X[i];
@@ -907,7 +912,7 @@ function Engine(D){
         parts[0]=CW.cut*cut;parts[1]=CW.drt*d/b;parts[3]=CW.stop*st/b;gain+=CW.up*up}
       const zq=m.zQ[li];if(zq>0){parts[2]=CW.xf*xfA*m.zX[li]/zq;parts[4]=CW.lost*Math.max(0,m.zL[li]/zq)}
       const aa=m.laA[li]||0;if(aa<0)parts[5]=CW.accN*(-aa);else gain+=CW.acc*aa;
-      if(circF[li]>0||(dz&&dz.has(li)&&!b))gain+=0.02;
+      if(circF[li]>0||(dz&&dz.has(li)&&!b))gain+=0.02;if(p.ppsLA&&p.ppsLA.has(li))gain+=0.02; // v6 민관 협력 시설 생활권
       gain=Math.min(CW.gainCap,gain);const A=amp?amp[li]:1;for(let k=0;k<6;k++){parts[k]*=A;sev+=parts[k]}
       let top=-1,tv=0;for(let k=0;k<6;k++)if(parts[k]>tv){tv=parts[k];top=k}let top2=-1,tv2=0;for(let k=0;k<6;k++)if(k!==top&&parts[k]>tv2){tv2=parts[k];top2=k}
       if(IR(l.reg,reg)){nIn+=pop*(gain-sev);pIn+=pop}else{nOut+=pop*(gain-sev);pOut+=pop}const inB=p.reg<0||IR(l.reg,reg);const c=inB?pop*sev/1000*100:0;if(inB){cnt+=c;regC[l.reg]+=c;if(top>=0)for(let k=0;k<6;k++)causeT[k]+=pop*parts[k]/1000*100}
@@ -961,6 +966,14 @@ function Game(E){
     FAC.forEach(f=>{if(km(hub.lat,hub.lon,f.lat,f.lon)<0.8)fac[f.i]=1;if(E.IR(f.reg,g)){for(const li of zone){if(km(LA[li].lat,LA[li].lon,f.lat,f.lon)<5){fac[f.i]=1;break}}}});
     p.drt={zone,fac,hours,routes:routes.map(r=>r.i),crowd,waitEff:{opt:10*crowd,base:20*crowd,pess:30*crowd},veh:vehFixed||0};
   }
+  /* v6 신규 카드 대상 노선(전장별 후보): 통폐합 = 생활권 경유 집합 겹침(Jaccard) 0.4 이상 짝 상위 3쌍, 분할 = 왕복 운행시간 상위 3개(90분 이상) */
+  const p0=path=>path&&path.length?+String(path[0]).slice(1):0;
+  const MP={},SP={};
+  function mergePairs(g){if(MP[g])return MP[g];const rr=R.filter(r=>r.rs[g]>=0.5&&r.vh>0&&!r.trunk&&r.la.length>=3);const C=[];
+    for(let i=0;i<rr.length;i++)for(let j=i+1;j<rr.length;j++){const A=new Set(rr[i].la);let x=0;for(const l of rr[j].la)if(A.has(l))x++;const J=x/(rr[i].la.length+rr[j].la.length-x);const bid=r=>String(r.id).split('-')[0],lab=r=>String(E.D.R[r.i].l||''),same=(x,y)=>bid(x)===bid(y)||lab(x)===lab(y)||lab(x).includes(bid(y)+'번')||lab(y).includes(bid(x)+'번')||Math.abs(+bid(x)-+bid(y))===1&&String(bid(x)).length>=3;if(J>=0.4&&!same(rr[i],rr[j]))C.push([J,rr[i],rr[j]])}
+    C.sort((a,b)=>b[0]-a[0]);const used=new Set(),out=[];for(const [J,a,b] of C){if(used.has(a.i)||used.has(b.i))continue;used.add(a.i);used.add(b.i);out.push(a.pax>=b.pax?[a.i,b.i]:[b.i,a.i]);if(out.length>=3)break}return MP[g]=out}
+  function splitRoutes(g){if(SP[g])return SP[g];return SP[g]=R.filter(r=>r.rs[g]>=0.5&&r.vh>0&&E.D.R[r.i].rt>=90).sort((a,b)=>E.D.R[b.i].rt-E.D.R[a.i].rt).slice(0,3).map(r=>r.i)}
+  G.mergePairs=mergePairs;G.splitRoutes=splitRoutes;
   const ROUNDS=[
    {id:'region',no:1,title:'전장 선택',sub:'어느 권역부터 개편할까요?',
     host:['자, 첫 번째 선택입니다! 이번 시즌 어느 권역에서 승부를 보시겠어요?','권역마다 버스 사정이 꽤 달라요. 도심은 사람이 많고, 읍면은 마을이 넓게 흩어져 있답니다.'],
@@ -978,10 +991,14 @@ function Game(E){
       {id:'bolt',icon:'⚡',name:'번개 간선',easy:'출퇴근 시간 큰길 버스를 50% 더 자주, 정류장은 몇 곳 건너뛰어 더 빠르게.',term:'간선'},
       {id:'golden',icon:'👑',name:'황금 축 집중',easy:'가장 붐비는 큰길 노선 3개를 하루 종일 50% 더 자주 다니게 해요.'},
       {id:'hub',icon:'🕸️',name:'허브 앤 스포크',easy:'동네 버스는 환승센터까지만 짧게 돌며 30% 더 자주 오고, 남는 차는 큰길 버스로! 대신 갈아타기가 생겨요.',term:'환승'},
+      ...(mergePairs(p0(path)).length?[{id:'merge',icon:'🔗',name:'겹치는 노선 통폐합',easy:`같은 길을 겹쳐 달리는 노선 짝 ${mergePairs(p0(path)).length}쌍(${mergePairs(p0(path)).map(([a,b])=>R[a].id+'+'+R[b].id).join(', ')||'없음'})을 하나로 합쳐요. 남는 쪽은 60% 줄이고 남긴 쪽을 25% 더 자주. 차는 아끼지만 줄어든 노선 손님은 불편해요.`,term:'배차'}]:[]),
+      ...(splitRoutes(p0(path)).length?[{id:'split',icon:'✂️',name:'긴 노선 둘로 나누기',easy:`너무 긴 노선 ${splitRoutes(p0(path)).length}개(${splitRoutes(p0(path)).map(r=>R[r].id).join(', ')||'없음'})를 거점에서 둘로 나눠요. 짧아진 만큼 빠르고 정확해지고 10% 더 자주 오지만, 거점을 넘는 손님은 갈아타야 해요.`,term:'환승'}]:[]),
       {id:'keep',icon:'🛡️',name:'현행 유지',easy:'큰길 버스는 지금 그대로 둡니다. 무난하지만 변화도 적어요.'}]},
     apply(p,o){const g=p.reg;
       if(o.id==='bolt'){regTrunk(g).forEach(r=>{[7,8,9,17,18,19].forEach(h=>p.f[r.i*25+h]*=1.5);p.spd[r.i]=E.C.boltSpd;p.stopCons[r.i]=1;p.boosted[r.i]=1})}
       if(o.id==='golden'){topBy(regTrunk(g),r=>r.pax,3).forEach(r=>{for(let h=6;h<22;h++)p.f[r.i*25+h]*=1.5;p.boosted[r.i]=1})}
+      if(o.id==='merge'){p.mergeOf=p.mergeOf||new Int16Array(R.length).fill(-1);for(const [a,b] of mergePairs(g)){for(let h=6;h<22;h++){p.f[b*25+h]*=0.4;p.f[a*25+h]*=1.25}p.boosted[a]=1;p.mergeOf[b]=a}p.tags.push('merge')}
+      if(o.id==='split'){for(const r of splitRoutes(g)){p.trunc[r]=1;p.spd[r]*=1.08;for(let h=6;h<22;h++)p.f[r*25+h]*=1.1;p.boosted[r]=1}p.surplusRegion=true;p.tags.push('hub','split')}
       if(o.id==='hub'){regFeed(g).filter(r=>r.rs[g]<0.95).forEach(r=>{p.trunc[r.i]=1;p.boosted[r.i]=1;for(let h=6;h<22;h++)p.f[r.i*25+h]*=1.3});p.surplusRegion=true;p.tags.push('hub')}}},
    {id:'circ',no:3,title:'마을 한 바퀴 셔틀',sub:'생활권 순환버스(동네를 한 바퀴 도는 셔틀)를 어디에 넣을까요?',
     host:['이번엔 신메뉴, 생활권 순환버스입니다! 동네를 한 바퀴 돌아 큰길 정류장까지 데려다줘요.','셔틀에 들어가는 차도 전체 버스 수 안에서 마련해야 해요. 신중하게!'],
@@ -989,14 +1006,16 @@ function Game(E){
       const dense=topBy(L,l=>l.pop,2),iso=topBy(L,l=>l.walk*10+(l.gr==='저이용'?50:0)-A0b[l.i]/Math.max(1,l.pop)*1000,3);
       const facW=l=>l.nearF.reduce((s,j)=>s+(/학교|병원|공공/.test(FAC[j].cat)?1:0.3),0);
       const fc=topBy(L,facW,2),wide=topBy(L,l=>l.pop*(l.walk),5);
+      const facP=l=>l.nearF.reduce((s,j)=>s+(/학교|대학|병원|보건|공공|마트|쇼핑|터미널/.test(FAC[j].cat)?1:0),0);const pps=topBy(L.filter(l=>!fc.includes(l)),facP,3);
       const nm=a=>a.map(l=>l.n.replace(/ 일대.*$/,'')).join(', ');
       return [
       {id:'dense',icon:'🏘️',name:'북적북적 셔틀',easy:`사람이 가장 많은 생활권 2곳(${nm(dense)})에 셔틀을 3대씩 넣어요.`,las:dense.map(l=>l.i),veh:3,term:'순환'},
       {id:'iso',icon:'🕯️',name:'외딴 마을 등불',easy:`버스 타기 어려운 생활권 3곳(${nm(iso)})에 셔틀을 2대씩 넣어요.`,las:iso.map(l=>l.i),veh:2,term:'순환'},
       {id:'fac',icon:'🏫',name:'학교·병원 순례',easy:`학교·병원이 몰린 생활권 2곳(${nm(fc)})을 2대씩 돌아요.`,las:fc.map(l=>l.i),veh:2,term:'순환'},
       {id:'wide',icon:'🌐',name:'넓게 한 대씩',easy:`5곳(${nm(wide)})에 1대씩. 넓게 퍼지지만 셔틀이 자주 오진 않아요.`,las:wide.map(l=>l.i),veh:1,term:'순환'},
+      {id:'pps',icon:'🤝',name:'민관 협력 셔틀',easy:`학교·병원·대형 시설이 몰린 생활권 3곳(${nm(pps)})의 시설 셔틀을 공공 순환버스로 통합해 7~20시 2대씩 운행. 시설 손님을 흡수하지만 등하교·진료 시간 쏠림을 감당해야 해요.`,las:pps.map(l=>l.i),veh:2,pps:true,term:'순환'},
       {id:'none',icon:'✋',name:'이번엔 패스',easy:'순환버스를 넣지 않아요. 차를 아껴 두는 선택이에요.',las:[],veh:0}]},
-    apply(p,o){for(const li of o.las){const c=E.buildCirc(li,o.veh);p.circ.push(c);E.addVehicles(p,o.veh,c.h0,c.h1);p.addedTrips+=c.freq*(c.h1-c.h0)}}},
+    apply(p,o){for(const li of o.las){const c=E.buildCirc(li,o.veh);if(o.pps){c.h0=7;c.h1=20;const L_=LA[li];FAC.forEach(f=>{if(km(L_.lat,L_.lon,f.lat,f.lon)<1.5)c.fac[f.i]=1});c.pps=1;(p.ppsLA=p.ppsLA||new Set()).add(li)}p.circ.push(c);E.addVehicles(p,o.veh,c.h0,c.h1);p.addedTrips+=c.freq*(c.h1-c.h0)}if(o.pps)p.tags.push('pps')}},
    {id:'drt',no:4,title:'부르면 오는 버스',sub:'DRT(수요응답형, 앱·전화로 부르면 오는 버스)를 어떻게 쓸까요?',
     host:['다음은 부르면 오는 버스, DRT예요! 정해진 시간표 대신 부를 때 와요.','손님이 적은 노선은 DRT가 효율적일 수 있지만, 기다리는 시간이 생길 수 있어요.'],
     options(path,p){const g=p.reg;if(RURAL.includes(g))return [
@@ -1020,12 +1039,14 @@ function Game(E){
     host:['거의 다 왔어요! 이제 갈아타기와 버스 간격을 다듬어 볼게요.','갈아타기가 편해지면 순환버스·DRT의 효과가 확 살아난답니다.'],
     options(path,p){const hasX=p.tags.includes('hub')||p.circ.length||(p.drt&&p.drt.routes.length);const o=[];
       if(hasX)o.push({id:'pulse',icon:'⏱️',name:'정시 환승 펄스',easy:'환승센터에서 버스들이 같은 시각에 만나도록 맞춰요. 갈아타기 대기 절반! 대신 차가 조금 더 쉬어 가요.',term:'환승'});
+      o.push({id:'hubpulse',icon:'🕰️',name:'허브 연계 시각표',easy:'전장 거점에서 큰길·동네 버스가 같은 시각에 도착하도록 시간표를 묶어요. 갈아타기 대기가 크게 줄지만, 버스가 서로를 기다리느라 회차 대기가 늘고 배차 융통성이 떨어져요.',term:'환승'});
       o.push({id:'peak',icon:'🔥',name:'출퇴근 화력 집중',easy:'권역 큰길 버스를 출퇴근 때 15% 더, 한낮엔 15% 덜 다니게 해요.',term:'배차'});
       o.push({id:'clock',icon:'🕐',name:'외우기 쉬운 간격',easy:'매시 같은 분에 오도록 간격을 고르게 맞춰요. 기다림이 덜 지루해져요.',term:'배차'});
       {const np=Math.min(5,1+p.circ.length+(p.drt?1:0));o.push({id:'remodel',icon:'🏛️',name:'쉼터와 안내판의 마법',easy:`환승 거점에 쉼터와 실시간 도착 안내를 두고 갈아타는 걸음 동선을 줄여요. 지금 거점 ${np}곳(최대 5곳까지 효과가 커져요).`,term:'환승'})}
       return o},
     apply(p,o){const g=p.reg;const rr=R.filter(r=>(r.trunk||r.feeder)&&r.rs[g]>=0.3);
       if(o.id==='pulse'){p.xferMul=0.4;p.tauAdj-=3;rr.forEach(r=>{if(r.feeder)p.layoverAdd[r.i]=4})}
+      if(o.id==='hubpulse'){p.hubWaitMul*=0.55;p.tauAdj-=1;rr.forEach(r=>{p.layoverAdd[r.i]=Math.max(p.layoverAdd[r.i],2)});p.regWaitMul*=1.02;p.tags.push('hubpulse')}
       if(o.id==='peak'){rr.filter(r=>r.trunk).forEach(r=>{[7,8,17,18].forEach(h=>p.f[r.i*25+h]*=1.15);[10,11,12,13,14,15].forEach(h=>p.f[r.i*25+h]*=0.85);p.boosted[r.i]=p.boosted[r.i]||3})}
       if(o.id==='clock'){p.regWaitMul=0.85;rr.forEach(r=>{p.layoverAdd[r.i]=2})}
       if(o.id==='remodel'){const np=Math.min(5,1+p.circ.length+(p.drt?1:0));const s=np/5;p.xferWwMul*=1-0.2*s;p.tauAdj-=2*s;p.notes.push(`환승 거점 리모델링 ${np}곳: 갈아타기 대기 가중 ×${(1-0.2*s).toFixed(2)}, 갈아타기 벌점 −${(2*s).toFixed(1)}분`)}}},
@@ -1163,7 +1184,7 @@ function Game(E){
   /* ---------- v3: 민원 잠금 ----------
      만족도 < 경고(50): 다음 라운드의 '강한 서비스 축소' 카드(★★) 잠금. 만족도 < 폭주(30): 서비스 축소 카드(★ 이상) 전부 잠금.
      잠그면 고를 카드가 없어질 때는 잠그지 않고(막다른 길 방지) 대신 페널티만 남습니다. */
-  const SENS={trunk:{hub:2,bolt:1},drt:{convert:2,nightcall:2,midday:1,night:1},xfer:{peak:1},alloc:{uniform:2,cut5:2}};G.SENS=SENS;
+  const SENS={trunk:{hub:2,bolt:1,merge:2,split:1},drt:{convert:2,nightcall:2,midday:1,night:1},xfer:{peak:1},alloc:{uniform:2,cut5:2}};G.SENS=SENS;
   function compLockLevel(sat){return sat<E.SATR.riot?1:sat<E.SATR.warn?2:9}
   G.compLockLevel=compLockLevel;
   G.compLocked=(n,id,sat)=>{const s=SENS[ROUNDS[n].id];if(!s||!s[id])return false;return s[id]>=compLockLevel(sat)};
@@ -1210,7 +1231,7 @@ const pct=x=>(x>=0?'+':'')+(x*100).toFixed(1)+'%';
 const GRADE_COL={S:'#ffd76a',A:'#ff7ad9',B:'#4fd1ff',C:'#7ee787',D:'#ff5a5a'};
 const SETN={opt:'낙관',base:'기준',pess:'비관'};
 const DIFFS={easy:{nm:'입문',ic:'🌱',d:'기준 세트로 채점해요. 카드마다 예상 점수·민심 변화를 숫자로 보여 드리고 추천 카드도 표시해요. 돌발 이벤트 0~1회(시드에 따라 없을 수도, 강도 ×0.7).'},
-  normal:{nm:'보통',ic:'⚔️',d:'기준 세트로 채점해요. 카드에는 ↑↓ 방향만 보여요. 돌발 이벤트 1~2회(시드에 따라, 강도 ×1.0). 감으로 승부!'},
+  normal:{nm:'보통',ic:'⚔️',d:'기준 세트로 채점해요. 카드의 🔍 예상 보기를 누르면 ↑↓ 방향을 볼 수 있어요. 돌발 이벤트 1~2회(시드에 따라, 강도 ×1.0). 감으로 승부!'},
   hard:{nm:'어려움',ic:'☠️',d:'비관 세트로 채점해요. 카드의 점수·방향·민심 미리보기와 남은 이벤트 수는 비공개(고른 뒤 실제 결과만 표시). 돌발 이벤트 4회(강도 ×1.35), 읍면 최소 서비스(60분) 위반은 실행 불가, 마지막에 5% 감축 미션도 열려요.'}};
 const TERMS={
  '간선':'<b>간선 = 큰길 급행</b><br>도시와 도시, 큰 거점을 큰길로 빠르게 잇는 버스예요. (급행·간선·일반간선)',
@@ -1715,6 +1736,14 @@ let previewToken=0;
 /* v4: 어려움은 결과를 미리 짐작하게 하는 표시(예상 점수·방향 화살표·민심/이벤트 영향·민감도 ★·남은 이벤트 수)를 모두 숨김 */
 const NOHINT=()=>S.diff==='hard';
 const EVM={easy:'num',normal:'num',hard:'arrow'};
+/* v6: 보통은 카드 힌트(수송·편함·승객 화살표, 예상, 민심·이벤트 영향)를 접어 두고 '🔍 예상 보기'를 눌러야 펼침. 카드 선택과 분리(캡처 단계에서 가로채 전파 중단). 라운드·선택·되돌리기 때 다시 그리면서 접힌 상태로 초기화 */
+const HIDEH=()=>S.diff==='normal';
+function hintToggle(t){const box=t.nextElementSibling;if(!box)return;const open=box.hidden;box.hidden=!open;t.setAttribute('aria-expanded',open?'true':'false');t.textContent=open?'🔍 예상 숨기기':'🔍 예상 보기';try{SFX.click()}catch(e){}}
+{const cs=document.querySelector('#cards');const stop=e=>{const t=e.target.closest&&e.target.closest('.hintTgl');if(!t)return null;e.stopPropagation();e.preventDefault();return t};
+ cs.addEventListener('click',e=>{const t=stop(e);if(t)hintToggle(t)},true);
+ for(const ty of ['pointerdown','pointerup','mousedown','mouseup','touchstart','touchend'])cs.addEventListener(ty,e=>{if(e.target.closest&&e.target.closest('.hintTgl'))e.stopPropagation()},true);
+ cs.addEventListener('keydown',e=>{const t=e.target.closest&&e.target.closest('.hintTgl');if(!t)return;if(e.key==='Enter'||e.key===' '){e.stopPropagation();e.preventDefault();hintToggle(t)}},true);
+ cs.addEventListener('keyup',e=>{if(e.target.closest&&e.target.closest('.hintTgl')&&(e.key===' '||e.key==='Enter')){e.stopPropagation();e.preventDefault()}},true)}
 function renderRound(){const n=S.path.length;if(n>0&&n<G.ROUNDS.length&&!renderRound.silent&&renderRound._last!==n)setTimeout(()=>{try{SFX.round()}catch(e){}},420);renderRound._last=n;renderPips();renderEvBar();$('#btnUndo').disabled=n===0;
   if(n>=G.ROUNDS.length){$('#roundNo').textContent='FINAL';$('#roundTitle').textContent='모든 라운드 완료!';$('#roundSub').textContent='결과 화면에서 최종 등급을 확인하세요.';$('#cards').innerHTML='<button class="bigBtn sm" id="btnShowFinal">🏆 최종 결과 보기</button>';$('#btnShowFinal').onclick=showFinal;return}
   const R=G.ROUNDS[n];$('#roundNo').textContent=`ROUND ${n+1} / ${G.ROUNDS.length}`;$('#roundTitle').textContent=R.title;$('#roundSub').innerHTML=termify(R.sub);
@@ -1723,10 +1752,10 @@ function renderRound(){const n=S.path.length;if(n>0&&n<G.ROUNDS.length&&!renderR
   const info=opts.map(o=>({o,ev:evalPath(S.path.concat(o.id)),comp:n>0&&G.compLocked(n,o.id,sat0)}));
   const ruleOk=info.filter(x=>!x.ev.lock);let fb=false;if(ruleOk.length&&ruleOk.every(x=>x.comp)){info.forEach(x=>x.comp=false);fb=true}
   const sensOf=id=>{const s_=G.SENS[R.id];return s_&&s_[id]?s_[id]:0};
-  $('#cards').innerHTML=info.map(({o,comp})=>`<button class="card calc${comp?' lock clk':''}" data-id="${o.id}"><div class="ic">${o.icon}</div><div class="nm">${o.name}${(!NOHINT()&&sensOf(o.id))?`<span class="sens" title="민원 민감 카드: 만족도가 낮으면 잠길 수 있어요">${'★'.repeat(sensOf(o.id))}</span>`:''}</div>${o.tag?`<div class="tg">${o.tag}</div>`:''}<div class="ez">${termify(o.easy)}</div>${NOHINT()?'<div class="fx nh">🙈 결과는 고른 뒤 공개</div>':'<div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div>'}${comp?`<div class="lk comp">📢 민원 보류: 만족도 ${sat0.toFixed(0)} &lt; ${sat0<E.SATR.riot?E.SATR.riot:E.SATR.warn}</div>`:''}</button>`).join('');
+  $('#cards').innerHTML=info.map(({o,comp})=>`<button class="card calc${comp?' lock clk':''}" data-id="${o.id}"><div class="ic">${o.icon}</div><div class="nm">${o.name}${(!NOHINT()&&sensOf(o.id))?`<span class="sens" title="민원 민감 카드: 만족도가 낮으면 잠길 수 있어요">${'★'.repeat(sensOf(o.id))}</span>`:''}</div>${o.tag?`<div class="tg">${o.tag}</div>`:''}<div class="ez">${termify(o.easy)}</div>${NOHINT()?'<div class="fx nh">🙈 결과는 고른 뒤 공개</div>':HIDEH()?'<span class="hintTgl" role="button" tabindex="0" aria-expanded="false">🔍 예상 보기</span><div class="hintBox" hidden><div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div></div>':'<div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div>'}${comp?`<div class="lk comp">📢 민원 보류: 만족도 ${sat0.toFixed(0)} &lt; ${sat0<E.SATR.riot?E.SATR.riot:E.SATR.warn}</div>`:''}</button>`).join('');
   const tok=++previewToken;const pv=[];const imp=[];
   info.forEach((x,i)=>setTimeout(()=>{if(tok!==previewToken)return;const {o,ev,comp}=x;const el=$(`.card[data-id="${o.id}"]`);if(!el)return;el.classList.remove('calc');
-    if(ev.lock){el.classList.add('lock');el.querySelector('.fx').innerHTML='';el.insertAdjacentHTML('beforeend',`<div class="lk">🔒 선택 불가: ${ev.lock}</div>`);pv[i]=null}
+    if(ev.lock){el.classList.add('lock');{const t_=el.querySelector('.hintTgl');if(t_)t_.remove()}el.querySelector('.fx').innerHTML='';el.insertAdjacentHTML('beforeend',`<div class="lk">🔒 선택 불가: ${ev.lock}</div>`);pv[i]=null}
     else if(NOHINT()){pv[i]=null}
     else{const m=ev.res[repKey()];const b=baseM||{e1r:1,gcr:1,qr:1};const ar=(v,w)=>{const d=v-w;return d>0.0015?'<span class="up">▲</span>':d<-0.0015?'<span class="dn">▼</span>':'<span class="eq">–</span>'};
       el.querySelector('.fx').innerHTML=`<b>수송 ${ar(m.e1r,b.e1r)}</b><b>편함 ${ar(m.gcr,b.gcr)}</b><b>승객 ${ar(m.qr,b.qr)}</b>`;
@@ -2009,6 +2038,8 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 <tr><td>생활권 · 시설</td><td>${E.LA.length}개 · ${E.FAC.length}곳</td><td>__OVL.la / fac</td></tr></table>
 <h3>계산 순서 (선택할 때마다 실제로 다시 계산)</h3>
 <ol><li><b>개편안 만들기</b>: 카드 선택을 노선별·시간대별 배차 배율, 속도, 환승센터 단축, DRT 전환, 순환버스(차량 수·순환시간), 환승 조건으로 바꿉니다. ‘환승 거점 리모델링’ 카드는 거점(권역 허브 1곳 + 순환버스 연결점 + DRT 연계점, 최대 5곳) 수에 비례해 갈아타기 대기 가중치를 최대 20%(2.0→1.6), 갈아타기 벌점을 최대 2분(10→8분) 낮춥니다. 차량·감점 비용은 없고, 갈아타는 승객과 갈아타야 닿는 목적지에만 효과가 있습니다.</li>
+<li><b>v6 · 보통 난이도 힌트</b>: 카드의 수송·편함·승객 화살표와 예상·민심·이벤트 영향은 접혀 있고 ‘🔍 예상 보기’를 눌러야 펼쳐집니다(값·점수 계산은 같고, 열어 본 횟수는 점수에 영향이 없습니다). 입문은 항상 표시, 어려움은 표시하지 않습니다.</li>
+<li><b>v6 신규 카드</b>: 🔗 <b>겹치는 노선 통폐합</b>(2라운드) — 전장 안 비간선 노선 중 경유 생활권이 40% 이상 겹치는 짝(같은 번호의 방향 변형 제외) 상위 3쌍에서 이용이 적은 쪽을 6~22시 60% 줄이고 남긴 쪽을 25% 늘립니다. 줄어든 노선 손님은 두 노선 배차를 합쳐 기다리고(경로 절충으로 차내 +6%), 그 구간 읍면 최소 서비스는 합친 노선이 맡습니다. ✂️ <b>긴 노선 둘로 나누기</b>(2라운드) — 왕복 90분 이상 노선 상위 3개를 전장 거점에서 끊어(전장을 넘는 손님 강제 환승, 차량은 전장 구간만큼) 속도 +8%·배차 +10%. 🤝 <b>민관 협력 셔틀</b>(3라운드) — 학교·대학·병원·보건·공공·마트·터미널이 몰린 생활권 3곳에 7~20시 순환버스 2대씩, 반경 1.5km 시설까지 직접 연결, 해당 생활권 호감 +0.02. 🕰️ <b>허브 연계 시각표</b>(5라운드) — 거점 환승 대기 가중 ×0.55(RAPTOR 이동시간표의 거점 환승 대기에도 같은 배율), 갈아타기 벌점 −1분, 대신 전장 간선·지선 회차 대기 +2분(차량 소요 증가)·전장 노선 대기 ×1.02(배차 융통성 저하). 계수는 모두 가정치입니다. 민원 민감도: 통폐합 ★★, 분할 ★, 민관 협력·허브 연계 시각표는 비민감.</li>
 <li><b>운행대수 맞추기(설계서 5.6절)</b>: 분 단위로 노선별 동시 운행 대수를 다시 합산하고, 시간대별 현행 최대값을 넘으면 그 시간대 승객 대비 버스가 남는 노선부터 배차를 10%씩 줄입니다(최소 서비스 하한 유지). 하루 운행 횟수(5,287회)도 같은 방식으로 맞춥니다. 끝까지 맞출 수 없으면 카드가 🔒 잠깁니다.</li>
 <li><b>기존 승객 이동 부담</b>: OD 묶음마다 걷기×w<sub>walk</sub> + 기다리기(배차간격/2, 최대 15분)×w<sub>wait</sub> + 차내시간 + 갈아타기 벌점 τ + 환승 대기를 현행·개편 각각 계산합니다.</li>
 <li><b>떠나거나 새로 타는 승객(로짓, θ=0.1/분)</b>: 이동 부담 차이에 따라 버스 선택 확률이 바뀝니다(현행 분담 65% 가정). Q<sub>이탈</sub>은 순이탈(음수는 유입)이며, 다른 권역에서 버스를 덜어 와 생긴 이탈도 포함합니다.</li>
@@ -2231,7 +2262,7 @@ const T0STEPS=[
  {t:'.scoreBox',h:'🏆 점수 = 효율지수',b:'현행 노선 = <b>1000점</b>. 효율은 세 가지로 매겨요: 🚍 <b>수송 효율 30%</b>(버스 한 대가 태우는 승객) · 😊 <b>기존 승객 편익 40%</b>(걷기·기다림·갈아타기) · 👥 <b>승객 수 30%</b>(새로 타는 사람 − 떠나는 사람). 고른 <b>전장 85% + 나머지 15%</b>로 합산하고, 🏝️ 섬 전역을 고르면 섬 전체 100%예요.'},
  {t:'#satBox',h:'📢 민심 게이지',b:'점수와 따로 <b>주민 만족도</b>(시작 70)가 있어요. 배차를 줄이거나 DRT로 바꾸거나 갈아타기를 늘리면 민원이 쌓여요. <b>50 아래</b>면 감점과 일부 카드 잠금, <b>30 아래</b>면 등급이 B로 묶여요!'},
  {t:'#evBar',h:'⚡ 돌발 이벤트',b:'시즌마다 태풍·안개·관광 성수기·요금 인상·버스 파업·안내 시스템 마비 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. 같은 카드도 이벤트에 따라 효과가 달라지니, 카드의 <b>⚡ 이벤트 영향</b>을 보세요.',bh:'시즌마다 태풍·안개·관광 성수기·요금 인상·버스 파업·안내 시스템 마비 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. <b>어려움</b>에선 시즌에 몇 번 더 터질지, 카드별로 어떤 효과가 날지 미리 알려 드리지 않아요. 터지면 ↶ 직전 카드 다시 고르기로 대응할 수 있어요.'},
- {t:'#cards',h:'🃏 카드 고르기',b:'라운드마다 카드 한 장을 골라요. 카드엔 <b>수송·편함·승객</b> 화살표와 예상 변화, 민원 민감도 ★가 표시돼요. 이제 연습 카드로 직접 해 볼까요?',bh:'라운드마다 카드 한 장을 골라요. <b>어려움</b>에선 카드에 점수·방향 미리보기와 민원 민감도 표시가 없어요 — 카드 이름과 설명만 보고 판단하고, 결과는 고른 뒤에 공개돼요. 이제 연습 카드를 눌러 볼까요?'},
+ {t:'#cards',h:'🃏 카드 고르기',b:'라운드마다 카드 한 장을 골라요. (보통 난이도는 카드의 <b>🔍 예상 보기</b>를 눌러야 화살표가 보여요.) 새 카드 🔗 노선 통폐합·✂️ 노선 분할·🤝 민관 협력 셔틀·🕰️ 허브 연계 시각표도 섞여 나와요. 카드엔 <b>수송·편함·승객</b> 화살표와 예상 변화, 민원 민감도 ★가 표시돼요. 이제 연습 카드로 직접 해 볼까요?',bh:'라운드마다 카드 한 장을 골라요. <b>어려움</b>에선 카드에 점수·방향 미리보기와 민원 민감도 표시가 없어요 — 카드 이름과 설명만 보고 판단하고, 결과는 고른 뒤에 공개돼요. 이제 연습 카드를 눌러 볼까요?'},
  {t:null,prac:1,h:'🧪 연습 ① 큰길 버스 정책',b:'연습 무대: <b>🌅 서쪽 노을 해안(애월·한림)</b>, 입문 난이도, 이벤트 없음. 두 카드 중 하나를 눌러 보세요.'},
  {t:null,prac:2,h:'🧪 연습 ② 부르면 오는 버스(DRT)',b:'같은 무대에서 이번엔 DRT 카드예요. 점수와 <b>민심</b>이 어떻게 갈리는지 보세요.',bh:'같은 무대에서 이번엔 DRT 카드예요. 한산한 마을을 DRT로 바꾸는 건 효율과 <b>민심</b> 사이의 줄다리기예요. 어려움에선 결과를 미리 알려 드리지 않아요.'},
  {t:'#btnUndo',h:'↶ 되돌리기 & 다시 보기',b:'실수해도 괜찮아요. <b>↶ 되돌리기</b>로 한 수 물릴 수 있어요. 이 튜토리얼은 위의 <b>🎓 튜토리얼</b> 버튼으로 언제든 다시 볼 수 있어요. 자, 진짜 1라운드로!'}
