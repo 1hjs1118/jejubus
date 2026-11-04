@@ -1559,7 +1559,7 @@ function animate(t){requestAnimationFrame(animate);const dt=Math.min(100,t-lastT
     if(p&&p.reg>=0){const hb=E.hubs[p.reg];const q2=proj3(mx(hb.lon),my(hb.lat),0.1);if(q2){const t2=hb.n.replace(/\(.*$/,'').replace(/\[.*$/,'');c.fillStyle='#f0e6d2';c.strokeText(t2,q2[0]+8,q2[1]-6);c.fillText(t2,q2[0]+8,q2[1]-6)}}}
   // 성능 측정·자동 저해상도
   if(mode3D){const ft=Math.min(200,dt);G3.ft=G3.ft*0.9+ft*0.1;G3.samples.push(ft);if(G3.samples.length>600)G3.samples.shift();G3.frames++;
-    if(!G3.low&&G3.frames>90&&G3.ft>45){G3.low=true;G3.frames=0;buildMesh();resizeMap();G3.texDirty=true;toast('3D가 무거워 자동으로 저해상도 모드로 바꿨어요.')}
+    if(!G3.low&&G3.frames>90&&G3.ft>83){G3.low=true;G3.frames=0;buildMesh();resizeMap();G3.texDirty=true;toast('3D가 무거워 자동으로 저해상도 모드로 바꿨어요.')}
     $('#t3dFps').textContent=`${Math.round(1000/Math.max(1,G3.ft))} fps${G3.low?' · 저해상도':''}`}
   const hh=String(h).padStart(2,'0'),mm=String(m%60).padStart(2,'0');
   if(t-(animate.lt||0)>250){animate.lt=t;$('#mapClock').innerHTML=`🕐 ${hh}:${mm} · 도로 위 버스 약 <b>${Math.round(nb)}</b>대 ${showNew?'(개편)':'(현행)'} · 한도 ${E.limit[h]}대`}
