@@ -317,6 +317,17 @@ html.t0on #cards .card{pointer-events:none}
 #vicShade{position:absolute;inset:0;z-index:1;background:linear-gradient(to bottom,rgba(0,0,0,.42) 0%,rgba(0,0,0,.105) 40%,rgba(0,0,0,.14) 60%,rgba(0,0,0,.49) 100%),radial-gradient(ellipse 60% 55% at 50% 50%,rgba(4,8,16,.21) 0%,rgba(0,0,0,0) 100%),rgba(2,5,12,.294)}
 #scrFinal>.finalCard{position:relative;z-index:1}#scrFinal>#pillar{z-index:1}
 
+/* v5-3: 결과 화면 접힘 섹션 + 확장 스크린 */
+.xpSec.fold{cursor:pointer;border-radius:8px;transition:background .2s}.xpSec.fold:hover,.xpSec.fold:focus-visible{background:rgba(255,215,120,.06);outline:1px solid var(--goldD)}
+.xpHint{display:none;font-size:11px;font-weight:normal;color:#8b94a5;margin-left:6px}.xpSec.fold .xpHint{display:inline}
+#finalCompWrap.fold #finalSat>:not(.satBig),#finalCompWrap.fold .fgrid2{display:none}
+#finalEvWrap.fold #finalEv{display:none}
+#xpScr{position:fixed;inset:0;z-index:160;display:grid;place-items:center;background:rgba(2,4,8,.82);padding:16px 10px}#xpScr[hidden]{display:none}
+#xpPanel{width:min(900px,100%);max-height:88vh;overflow:auto;padding:14px 16px;background:rgba(8,12,22,.97)}
+#xpHead{display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:-14px;background:rgba(8,12,22,.97);padding:4px 0;z-index:1}#xpHead h3{margin:0}
+#xpBody .xpSec h3:first-child{display:none}
+@media (max-width:700px){#xpPanel{max-height:92vh;padding:10px}#xpBody .fgrid2{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -430,9 +441,9 @@ html.t0on #cards .card{pointer-events:none}
       <div><h3>효율 3요소 (현행=1.000)</h3><div id="finalComp"></div><h3>규칙 검사</h3><div id="finalRules"></div></div>
       <div><h3>접근성 변화가 큰 생활권</h3><div id="finalLA"></div></div>
     </div>
-    <div id="finalCompWrap"><h3>📢 민원·여론 결산</h3><div id="finalSat"></div>
+    <div id="finalCompWrap" class="xpSec"><h3>📢 민원·여론 결산 <span class="xpHint">🔍 눌러서 자세히 보기</span></h3><div id="finalSat"></div>
       <div class="fgrid2"><div><h4>민원 상위 생활권 (눌러서 지도 보기)</h4><ol id="finalCompTop"></ol></div><div><h4>원인별 민원</h4><div id="finalCause"></div><h4>권역별 민원</h4><div id="finalCompReg"></div></div></div></div>
-    <div id="finalEvWrap"><h3>⚡ 이번 시즌 돌발 이벤트 <span class="lbl">시드 #<span id="finalSeed"></span></span></h3><div id="finalEv"></div></div>
+    <div id="finalEvWrap" class="xpSec"><h3>⚡ 이번 시즌 돌발 이벤트 <span class="lbl">시드 #<span id="finalSeed"></span></span> <span class="xpHint">🔍 눌러서 펼치기</span></h3><div id="finalEv"></div></div>
     <div class="finalBtns"><button id="btnAgain" class="bigBtn sm">⟲ 다시 하기 (새 시드)</button><button id="btnSame" class="bigBtn sm alt">🎲 같은 시드로 다시</button><button id="btnShare" class="bigBtn sm alt">🔗 선택 경로 공유 URL 복사</button><button id="btnSeeMap" class="ghostBtn">지도로 돌아가 보기</button></div>
     <div id="shareOut"></div>
     <div id="bdWrap"><div class="bdBtns"><button class="bdTab" data-t="la">🏘️ 생활권별 승객 증감</button><button class="bdTab" data-t="rt">🚌 노선별 승객 증감</button><button class="bdTab" data-t="net">🔁 생활권별 환승 격차</button><button class="bdTab" data-t="ppl">🧑‍🤝‍🧑 주민 체험</button></div>
@@ -449,6 +460,7 @@ html.t0on #cards .card{pointer-events:none}
   </div>
 </div>
 
+<div id="xpScr" role="dialog" aria-modal="true" aria-labelledby="xpTitle" hidden><div id="xpPanel" class="panel gold"><div id="xpHead"><h3 id="xpTitle"></h3><button id="xpClose" class="ghostBtn" aria-label="닫기">✕ 닫기</button></div><div id="xpBody"></div></div></div>
 <!-- v3 돌발 이벤트 -->
 <div id="scrEvent" class="screen" role="dialog" aria-modal="true" aria-labelledby="evTitle">
   <div class="evRays" aria-hidden="true"></div>
@@ -1819,7 +1831,7 @@ const VIC=(function(){let w=null,v=null,armed=false;
   return {start,stop,get file(){return v?v.getAttribute('src'):null},get on(){return !!v},get playing(){return !!(v&&!v.paused&&w&&w.classList.contains('on'))}}})();
 new MutationObserver(()=>{if(!$('#scrFinal').classList.contains('show'))VIC.stop()}).observe($('#scrFinal'),{attributes:true,attributeFilter:['class']});
 function showFinal(){const ev=cur;if(!ev||!ev.res)return;const rk=repKey();const m=ev.res[rk];const sc=m.score,gr=m.grade;const win=sc>=1000,draw=!win&&gr!=='D';const END=endingOf(m,S.diff);
-  $('#scrFinal').classList.add('show');/* v5-2: 표시 등급이 D면 defeat.mp4, S(민원 폭주 엔딩 제외)면 victory.mp4, 그 밖은 영상 없음(요청도 없음). 민원 폭주 엔딩도 표시 등급이 D일 때만 defeat. */try{if(gr==='S'&&!/riot/i.test(END.k||''))VIC.start('victory.mp4');else if(gr==='D')VIC.start('defeat.mp4');else VIC.stop()}catch(e){}const fb=$('#finalBanner');fb.textContent=END.t;fb.className='fantasy '+END.c+' end-'+END.k;$('#finalEnding').textContent=END.d;
+  $('#scrFinal').classList.add('show');try{XP.reset()}catch(e){}/* v5-2: 표시 등급이 D면 defeat.mp4, S(민원 폭주 엔딩 제외)면 victory.mp4, 그 밖은 영상 없음(요청도 없음). 민원 폭주 엔딩도 표시 등급이 D일 때만 defeat. */try{if(gr==='S'&&!/riot/i.test(END.k||''))VIC.start('victory.mp4');else if(gr==='D')VIC.start('defeat.mp4');else VIC.stop()}catch(e){}const fb=$('#finalBanner');fb.textContent=END.t;fb.className='fantasy '+END.c+' end-'+END.k;$('#finalEnding').textContent=END.d;
   const g=$('#finalGrade');g.textContent=gr;g.style.color=GRADE_COL[gr];g.classList.remove('reveal');void g.offsetWidth;g.classList.add('reveal');
   $('#finalRepSet').textContent=SETN[rk]+' 세트'+(S.diff==='hard'?' (어려움)':'');
   const fs=$('#finalScore');let t0=performance.now();const anim=t=>{const k=Math.min(1,(t-t0)/(S.reduced?1:1400));fs.textContent=fmt(Math.round(1000+(sc-1000)*(1-Math.pow(1-k,3))));if(k<1)requestAnimationFrame(anim)};requestAnimationFrame(anim);
@@ -2190,7 +2202,24 @@ function t0Render(){const st=T0STEPS[T0.i];const last=T0.i===T0STEPS.length-1;co
 addEventListener('resize',()=>{if(T0.on)t0Place()});addEventListener('scroll',()=>{if(T0.on)t0Place()},{passive:true,capture:true});
 addEventListener('keydown',e=>{if(T0.on&&e.key==='Escape')t0Close()});
 
-window.__TEST__={VIC,RG,regLoops,regCam,openTut,landVid:()=>landVid,AUD,getAC:()=>AC,getMG:()=>MG,getBG:()=>BG,BGM,SFX,audApply,get PPL(){return PPL},PPL_ALL,pplSync,pplReview,pplCalc,showPpl,get PPLV(){return PPLV},T0,t0Open,t0Close,T0STEPS,is3D:()=>mode3D,SEA:()=>SEA,showEvent,envAt,BD,bdCSV,bdRows,set3D,camPreset,G3,S,G,E,choose:id=>{const el=document.querySelector(`.card[data-id="${id}"]`);choose(id,el||document.body)},evalPath,get cur(){return cur},showFinal};
+
+/* v5-3: 결과 화면 [민원·여론 결산]은 게이지만, [돌발 이벤트]는 제목만 보이게 접고, 누르면(클릭·터치·Enter·Space) 확장 스크린으로 펼침.
+   펼칠 때 섹션 요소 자체를 확장 스크린으로 옮겨(지도 보기 등 기존 클릭 동작 유지) 닫을 때 제자리로 돌려놓음. 닫기 버튼·ESC·바깥 클릭. 결과 화면이 닫히면 함께 정리. */
+const XP=(function(){const scr=$('#xpScr'),body=$('#xpBody');let cur_=null,ph=null,back=null;
+  const TITLE={finalCompWrap:'📢 민원·여론 결산',finalEvWrap:'⚡ 이번 시즌 돌발 이벤트'};
+  function open(sec){if(cur_)close(true);back=document.activeElement;ph=document.createComment('xp');sec.parentNode.insertBefore(ph,sec);fold(sec,false);
+    $('#xpTitle').textContent=TITLE[sec.id]||'';body.appendChild(sec);scr.hidden=false;cur_=sec;try{SFX.click()}catch(e){}setTimeout(()=>$('#xpClose').focus(),0)}
+  function close(silent){if(!cur_)return;const sec=cur_;cur_=null;if(ph&&ph.parentNode){ph.parentNode.insertBefore(sec,ph);ph.remove()}ph=null;fold(sec,true);scr.hidden=true;
+    if(!silent&&$('#scrFinal').classList.contains('show'))try{sec.focus({preventScroll:true})}catch(e){}back=null}
+  function fold(sec,on){sec.classList.toggle('fold',on);if(on){sec.setAttribute('role','button');sec.tabIndex=0;sec.setAttribute('aria-expanded','false');sec.setAttribute('aria-haspopup','dialog')}else{sec.removeAttribute('role');sec.removeAttribute('tabindex');sec.setAttribute('aria-expanded','true');sec.removeAttribute('aria-haspopup')}}
+  for(const id of ['finalCompWrap','finalEvWrap']){const sec=$('#'+id);sec.addEventListener('click',e=>{if(sec.classList.contains('fold')){e.preventDefault();open(sec)}});
+    sec.addEventListener('keydown',e=>{if(sec.classList.contains('fold')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open(sec)}})}
+  $('#xpClose').onclick=()=>close();scr.addEventListener('click',e=>{if(e.target===scr)close()});
+  document.addEventListener('keydown',e=>{if(cur_&&e.key==='Escape'){e.preventDefault();e.stopPropagation();close()}},true);
+  new MutationObserver(()=>{if(!$('#scrFinal').classList.contains('show'))close(true)}).observe($('#scrFinal'),{attributes:true,attributeFilter:['class']});
+  function reset(){close(true);fold($('#finalCompWrap'),true);fold($('#finalEvWrap'),SEA.length>0);if(!SEA.length){const e=$('#finalEvWrap');e.removeAttribute('aria-expanded')}}
+  return {open,close,reset,get openId(){return cur_?cur_.id:null}}})();
+window.__TEST__={XP,VIC,RG,regLoops,regCam,openTut,landVid:()=>landVid,AUD,getAC:()=>AC,getMG:()=>MG,getBG:()=>BG,BGM,SFX,audApply,get PPL(){return PPL},PPL_ALL,pplSync,pplReview,pplCalc,showPpl,get PPLV(){return PPLV},T0,t0Open,t0Close,T0STEPS,is3D:()=>mode3D,SEA:()=>SEA,showEvent,envAt,BD,bdCSV,bdRows,set3D,camPreset,G3,S,G,E,choose:id=>{const el=document.querySelector(`.card[data-id="${id}"]`);choose(id,el||document.body)},evalPath,get cur(){return cur},showFinal};
 })();
 </script>
 </body>
