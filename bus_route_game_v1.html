@@ -328,6 +328,12 @@ html.t0on #cards .card{pointer-events:none}
 #xpBody .xpSec h3:first-child{display:none}
 @media (max-width:700px){#xpPanel{max-height:92vh;padding:10px}#xpBody .fgrid2{grid-template-columns:1fr}}
 
+/* v5-5 */
+.outLv{margin-top:6px;font-size:13px}.outLv .warnT{color:#ffb020}
+.vox{margin:3px 0 6px 22px}.vox q{display:block;font-size:12.5px;line-height:1.45;color:#ffd7a8;font-style:italic;overflow-wrap:anywhere}.vox q::before{content:'"'}.vox q::after{content:'"'}
+#finalCompWrap.fold .vox{display:none}
+#finalCompTop li.moreBtn{list-style:none;margin:6px 0}
+
 </style>
 </head>
 <body>
@@ -372,7 +378,7 @@ html.t0on #cards .card{pointer-events:none}
     <section id="side">
       <div id="hostBox" class="panel gold">
         <div class="hostAva" aria-hidden="true"><div class="ring"></div><span>🧭</span></div>
-        <div class="hostTxt"><div class="hostName">진행자 · 운행관 한라</div><div id="hostLine"></div></div>
+        <div class="hostTxt"><div class="hostName">진행자</div><div id="hostLine"></div></div>
       </div>
       <div id="roundBox" class="panel gold">
         <div id="evBar"></div>
@@ -438,15 +444,15 @@ html.t0on #cards .card{pointer-events:none}
     <div id="finalSets"></div>
     <div class="fgrid">
       <div><h3>선택 이력</h3><ol id="finalHist"></ol></div>
-      <div><h3>효율 3요소 (현행=1.000)</h3><div id="finalComp"></div><h3>규칙 검사</h3><div id="finalRules"></div></div>
+      <div><h3>효율 3요소 (현행=1.000 · <span id="eiScope">전장 기준</span>)</h3><div id="finalComp"></div><h3>규칙 검사</h3><div id="finalRules"></div></div>
       <div><h3>접근성 변화가 큰 생활권</h3><div id="finalLA"></div></div>
     </div>
     <div id="finalCompWrap" class="xpSec"><h3>📢 민원·여론 결산 <span class="xpHint">🔍 눌러서 자세히 보기</span></h3><div id="finalSat"></div>
-      <div class="fgrid2"><div><h4>민원 상위 생활권 (눌러서 지도 보기)</h4><ol id="finalCompTop"></ol></div><div><h4>원인별 민원</h4><div id="finalCause"></div><h4>권역별 민원</h4><div id="finalCompReg"></div></div></div></div>
+      <div class="fgrid2"><div><h4>민원 상위 생활권 (눌러서 지도 보기)</h4><ol id="finalCompTop"></ol></div><div><h4>원인별 민원</h4><div id="finalCause"></div><h4 id="compRegH">선택 전장 민원</h4><div id="finalCompReg"></div></div></div></div>
     <div id="finalEvWrap" class="xpSec"><h3>⚡ 이번 시즌 돌발 이벤트 <span class="lbl">시드 #<span id="finalSeed"></span></span> <span class="xpHint">🔍 눌러서 펼치기</span></h3><div id="finalEv"></div></div>
     <div class="finalBtns"><button id="btnAgain" class="bigBtn sm">⟲ 다시 하기 (새 시드)</button><button id="btnSame" class="bigBtn sm alt">🎲 같은 시드로 다시</button><button id="btnShare" class="bigBtn sm alt">🔗 선택 경로 공유 URL 복사</button><button id="btnSeeMap" class="ghostBtn">지도로 돌아가 보기</button></div>
     <div id="shareOut"></div>
-    <div id="bdWrap"><div class="bdBtns"><button class="bdTab" data-t="la">🏘️ 생활권별 승객 증감</button><button class="bdTab" data-t="rt">🚌 노선별 승객 증감</button><button class="bdTab" data-t="net">🔁 생활권별 환승 격차</button><button class="bdTab" data-t="ppl">🧑‍🤝‍🧑 주민 체험</button></div>
+    <div id="bdWrap"><div class="bdBtns"><button class="bdTab" data-t="la">🏘️ 전장 생활권 승객 증감</button><button class="bdTab" data-t="rt">🚌 노선별 승객 증감</button><button class="bdTab" data-t="net">🔁 생활권별 환승 격차</button><button class="bdTab" data-t="ppl">🧑‍🤝‍🧑 주민 체험</button></div>
       <div id="bdPanel"><div class="accIn"><div class="accBody">
         <div class="bdCtl"><div class="seg" id="bdSet"><button data-s="opt">낙관</button><button data-s="base" class="on">기준</button><button data-s="pess">비관</button></div>
           <div class="seg" id="bdBand" style="display:none"><button data-b="0">출근</button><button data-b="1" class="on">낮</button><button data-b="2">퇴근</button><button data-b="3">야간</button></div>
@@ -468,7 +474,7 @@ html.t0on #cards .card{pointer-events:none}
     <div id="evTag" class="evTag"></div>
     <div id="evIcon" class="evIcon" aria-hidden="true"></div>
     <h2 id="evTitle" class="fantasy"></h2><div id="evSub" class="evSub"></div>
-    <div class="evHost"><span class="hostName">진행자 · 운행관 한라</span><div id="evGM"></div></div>
+    <div class="evHost"><span class="hostName">진행자</span><div id="evGM"></div></div>
     <ul id="evFx" class="evFx"></ul>
     <div id="evDelta" class="evDelta"></div>
     <div class="evBtns"><button id="evGo" class="bigBtn sm">⚔ 대응 카드 고르기</button><button id="evRe" class="ghostBtn">↶ 직전 카드 다시 고르기</button></div>
@@ -530,10 +536,10 @@ function Engine(D){
   const ENV0={key:'none',ev:[]};E.ENV0=ENV0;
   const envC=new Map();
   function envD(env){env=env||ENV0;let c=envC.get(env.key);if(c)return c;
-    const qm=env.qm;let tot=0;const paxH=R.map(()=>new Float32Array(25));const q0=new Float64Array(nLA);
-    for(let i=0;i<nG;i++){const q=g_q[i]*(qm?qm[i]:1);tot+=q;paxH[g_r[i]][g_h[i]]+=q;if(g_oz[i]<nLA)q0[g_oz[i]]+=q}
+    const qm=env.qm;let tot=0;const totR=new Float64Array(6);const paxH=R.map(()=>new Float32Array(25));const q0=new Float64Array(nLA);
+    for(let i=0;i<nG;i++){const q=g_q[i]*(qm?qm[i]:1);tot+=q;{const zg=zr[g_oz[i]];totR[zg>=0&&zg<5?zg:5]+=q}paxH[g_r[i]][g_h[i]]+=q;if(g_oz[i]<nLA)q0[g_oz[i]]+=q}
     const Q0=new Float64Array(nLA);for(let li=0;li<nLA;li++)Q0[li]=Math.max(q0[li],LA[li].pop*C.minRate);
-    c={tot,paxH,Q0,A0:{},baseOver:0,sets:{}};c.baseOver=overloadCount(ones,null,paxH);
+    c={tot,totR,paxH,Q0,A0:{},baseOver:0,sets:{}};c.baseOver=overloadCount(ones,null,paxH);
     if(envC.size>40)envC.delete(envC.keys().next().value);envC.set(env.key,c);return c}
   E.envD=envD;
   function envSet(set,env){if(!env||env.key==='none')return set;const c=envD(env);if(!c.sets[set.key])c.sets[set.key]={...set,ww:set.ww*(env.wwM||1),wk:set.wk*(env.wkM||1),tau:set.tau+(env.tauAdd||0)};return c.sets[set.key]}
@@ -569,12 +575,14 @@ function Engine(D){
     if(NET){const fn=fNode[j];if(fn===i){x=0;w=0}else{const ii=nidx(i,fn,1);if(NET.X[ii]>=0){x=NET.X[ii]/10;w=NET.W[ii]}}}netX[k]=x;netW[k]=w}
   let baseWaitLA=null;
   E.LA=LA;E.FAC=FAC;
+  const ISL=5;const IR=(g,reg)=>reg===ISL?g>=0:g===reg;E.IR=IR;E.ISL=ISL; // v5-5 섬 전역 전장 판정
   const hubs=D.hubs;E.hubs=hubs;
   // hub facility index per region (nearest 교통거점 / any facility to hub)
   const hubF=hubs.map(h=>{let b=-1,bd=9;FAC.forEach((f,j)=>{const d=km(h.lat,h.lon,f.lat,f.lon);if(d<bd){bd=d;b=j}});return b});
   // facilities within 0.8km of hub
   const hubNear=hubs.map(h=>FAC.filter(f=>km(h.lat,h.lon,f.lat,f.lon)<0.8).map(f=>f.i));
-  const regLA=[0,1,2,3,4].map(g=>LA.filter(l=>l.reg===g).map(l=>l.i));E.regLA=regLA;
+  const regLA=[0,1,2,3,4].map(g=>LA.filter(l=>l.reg===g).map(l=>l.i));regLA.push(LA.filter(l=>l.reg>=0).map(l=>l.i));E.regLA=regLA; /* v5-5: 5 = 제주도 섬 전역 */
+  E.hubs=[...hubs,hubs[0]];for(const r of R)if(r.rs&&r.rs.length===5)r.rs.push(Math.max(...r.rs));if(D.REG.length===5)D.REG.push('제주도 섬 전역');
   const regRoutes=[0,1,2,3,4].map(g=>R.filter(r=>r.rs[g]>=0.3).map(r=>r.i));E.regRoutes=regRoutes;
   // baseline overload per route-hour (load proxy = pax per trip * 0.45 vs cap)
   function overloadCount(fArr,paxMul,PH){let n=0;for(const r of R){const ph=PH?PH[r.i]:r.paxH;for(let h=5;h<24;h++){const trips=r.dep[h]*fArr[r.i*25+h];if(trips<=0)continue;const ld=ph[h]*(paxMul?paxMul[r.i]:1)/trips*0.45;if(ld>r.cap)n++}}return n}
@@ -688,10 +696,10 @@ function Engine(D){
   /* ---------- 지표 계산 ---------- */
   function services(p,li,env){ // LA li의 이용 가능 서비스 목록 (v3: env 통제·정체 → 속도 배율)
     const out=[];const l=LA[li];
-    for(const ri of l.routes){const r=R[ri];if(p.trunc[ri]&&l.reg!==p.reg)continue;
+    for(const ri of l.routes){const r=R[ri];if(p.trunc[ri]&&!IR(l.reg,p.reg))continue;
       const fc=env&&env.fCap?env.fCap[ri]:9;let fq=0,n=0;for(let h=7;h<21;h++){n++;if(p.drtRep[ri*25+h])continue;fq+=r.dep[h]/r.nd*Math.min(fc,p.f[ri*25+h])}fq/=n;
       if(fq<=0.01)continue;
-      let fac=rF[ri];if(p.trunc[ri]){fac=fac.slice();for(let j=0;j<nF;j++)if(FAC[j].reg!==p.reg)fac[j]=0}
+      let fac=rF[ri];if(p.trunc[ri]){fac=fac.slice();for(let j=0;j<nF;j++)if(!IR(FAC[j].reg,p.reg))fac[j]=0}
       out.push({fq,fac,spd:p.spd[ri]*(env&&env.spdR?env.spdR[ri]:1),kind:'bus',ri})}
     for(const c of p.circ){if(c.la===li)out.push({fq:c.freq,fac:c.fac,spd:1,kind:'circ'})}
     if(p.drt&&p.drt.zone.has(li))out.push({fixedWait:true,fac:p.drt.fac,spd:1/C.drtDetour,kind:'drt'});
@@ -721,6 +729,7 @@ function Engine(D){
   function A0(set,env){const c=envD(env);if(!c.A0[set.key])c.A0[set.key]=access(newPlan(),set,allLA,env);return c.A0[set.key]}
   E.A0=A0;
 
+  const EW_IN=0.85;E.EW_IN=EW_IN; // v5-5 전장 가중(효율지수)
   function metrics(p,set0,det,env){
     const ev=env&&env.key!=='none'?env:null;const ed=envD(env);const set=envSet(set0,env);
     const qm=ev&&ev.qm,ivtM=ev&&ev.ivtM,wkZ=ev&&ev.wkZ,dwm=ev&&ev.drtWaitMul||1,fCap=ev&&ev.fCap;
@@ -732,12 +741,12 @@ function Engine(D){
     let trW=0,trN=0;for(const r of R){if(!r.trunk||r.rs[reg]<0.3)continue;for(let h=7;h<21;h++){trW+=Math.min(15,r.H[h]/Math.max(0.1,p.f[r.i*25+h])/2);trN++}}
     const trunkWait=trN?trW/trN:7.5;
     const fTr=new Float32Array(25).fill(1);if(NET&&reg>=0){for(let h=0;h<25;h++){let s=0,n=0;for(const r of R){if(!r.trunk||r.rs[reg]<0.3||!r.dep[h])continue;s+=p.f[r.i*25+h];n++}fTr[h]=n?Math.max(0.3,s/n):1}}
-    const hubN=NET&&reg>=0?nLA+reg:-1;
-    const netXf=(oz,dzz,h,feedH)=>{const xm=p.xferWwMul*p.xferMul;if(hubN<0)return null;if(zr[oz]===reg&&zr[dzz]!==reg){const d=zNode[dzz];if(d<0)return null;const ii=nidx(hubN,d,bandOf(h));if(NET.X[ii]<0)return null;const x=Math.min(2,NET.X[ii]/10);return tau*(1+x)+set.ww*xm*Math.min(20,NET.W[ii]/fTr[h])}
+    const hubN=NET&&reg>=0&&reg<ISL?nLA+reg:-1;
+    const netXf=(oz,dzz,h,feedH)=>{const xm=p.xferWwMul*p.xferMul;if(hubN<0)return null;if(IR(zr[oz],reg)&&!IR(zr[dzz],reg)){const d=zNode[dzz];if(d<0)return null;const ii=nidx(hubN,d,bandOf(h));if(NET.X[ii]<0)return null;const x=Math.min(2,NET.X[ii]/10);return tau*(1+x)+set.ww*xm*Math.min(20,NET.W[ii]/fTr[h])}
       return tau+set.ww*xm*Math.min(15,feedH)};
     // DRT 수요/공급 → 혼잡 대기
-    let S0=0,S1=0,Q0=0,QL=0,scopeQ1=0;const paxMul=new Float32Array(nR).fill(1);const rq0=new Float32Array(nR),rq1=new Float32Array(nR);
-    const nZz=D.zoneName.length;const zRg=new Uint8Array(nZz),zCD=new Uint8Array(nZz);for(let z=0;z<nZz;z++){zRg[z]=zr[z]===reg?1:0;if(circLA.has(z)||dz.has(z))zCD[z]=1}
+    let S0=0,S1=0,Q0=0,QL=0,scopeQ1=0;const W_=[[0,0,0,0,0],[0,0,0,0,0]];/* v5-5 전장 안(1)/밖(0): S0,S1,Q0,QL,QLx */const paxMul=new Float32Array(nR).fill(1);const rq0=new Float32Array(nR),rq1=new Float32Array(nR);
+    const nZz=D.zoneName.length;const zRg=new Uint8Array(nZz),zCD=new Uint8Array(nZz);for(let z=0;z<nZz;z++){zRg[z]=IR(zr[z],reg)?1:0;if(circLA.has(z)||dz.has(z))zCD[z]=1}
     const inReg=(i)=>zRg[g_oz[i]]===1||zRg[g_dz[i]]===1;
     const aff=(i)=>{const oz=g_oz[i],dz_=g_dz[i];return (changed[g_r[i]]===1&&(zRg[oz]===1||zRg[dz_]===1))||zCD[oz]===1||zCD[dz_]===1};
     let qa=0,qr_=0;for(let i=0;i<nG;i++){if(inReg(i)){const q=g_q[i]*(qm?qm[i]:1);qr_+=q;if(aff(i))qa+=q}}
@@ -750,9 +759,9 @@ function Engine(D){
       const ivt0=g_ivt[i]*(ivtM?ivtM[r]:1);const w0=Math.min(15,rr.H[h]/2);const wk=set.wk*(wkZ?wkZ[oz]:1);
       const gc0=wk*C.walk0+set.ww*w0+ivt0;
       let walk=C.walk0,wait,ivt,xf=0;
-      const crossing=(zr[oz]!==reg)||(zr[dzz]!==reg);
+      const crossing=(!IR(zr[oz],reg))||(!IR(zr[dzz],reg));
       if(p.drtRep[k]){wait=p.drt.waitEff[set.key]*dwm;ivt=ivt0*C.drtDetour;walk=2;if(crossing){const nx=NET?netXf(oz,dzz,h,p.drt.waitEff[set.key]*dwm*0.5):null;xf=nx!=null?nx:tau+set.ww*p.xferWwMul*Math.min(15,trunkWait*p.xferMul);}}
-      else{const f=Math.max(0.05,fCap?Math.min(fCap[r],p.f[k]):p.f[k]);wait=Math.min(15,rr.H[h]/f/2)*(rr.mainReg===reg?p.regWaitMul:1);ivt=ivt0/p.spd[r];
+      else{const f=Math.max(0.05,fCap?Math.min(fCap[r],p.f[k]):p.f[k]);wait=Math.min(15,rr.H[h]/f/2)*(IR(rr.mainReg,reg)?p.regWaitMul:1);ivt=ivt0/p.spd[r];
         if(p.stopCons[r])walk+=C.stopConsWalk;
         if(p.layoverAdd[r])ivt+=0;
         if(p.trunc[r]&&crossing){const nx=NET?netXf(oz,dzz,h,Math.min(15,rr.H[h]/f/2)):null;xf=nx!=null?nx:tau+set.ww*p.xferWwMul*Math.min(15,trunkWait*p.xferMul);ivt=ivt0*0.97}}
@@ -760,45 +769,52 @@ function Engine(D){
       walk=Math.max(1,walk);
       const gc1=wk*walk+set.ww*wait+ivt+xf;
       zQ[oz]+=q;if(xf>0)zX[oz]+=q;
-      if(!sc){const odds=(1-C.p0)/C.p0;const P1=1/(1+odds*Math.exp(C.theta*(gc1-gc0)));let lost=q*(1-P1/C.p0);if(lost<0)lost*=set.real;else zL[oz]+=lost;QLx+=lost;if(det)det.lost[i]=lost;rq0[r]+=q;rq1[r]+=q-lost;continue}
+      if(!sc){const odds=(1-C.p0)/C.p0;const P1=1/(1+odds*Math.exp(C.theta*(gc1-gc0)));let lost=q*(1-P1/C.p0);if(lost<0)lost*=set.real;else zL[oz]+=lost;QLx+=lost;if(det)det.lost[i]=lost;W_[IR(zr[oz],reg)?1:0][4]+=lost;rq0[r]+=q;rq1[r]+=q-lost;continue}
       S0+=q*gc0;S1+=q*gc1;Q0+=q;
       gcd0[0]+=q*wk*C.walk0;gcd1[0]+=q*wk*walk;gcd0[1]+=q*set.ww*w0;gcd1[1]+=q*set.ww*wait;gcd0[2]+=q*ivt0;gcd1[2]+=q*ivt;gcd1[3]+=q*xf;
       const odds=(1-C.p0)/C.p0;const P1=1/(1+odds*Math.exp(C.theta*(gc1-gc0)));const ret=P1/C.p0;
-      let lost=q*(1-ret);if(lost<0)lost*=set.real;else zL[oz]+=lost;QL+=lost;if(det)det.lost[i]=lost;rq0[r]+=q;rq1[r]+=q-lost;
+      let lost=q*(1-ret);if(lost<0)lost*=set.real;else zL[oz]+=lost;QL+=lost;{const w_=W_[IR(zr[oz],reg)?1:0];w_[0]+=q*gc0;w_[1]+=q*gc1;w_[2]+=q;w_[3]+=lost}if(det)det.lost[i]=lost;rq0[r]+=q;rq1[r]+=q-lost;
     }
     for(let r=0;r<nR;r++)if(rq0[r]>0)paxMul[r]=rq1[r]/rq0[r];
     // 접근성 → 잠재수요
     const which=new Set();circLA.forEach(x=>which.add(x));dz.forEach(x=>which.add(x));
-    for(let r=0;r<nR;r++)if(changed[r])R[r].la.forEach(x=>{if(LA[x].reg===reg)which.add(x)});
+    for(let r=0;r<nR;r++)if(changed[r])R[r].la.forEach(x=>{if(IR(LA[x].reg,reg))which.add(x)});
     if(!narrow&&reg>=0)regLA[reg].forEach(x=>which.add(x));
     
     const wl=[...which];const A1=access(p,set0,wl,env);const a0=A0(set0,env);
-    let dQ=0;const laD=new Float32Array(nLA);const laA=new Float32Array(nLA);
-    for(const li of wl){const ratio=a0[li]>0?A1[li]/a0[li]:1;laA[li]=ratio-1;let d=ed.Q0[li]*(Math.pow(ratio,set.eps)-1);if(d>0)d*=set.real;laD[li]=d;dQ+=d}
+    let dQ=0,dQin=0;const laD=new Float32Array(nLA);const laA=new Float32Array(nLA);
+    for(const li of wl){const ratio=a0[li]>0?A1[li]/a0[li]:1;laA[li]=ratio-1;let d=ed.Q0[li]*(Math.pow(ratio,set.eps)-1);if(d>0)d*=set.real;laD[li]=d;dQ+=d;if(IR(LA[li].reg,reg))dQin+=d}
     // DRT 이용 상한
     // 차량·시간 (영향권)
-    let vh0=0,vh1=0;
-    for(const r of R){for(let h=0;h<25;h++)vh0+=r.vhh[h];
-      for(let h=0;h<25;h++){if(p.drtRep[r.i*25+h]||!r.vhh[h])continue;let v=r.vhh[h]*p.f[r.i*25+h];if(p.trunc[r.i])v*=Math.max(0.35,r.rs[reg]);if(p.layoverAdd[r.i])v*=1+p.layoverAdd[r.i]/Math.max(20,D.R[r.i].rt);vh1+=v*vehSpdF(p,r.i)}}
-    vh1+=p.addedVH;
+    let vh0=0,vh1=0,vhI0=0,vhI1=0;
+    for(const r of R){const sI=reg>=0?(r.rs[reg]||0):0;for(let h=0;h<25;h++){vh0+=r.vhh[h];vhI0+=r.vhh[h]*sI}
+      for(let h=0;h<25;h++){if(p.drtRep[r.i*25+h]||!r.vhh[h])continue;let v=r.vhh[h]*p.f[r.i*25+h];if(p.trunc[r.i])v*=Math.max(0.35,r.rs[reg]);if(p.layoverAdd[r.i])v*=1+p.layoverAdd[r.i]/Math.max(20,D.R[r.i].rt);vh1+=v*vehSpdF(p,r.i);vhI1+=v*vehSpdF(p,r.i)*sI}}
+    vh1+=p.addedVH;vhI1+=p.addedVH;
     const pax0=Q0,pax1=Q0-QL+dQ;const paxAll=pax1-QLx;
     const sysP0=ed.tot,sysP1=ed.tot-QL-QLx+dQ;const e1r=(vh0>0&&vh1>0)?(sysP1/vh1)/(sysP0/vh0):1;
     const gcr=S1>0?S0/S1:1;
     const qr=Q0>0?paxAll/Q0:1;
-    const EI=0.3*e1r+0.4*gcr+0.3*qr;
+    let EI=0.3*e1r+0.4*gcr+0.3*qr;const isl={e1r,gcr,qr,EI};let e1r_=e1r,gcr_=gcr,qr_2=qr,inS=null;
+    /* v5-5: 전장 가중 효율지수 — 각 요소를 전장 안(출발 생활권이 선택 전장)·밖으로 나눠 0.85/0.15로 합산. 바꾸지 않으면 모든 비가 1 → 1000 */
+    if(reg>=0&&reg<ISL){const WI=EW_IN;const P0I=ed.totR[reg],P0O=ed.tot-P0I;const dQo=dQ-dQin;
+      const side=(w,P0,vh0s,vh1s,dq)=>{const [s0,s1,q0,ql,qlx]=w;const P1=P0-ql-qlx+dq;return {e1r:(vh0s>0&&vh1s>0&&P0>0)?(P1/vh1s)/(P0/vh0s):1,gcr:s1>0?s0/s1:1,qr:q0>0?(q0-ql+dq-qlx)/q0:1}};
+      const I=side(W_[1],P0I,vhI0,vhI1,dQin),O=side(W_[0],P0O,vh0-vhI0,vh1-vhI1,dQo);
+      e1r_=WI*I.e1r+(1-WI)*O.e1r;gcr_=WI*I.gcr+(1-WI)*O.gcr;qr_2=WI*I.qr+(1-WI)*O.qr;EI=0.3*e1r_+0.4*gcr_+0.3*qr_2;inS={I,O}}
     // 정원 초과
     const over=Math.max(0,overloadCount(p.f,paxMul,ed.paxH)-ed.baseOver);
     let pen=Math.min(100,over*5),penNote=[];if(over)penNote.push(`정원 초과 구간 ${over}곳 −${Math.min(100,over*5)}`);
     if(p.check&&p.check.minSvc>0&&p.diff!=='hard'){pen+=50;penNote.push('읍면 최소 서비스(60분) 미달 −50')}
     const score=Math.round(1000*EI)-pen;
-    return {set:set.key,env:(env&&env.key)||'none',sysP0,zQ,zL,zX,QLx,narrow,EI,score,grade:grade(score,p.diff),pen,penNote,e1r,gcr,qr,Q0,QL,dQ,pax1,vh0,vh1,gc0:Q0?S0/Q0:0,gc1:Q0?S1/Q0:0,
+    return {set:set.key,env:(env&&env.key)||'none',sysP0,zQ,zL,zX,QLx,narrow,EI,score,grade:grade(score,p.diff,p.reg),pen,penNote,e1r:e1r_,gcr:gcr_,qr:qr_2,isl,inS,Q0,QL,dQ,pax1,vh0,vh1,gc0:Q0?S0/Q0:0,gc1:Q0?S1/Q0:0,
       gcd:{walk:[gcd0[0]/Q0,gcd1[0]/Q0],wait:[gcd0[1]/Q0,gcd1[1]/Q0],ivt:[gcd0[2]/Q0,gcd1[2]/Q0],xfer:[0,gcd1[3]/Q0]},laA,laD,over,scopeQ:Q0};
   }
   // v2 등급 컷: 노선망 표 반영 후 쉬움 전 경로 분포를 보고 재조정(v1: 1120/1080/1040/1000)
   // v3 등급 컷: 돌발 이벤트·민원 패널티 도입 후 시드별 전체 경로 순회 분포로 재조정. 어려움(비관 세트·이벤트 강도 ×1.35)은 별도 컷
-  const CUTS_BY={easy:{S:1080,A:1045,B:1005,C:960},normal:{S:1080,A:1045,B:1005,C:960},hard:{S:1060,A:1030,B:985,C:930}};E.CUTS_BY=CUTS_BY;
-  const CUTS=CUTS_BY.normal;E.CUTS=CUTS;E.cutsOf=d=>CUTS_BY[d]||CUTS;
-  function grade(s,d){const C_=CUTS_BY[d]||CUTS;return s>=C_.S?'S':s>=C_.A?'A':s>=C_.B?'B':s>=C_.C?'C':'D'}
+  const CUTS_BY={easy:{S:1066,A:1040,B:1000,C:962},normal:{S:1064,A:1039,B:999,C:961},hard:{S:1058,A:1021,B:977,C:931}};E.CUTS_BY=CUTS_BY; // v5-5 재조정(전장 가중·신규 이벤트, 시드 24개 전체 경로)
+  /* v5-5: 섬 전역(5) 전용 컷 — 전체 경로 스윕 분포를 다른 전장과 같은 목표 분포에 맞춤 */
+  const CUTS_ISL={easy:{S:1037,A:1020,B:992,C:961},normal:{S:1027,A:1014,B:992,C:957},hard:{S:1042,A:1004,B:969,C:929}};E.CUTS_ISL=CUTS_ISL;
+  const CUTS=CUTS_BY.normal;E.CUTS=CUTS;E.cutsOf=(d,reg)=>(reg===5?CUTS_ISL[d]:CUTS_BY[d])||CUTS;
+  function grade(s,d,reg){const C_=E.cutsOf(d,reg);return s>=C_.S?'S':s>=C_.A?'A':s>=C_.B?'B':s>=C_.C?'C':'D'}
   E.grade=grade;
   function run(p,env){const out={};for(const k of ['opt','base','pess'])out[k]=score(p,SETS[k],env);return out}
 
@@ -838,13 +854,13 @@ function Engine(D){
       for(let d=0;d<nLA;d++){if(d===o)continue;const w=Math.max(1,LA[d].pop);s.w+=w;const i=nidx(o,d,b);const xr=NET.X[i];
         if(xr<0){s.b[3]+=w;s.a[3]+=w;continue}
         let x0=xr/10,T0=NET.T[i],W0=NET.W[i],x1=x0,T1=T0;const r1=NET.R1[o*nN+d],r2=NET.R2[o*nN+d];
-        const cross=LA[o].reg!==LA[d].reg&&reg>=0&&(LA[o].reg===reg||LA[d].reg===reg);
-        if(cross&&((r1>=0&&p.trunc[r1])||(r2>=0&&p.trunc[r2]))){x1+=r1===r2?1:0.5;const hb=nLA+reg;const j=LA[o].reg===reg?nidx(hb,d,b):nidx(o,hb,b);T1+=3+0.5*xm*Math.min(20,NET.W[j]>0?NET.W[j]:10)}
+        const cross=LA[o].reg!==LA[d].reg&&reg>=0&&(IR(LA[o].reg,reg)||IR(LA[d].reg,reg));
+        if(cross&&((r1>=0&&p.trunc[r1])||(r2>=0&&p.trunc[r2]))){x1+=r1===r2?1:0.5;const hb=nLA+reg;const j=IR(LA[o].reg,reg)?nidx(hb,d,b):nidx(o,hb,b);T1+=3+0.5*xm*Math.min(20,NET.W[j]>0?NET.W[j]:10)}
         if(r1>=0&&drtB[r1]){T1+=drtW-0.5*W0;if(cross&&r1===r2)x1+=1}
         else if(r1>=0){T1+=0.5*W0*Math.max(-0.6,Math.min(2,1/Math.max(0.3,fr[r1])-1))}
         T1+=netSpd(p,r1>=0&&drtB[r1]?-1:r1,r2>=0&&drtB[r2]?-1:r2,netIV(i));
         if(circLA.has(o))T1-=1.5;if(circLA.has(d))T1-=1.5;
-        const touch=reg>=0&&(LA[o].reg===reg||LA[d].reg===reg);if(x1>0&&touch)T1-=Math.min(x1,2)*(1-xm)*4;
+        const touch=reg>=0&&(IR(LA[o].reg,reg)||IR(LA[d].reg,reg));if(x1>0&&touch)T1-=Math.min(x1,2)*(1-xm)*4;
         T1=Math.max(1,T1);
         const c0=x0<0.5?0:x0<1.5?1:2,c1=x1<0.5?0:x1<1.5?1:2;s.b[c0]+=w;s.a[c1]+=w;s.T0+=w*T0;s.T1+=w*T1;s.wT+=w}
       const pw=Math.max(1,LA[o].pop);for(let k=0;k<4;k++){G.b[k]+=pw*s.b[k]/s.w;G.a[k]+=pw*s.a[k]/s.w}if(s.wT){G.T0+=pw*s.T0/s.wT;G.T1+=pw*s.T1/s.wT;G.wT+=pw}
@@ -862,28 +878,28 @@ function Engine(D){
     const xr=base?(base.reach?Math.round(base.x0*10):-1):NET.X[i];
     const r1=base?base.r1:NET.R1[o*nN+d],r2=base?base.r2:NET.R2[o*nN+d];if(xr<0)return {reach:false,r1,r2};
     let x0=base?base.x0:xr/10,T0=base?base.T0:NET.T[i],W0=base?base.W0:NET.W[i],x1=x0,T1=T0,W1=W0;const IV0=base?base.IV:netIV(i);const fl={trunc:false,drt:false,circ:false,freq:0,hub:-1};
-    const cross=LA[o].reg!==LA[d].reg&&reg>=0&&(LA[o].reg===reg||LA[d].reg===reg);
-    if(cross&&((r1>=0&&p.trunc[r1])||(r2>=0&&p.trunc[r2]))){x1+=r1===r2?1:0.5;const hb=nLA+reg;const j=LA[o].reg===reg?nidx(hb,d,b):nidx(o,hb,b);const ww=0.5*c.xm*Math.min(20,NET.W[j]>0?NET.W[j]:10);T1+=3+ww;W1+=ww;fl.trunc=true;fl.hub=reg}
+    const cross=LA[o].reg!==LA[d].reg&&reg>=0&&(IR(LA[o].reg,reg)||IR(LA[d].reg,reg));
+    if(cross&&((r1>=0&&p.trunc[r1])||(r2>=0&&p.trunc[r2]))){x1+=r1===r2?1:0.5;const hb=nLA+reg;const j=IR(LA[o].reg,reg)?nidx(hb,d,b):nidx(o,hb,b);const ww=0.5*c.xm*Math.min(20,NET.W[j]>0?NET.W[j]:10);T1+=3+ww;W1+=ww;fl.trunc=true;fl.hub=reg}
     if(r1>=0&&c.drtB[r1]){T1+=c.drtW-0.5*W0;W1+=c.drtW-0.5*W0;if(cross&&r1===r2)x1+=1;fl.drt=true}
     else if(r1>=0){const dw=0.5*W0*Math.max(-0.6,Math.min(2,1/Math.max(0.3,c.fr[r1])-1));T1+=dw;W1+=dw;fl.freq=c.fr[r1]}
     {const ds=netSpd(p,r1>=0&&c.drtB[r1]?-1:r1,r2>=0&&c.drtB[r2]?-1:r2,IV0);if(ds!==0){T1+=ds;fl.spd=ds}}
     if(c.circLA.has(o)){T1-=1.5;W1-=1.5;fl.circ=true}if(c.circLA.has(d)){T1-=1.5;W1-=1.5;fl.circ=true}
-    const touch=reg>=0&&(LA[o].reg===reg||LA[d].reg===reg);if(x1>0&&touch){const dx=Math.min(x1,2)*(1-c.xm)*4;T1-=dx;W1-=dx}
+    const touch=reg>=0&&(IR(LA[o].reg,reg)||IR(LA[d].reg,reg));if(x1>0&&touch){const dx=Math.min(x1,2)*(1-c.xm)*4;T1-=dx;W1-=dx}
     T1=Math.max(1,T1);W1=Math.max(0,Math.min(W1,T1));
     return {reach:true,T0,T1,W0,W1,x0,x1,r1,r2,fl,cross,IV0}}
   E.netPair=netPair;
   /* ---------- v3: 민원·여론(주민 만족도) — 점수와 별개 지표 ----------
      생활권별: 배차 감축·DRT 전환·노선 단축(강제 환승)·정류장 통합·이탈 승객·접근성 악화 → 민원 강도(sev)
                접근성 개선·증편 → 호감(gain). 이벤트가 걸린 생활권은 민원 증폭(compAmp).
-     집계: Δ = 0.6·(개편 권역 인구가중 평균 gain−sev) + 0.4·(그 밖 권역 평균), 만족도 = 100/(1+e^−(ln(7/3)+10.5·Δ)) (Δ=0 → 70). 민원 건수 = Σ인구·sev / 1000. */
-  const CW={cut:1.0,drt:0.45,xf:0.6,stop:0.25,lost:2.2,accN:1.2,acc:0.9,up:0.35,gainCap:0.12,k:10.5,z0:Math.log(70/30),wIn:0.6,base:70};E.CW=CW;
-  const regPop=[0,1,2,3,4].map(g=>regLA[g].reduce((t,li)=>t+Math.max(1,LA[li].pop),0));
+     집계(v5-5): Δ = 0.85·(선택 전장 인구가중 평균 gain−sev) + 0.15·(전장 밖 평균). 민원 건수·원인·권역·생활권 목록은 선택 전장 소속 생활권만(전장 미선택이면 전체), 만족도 = 100/(1+e^−(ln(7/3)+10.5·Δ)) (Δ=0 → 70). 민원 건수 = Σ인구·sev / 1000. */
+  const CW={cut:1.0,drt:0.45,xf:0.6,stop:0.25,lost:2.2,accN:1.2,acc:0.9,up:0.35,gainCap:0.12,k:10.5,z0:Math.log(70/30),wIn:0.85,base:70,outLo:-0.04,outHi:-0.10};E.CW=CW;
+  const regPop=[0,1,2,3,4,5].map(g=>regLA[g].reduce((t,li)=>t+Math.max(1,LA[li].pop),0));
   const CAUSE=['배차 감축','DRT 전환','노선 단축·강제 환승','정류장 통합','이탈(이동 부담↑)','접근성 악화'];E.CAUSE=CAUSE;
   function complaint(p,m,env){const reg=p.reg<0?0:p.reg;const ev=env&&env.key!=='none'?env:null;const amp=ev&&ev.compAmp,xfA=ev&&ev.xfAmp||1;
     const circF=new Float32Array(nLA);for(const c of p.circ)circF[c.la]+=c.freq;const dz=p.drt?p.drt.zone:null;
     const la=new Array(nLA);let nIn=0,pIn=0,nOut=0,pOut=0,cnt=0;const causeT=new Float64Array(CAUSE.length),regC=new Float64Array(5);
     for(let li=0;li<nLA;li++){const l=LA[li];let b=0,a=0,d=0,st=0;
-      for(const ri of l.routes){const r=R[ri];const out=p.trunc[ri]&&l.reg!==reg;let rb=0;
+      for(const ri of l.routes){const r=R[ri];const out=p.trunc[ri]&&!IR(l.reg,reg);/*v5-5 inB 아래*/let rb=0;
         for(let h=7;h<21;h++){const k=ri*25+h;const base=r.dep[h]/r.nd;if(!base)continue;rb+=base;if(p.drtRep[k])d+=base;else if(!out)a+=base*p.f[k]}
         b+=rb;if(p.stopCons[ri])st+=rb}
       const pop=Math.max(1,l.pop);let sev=0,gain=0;const parts=[0,0,0,0,0,0];
@@ -893,13 +909,14 @@ function Engine(D){
       const aa=m.laA[li]||0;if(aa<0)parts[5]=CW.accN*(-aa);else gain+=CW.acc*aa;
       if(circF[li]>0||(dz&&dz.has(li)&&!b))gain+=0.02;
       gain=Math.min(CW.gainCap,gain);const A=amp?amp[li]:1;for(let k=0;k<6;k++){parts[k]*=A;sev+=parts[k]}
-      let top=-1,tv=0;for(let k=0;k<6;k++)if(parts[k]>tv){tv=parts[k];top=k}
-      if(l.reg===reg){nIn+=pop*(gain-sev);pIn+=pop}else{nOut+=pop*(gain-sev);pOut+=pop}const c=pop*sev/1000*100;cnt+=c;regC[l.reg]+=c;if(top>=0)for(let k=0;k<6;k++)causeT[k]+=pop*parts[k]/1000*100;
-      la[li]={sev,gain,c,top,amp:A}}
+      let top=-1,tv=0;for(let k=0;k<6;k++)if(parts[k]>tv){tv=parts[k];top=k}let top2=-1,tv2=0;for(let k=0;k<6;k++)if(k!==top&&parts[k]>tv2){tv2=parts[k];top2=k}
+      if(IR(l.reg,reg)){nIn+=pop*(gain-sev);pIn+=pop}else{nOut+=pop*(gain-sev);pOut+=pop}const inB=p.reg<0||IR(l.reg,reg);const c=inB?pop*sev/1000*100:0;if(inB){cnt+=c;regC[l.reg]+=c;if(top>=0)for(let k=0;k<6;k++)causeT[k]+=pop*parts[k]/1000*100}
+      la[li]={sev,gain,c,top,top2:tv2>=0.5*tv?top2:-1,amp:A,inB}}
     const dIn=pIn?nIn/pIn:0,dOut=pOut?nOut/pOut:0;
     // 로지스틱: Δ=0이면 70, 기울기(Δ=0 근처) 약 2.2점/1%p, 0·100에 붙지 않게 완만히 포화
-    const dlt=CW.wIn*dIn+(1-CW.wIn)*dOut;const sat=100/(1+Math.exp(-(CW.z0+CW.k*dlt)));
-    return {sat,cnt,dIn,dOut,la,causeT:[...causeT],regC:[...regC]}}
+    const wI=reg===ISL?1:CW.wIn;const dlt=wI*dIn+(1-wI)*dOut;const sat=100/(1+Math.exp(-(CW.z0+CW.k*dlt)));
+    const outLv=dOut>=CW.outLo?0:dOut>=CW.outHi?1:2;
+    return {sat,cnt,dIn,dOut,outLv,reg:p.reg,la,causeT:[...causeT],regC:[...regC]}}
   E.complaint=complaint;
   // 민원 페널티·등급 조정 (v3): 만족도 50 미만부터 1점당 −1.5점(최대 −60). 만족도 30 미만(민원 폭주)이면 최종 등급 상한 B.
   const SATR={warn:50,riot:30,penFrom:50,penK:1.5,penMax:60};E.SATR=SATR;
@@ -907,7 +924,7 @@ function Engine(D){
   E.compPen=compPen;
   function score(p,set,env){const m=metrics(p,set,null,env);const c=complaint(p,m,env);m.comp=c;m.sat=c.sat;m.compPen=compPen(c.sat);
     m.rawScore=m.score;m.score=m.rawScore-m.compPen;if(m.compPen)m.penNote.push(`민원 패널티(만족도 ${c.sat.toFixed(0)}) −${m.compPen}`);m.pen+=m.compPen;
-    let g=grade(m.score,p.diff);m.gradeRaw=g;if(c.sat<SATR.riot&&(g==='S'||g==='A')){g='B';m.capped=true}m.grade=g;return m}
+    let g=grade(m.score,p.diff,p.reg);m.gradeRaw=g;if(c.sat<SATR.riot&&(g==='S'||g==='A')){g='B';m.capped=true}m.grade=g;return m}
   E.score=score;
   E.run=run;E.metrics=metrics;E.addVehicles=addVehicles;
   E.newPlanFn=newPlan;
@@ -930,7 +947,7 @@ function Game(E){
   const regFeed=g=>R.filter(r=>r.feeder&&r.rs[g]>=0.3&&r.vh>0);
   function drtSetup(p,g,routes,hours,extraZone,vehFixed,hRange){
     const zone=new Set(extraZone||[]);
-    routes.forEach(r=>{r.la.forEach(li=>{if(LA[li].reg===g)zone.add(li)});hours.forEach(h=>p.drtRep[r.i*25+h]=1)});
+    routes.forEach(r=>{r.la.forEach(li=>{if(E.IR(LA[li].reg,g))zone.add(li)});hours.forEach(h=>p.drtRep[r.i*25+h]=1)});
     // 차량: 전환 노선 동시운행의 70%
     const hset=new Set(hours);let peakDem=0;const dem=new Float32Array(25);
     if(routes.length){for(let m=0;m<1500;m++){const h=Math.min(24,(m/60)|0);if(!hset.has(h))continue;let c=0;for(const r of routes)c+=r.conc[m];p.added[m]+=c*0.7;p.addedVH+=c*0.7/60}
@@ -941,7 +958,7 @@ function Game(E){
     const crowd=cap===Infinity?1:Math.max(1,1/cap);
     const fac=new Uint8Array(FAC.length);
     const hub=E.hubs[g];
-    FAC.forEach(f=>{if(km(hub.lat,hub.lon,f.lat,f.lon)<0.8)fac[f.i]=1;if(f.reg===g){for(const li of zone){if(km(LA[li].lat,LA[li].lon,f.lat,f.lon)<5){fac[f.i]=1;break}}}});
+    FAC.forEach(f=>{if(km(hub.lat,hub.lon,f.lat,f.lon)<0.8)fac[f.i]=1;if(E.IR(f.reg,g)){for(const li of zone){if(km(LA[li].lat,LA[li].lon,f.lat,f.lon)<5){fac[f.i]=1;break}}}});
     p.drt={zone,fac,hours,routes:routes.map(r=>r.i),crowd,waitEff:{opt:10*crowd,base:20*crowd,pess:30*crowd},veh:vehFixed||0};
   }
   const ROUNDS=[
@@ -952,7 +969,8 @@ function Game(E){
       {id:'r1',reg:1,icon:'🌅',name:'서쪽 노을 해안',tag:'애월·한림·한경',easy:'해안 마을이 길게 이어진 서부예요. 마을과 큰길을 잇는 게 관건!'},
       {id:'r2',reg:2,icon:'🌊',name:'동쪽 바람 마을',tag:'조천·구좌',easy:'함덕·세화가 있는 동부. 마을 사이가 멀어 버스가 뜸한 곳이 많아요.'},
       {id:'r3',reg:3,icon:'🍊',name:'남쪽 귤빛 도시',tag:'서귀포시 동지역',easy:'서귀포 도심과 중문. 언덕이 많고 관광객도 섞여 타요.'},
-      {id:'r4',reg:4,icon:'⛰️',name:'남부 대평원',tag:'대정·안덕·남원·표선·성산',easy:'가장 넓은 읍면 권역. 버스 한 대가 맡는 땅이 넓어요.'}]},
+      {id:'r4',reg:4,icon:'⛰️',name:'남부 대평원',tag:'대정·안덕·남원·표선·성산',easy:'가장 넓은 읍면 권역. 버스 한 대가 맡는 땅이 넓어요.'},
+      {id:'r5',reg:5,icon:'🏝️',name:'제주도 섬 전역',tag:'섬 전체 생활권',easy:'다섯 권역을 한꺼번에! 섬 전체 생활권을 대상으로 노선을 개편해요. 판이 큰 만큼 변화가 섬 곳곳으로 번져요.'}]},
     apply(p,o){p.reg=o.reg}},
    {id:'trunk',no:2,title:'큰길 급행 재편',sub:'간선(큰길을 빠르게 달리는 버스)을 어떻게 바꿀까요?',
     host:['좋습니다! 이제 큰길을 달리는 간선 버스를 손볼 차례예요.','기억하세요. 버스 수는 그대로라서, 어딘가에 더 주면 다른 곳에서 덜어 와야 해요.'],
@@ -1043,11 +1061,18 @@ function Game(E){
   const CLOSED=R.filter(r=>EVD.rMax[r.i]>=600).map(r=>r.i),MID=R.filter(r=>EVD.rMax[r.i]>=450&&EVD.rMax[r.i]<600).map(r=>r.i);
   const laClosed=new Uint8Array(LA.length);CLOSED.forEach(ri=>R[ri].la.forEach(li=>laClosed[li]=1));
   const VENUE=[{n:'제주종합경기장',lat:33.5005,lon:126.5440,f:'제주 도심 대형 콘서트'},{n:'한림항 일대',lat:33.4140,lon:126.2650,f:'서부 해변 불꽃 축제'},{n:'함덕 해변',lat:33.5430,lon:126.6690,f:'동부 비치 페스티벌'},{n:'서귀포 천지연 일대',lat:33.2470,lon:126.5600,f:'서귀포 칠십리 축제'},{n:'성산일출봉 일대',lat:33.4590,lon:126.9310,f:'성산 일출 축제'}];
+  VENUE.push(VENUE[0]); /* v5-5 섬 전역(5): 대형 행사는 제주 도심 행사장 */
   const venueLA=VENUE.map(v=>{let L=LA.filter(l=>km(l.lat,l.lon,v.lat,v.lon)<2.5).map(l=>l.i);if(L.length<3)L=LA.slice().sort((a,b)=>km(a.lat,a.lon,v.lat,v.lon)-km(b.lat,b.lon,v.lat,v.lon)).slice(0,3).map(l=>l.i);return L});
   const venueFac=VENUE.map(v=>FAC.filter(f=>km(f.lat,f.lon,v.lat,v.lon)<2.5).map(f=>f.i));
   const INT={easy:0.7,normal:1.0,hard:1.35},NEV={easy:1,normal:2,hard:4},NEVTXT={easy:'0~1',normal:'1~2',hard:'4'},EVLAST={easy:3,normal:5,hard:5};G.NEVTXT=NEVTXT;G.EVLAST=EVLAST;G.INT=INT;G.NEV=NEV;
   const pctS=x=>(x>=0?'+':'')+Math.round(x*100)+'%';
   // 각 이벤트: apply(env, I, reg) → 배열 배율을 곱함. fx(I,reg) → 화면 표시용 효과 목록
+  /* v5-5 신규 이벤트 노선 매핑(실제 노선번호) */
+  const rid=ids=>R.filter(r=>ids.includes(String(r.id))).map(r=>r.i);
+  const ANI_P=rid(['251','251-1','252','253','254','255','282']),ANI_B=rid(['221','222','222-1']);
+  const FOG_A=rid(['281','240','231','232']),FOG_B=[...CLOSED,...MID].filter(ri=>!FOG_A.includes(ri));
+  const EPI_T=R.filter(r=>r.k===0||r.k===1||r.k===6).map(r=>r.i);
+  const EPI_F=R.filter(r=>r.feeder&&r.vh>0).sort((a,b)=>a.i-b.i).filter((_,k)=>k%5===0).map(r=>r.i);
   const EVENTS=[
    {id:'typhoon',icon:'🌀',grp:'wx',name:'태풍 북상',title:'한라산 횡단도로 전면 통제',col:'#5ec8ff',
     gm:['⚠ 경보! 태풍이 제주 남쪽 해상에서 북상 중입니다!','한라산을 넘는 노선들이 통제되었습니다. 해안으로 돌아가야 해요. 이 판, 버틸 수 있을까요?'],
@@ -1087,6 +1112,28 @@ function Game(E){
     fx:(I)=>[`가격 탄력성 ${(FARE_EPS*I).toFixed(2)} 적용: 짧은 이동 ${pctS(Math.pow(FARE_R,FARE_EPS*I)-1)}, 장거리(×${(1+FARE_LONG).toFixed(1)})·학생 생활권(×${(1+FARE_SCH).toFixed(1)})은 더 민감 → 섬 전체 승객 수요 약 ${pctS(fareTot(I))}`,`요금이 오른 만큼 기다림 불만 가중 ${pctS(0.08*I)}`,`장거리·학생 이용 많은 생활권 민원 최대 ${pctS(0.6*I)}`,'요금 수입 증가분은 효율 점수에 넣지 않아요(점수 정의 유지)'],
     apply(v,I){const eps=FARE_EPS*I;for(let i=0;i<nG;i++){const L=Math.min(1,Math.max(0,(g_ivt[i]-15)/45));const sc=Math.max(zSch[g_oz[i]],zSch[g_dz[i]]);v.qm[i]*=Math.pow(FARE_R,eps*(1+FARE_LONG*L)*(1+FARE_SCH*sc))}
       v.wwM*=1+0.08*I;for(let li=0;li<LA.length;li++){const w=Math.max(laLong[li],laSch[li]);if(w>0)v.compAmp[li]*=1+0.6*I*w;if(w>=0.67)v.hl.la.push(li)}}}
+   ,
+   /* v5-5 신규 5종(실제 사례 참고 · 계수는 가정치) — 영향은 이동시간·수요·대기 체감·민원 증폭에만, 차량 제약은 그대로 */
+   {id:'strike',icon:'✊',grp:'so',name:'총파업 위기',title:'노사 협상 결렬 · 비상수송 체제',col:'#ff6b6b',
+    gm:['✊ 속보! 버스 노조가 총파업을 예고했습니다! 협상은 밤샘 중!','도는 전세버스를 비상 대기시켰지만 배차는 들쭉날쭉해요. 시민들의 인내심이 시험대에 올랐습니다!'],
+    fx:(I)=>[`전 노선 배차 불안: 증편분 결행(배차는 현행 이하로 묶임), 들쭉날쭉한 배차로 기다림 체감 추가`,`기다림 가중치 ${pctS(0.25*I)}, 갈아타기 벌점 +${(1.5*I).toFixed(1)}분`,`버스 수요 ${pctS(-0.05*I)}(비상수송 전세버스가 일부 흡수)`,`섬 전체 민원 ${pctS(0.3*I)} 증폭`],
+    apply(v,I){for(let r=0;r<R.length;r++)v.fCap[r]=Math.min(v.fCap[r],1);v.wwM*=1+0.25*I;v.tauAdd+=1.5*I;for(let i=0;i<nG;i++)v.qm[i]*=1-0.05*I;for(let li=0;li<LA.length;li++)v.compAmp[li]*=1+0.3*I}},
+   {id:'epi',icon:'🦠',grp:'so',name:'감염병 확산',title:'관광객 급감 · 운전원 확진 결행',col:'#b388ff',
+    gm:['🦠 비상! 감염병이 빠르게 번지고 있습니다! 공항이 텅 비었어요!','공항리무진·관광지순환 버스가 줄줄이 감축되고, 운전원 확진으로 일부 지선이 멈췄습니다. 남은 버스로 어떻게 버틸까요?'],
+    fx:(I)=>[`관광지·호텔 인근 생활권 오가는 수요 최대 ${pctS(-0.5*I)}, 그 밖 수요 ${pctS(-0.12*I)}`,`급행·공항리무진·관광지순환 ${EPI_T.length}개 최대 50% 감축(증편 불가) → 해당 노선 수요 ${pctS(-0.37*I)}`,`운전원 확진으로 지선 ${EPI_F.length}개 일부 결행(증편 불가) → 기다림 체감 ${pctS(0.3*I)}, 수요 ${pctS(-0.2*I)}`,'결행 노선이 지나는 생활권 민원 증폭'],
+    apply(v,I){for(let i=0;i<nG;i++)v.qm[i]*=Math.max(0.3,(1-0.12*I)*(1-0.5*I*Math.max(zTour[g_oz[i]],zTour[g_dz[i]])));const tt=new Uint8Array(R.length),tf=new Uint8Array(R.length);EPI_T.forEach(ri=>{tt[ri]=1;v.fCap[ri]=Math.min(v.fCap[ri],1)});for(let i=0;i<nG;i++){if(tt[g_r[i]])v.qm[i]*=Math.max(0.5,1-0.37*I);if(tf[g_r[i]])v.qm[i]*=1-0.2*I}v.wwM*=1+0.3*I*EPI_F.length/Math.max(1,R.length);EPI_F.forEach(ri=>{tf[ri]=1;v.fCap[ri]=Math.min(v.fCap[ri],1);R[ri].la.forEach(li=>v.compAmp[li]*=1+0.25*I)});v.hl.routes.push(...EPI_T,...EPI_F)}},
+   {id:'bis',icon:'📡',grp:'so',name:'버스정보시스템 마비',title:'도착 안내 먹통 · 오표시',col:'#4dd0e1',
+    gm:['📡 장애 발생! 정류장 도착 안내판과 앱이 모두 먹통입니다!','버스는 다니는데 언제 올지 아무도 몰라요. 갈아타기는 도박이 됐습니다!'],
+    fx:(I)=>[`도착 정보 오류로 기다림 체감 ${pctS(0.3*I)}`,`갈아타기 불확실성: 갈아타기 벌점 +${(2*I).toFixed(1)}분, 환승 민원 ${pctS(0.4*I)}`,'실제 운행(배차·차내시간)은 그대로',`섬 전체 민원 ${pctS(0.2*I)} 증폭`],
+    apply(v,I){v.wwM*=1+0.3*I;v.tauAdd+=2*I;v.xfAmp*=1+0.4*I;for(let li=0;li<LA.length;li++)v.compAmp[li]*=1+0.2*I}},
+   {id:'animal',icon:'🐎',grp:'op',name:'도로 위 말·노루 출몰',title:'평화로·번영로 일시 통제',col:'#c8a165',
+    gm:['🐎 긴급! 평화로와 번영로에 말과 노루가 뛰어들었습니다!','자치경찰이 도로를 막고 있어요. 이 도로를 타는 버스들이 줄줄이 멈춰 섰습니다!'],
+    fx:(I)=>[`평화로 노선(${ANI_P.map(ri=>R[ri].id).join('·')}) ${ANI_P.length}개, 번영로 노선(${ANI_B.map(ri=>R[ri].id).join('·')}) ${ANI_B.length}개 차내시간 ${pctS(0.35*I)}`,`해당 노선 수요 ${pctS(-0.1*I)}`,`해당 노선 이용 생활권 기다림 체감 ${pctS(0.1*I)}·민원 증폭`],
+    apply(v,I){const t=new Uint8Array(R.length);[...ANI_P,...ANI_B].forEach(ri=>{t[ri]=1;v.ivtM[ri]*=1+0.35*I;R[ri].la.forEach(li=>v.compAmp[li]*=1+0.25*I)});for(let i=0;i<nG;i++)if(t[g_r[i]])v.qm[i]*=1-0.1*I;v.wwM*=1+0.1*I*Math.min(1,(ANI_P.length+ANI_B.length)/30);v.hl.routes.push(...ANI_P,...ANI_B)}},
+   {id:'fog',icon:'🌫️',grp:'wx',name:'중산간 짙은 안개',title:'5·16·1100·남조로 시정 10m',col:'#b0bec5',
+    gm:['🌫 중산간에 짙은 안개! 시정 10m도 안 됩니다!','5·16도로, 1100도로, 남조로 버스가 시속 20~30km로 엉금엉금 기어갑니다. 섬을 가로지르는 손님들이 발을 동동 굴러요!'],
+    fx:(I)=>[`5·16도로·1100도로·남조로 노선(${FOG_A.map(ri=>R[ri].id).join('·')}) ${FOG_A.length}개 차내시간 ${pctS(0.6*I)}`,`그 밖 중산간 경유 노선 ${FOG_B.length}개 ${pctS(0.3*I)}`,`해당 노선 수요 ${pctS(-0.12*I)}`,'중산간 노선 이용 생활권 민원 증폭'],
+    apply(v,I){const t=new Uint8Array(R.length);FOG_A.forEach(ri=>{t[ri]=1;v.ivtM[ri]*=1+0.6*I});FOG_B.forEach(ri=>{t[ri]=1;v.ivtM[ri]*=1+0.3*I});for(let i=0;i<nG;i++)if(t[g_r[i]])v.qm[i]*=1-0.12*I;[...FOG_A,...FOG_B].forEach(ri=>R[ri].la.forEach(li=>v.compAmp[li]*=1+0.2*I));v.hl.routes.push(...FOG_A,...FOG_B)}}
   ];
   G.EVENTS=EVENTS;const EVI={};EVENTS.forEach(e=>EVI[e.id]=e);G.EVI=EVI;
   function mulberry(a){a>>>=0;return ()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
@@ -1097,7 +1144,7 @@ function Game(E){
     else if(diff==='easy'){n=rnd()<0.5?0:1;at=n?[1+Math.floor(rnd()*3)]:[]}
     else{n=rnd()<0.5?1:2;at=n===1?[1+Math.floor(rnd()*3)]:[1+Math.floor(rnd()*2),3+Math.floor(rnd()*3)]}
     const pool=EVENTS.map(e=>e.id);for(let i=pool.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
-    const pick=[];let wx=false;for(const id of pool){if(pick.length>=n)break;if(EVI[id].grp==='wx'){if(wx)continue;wx=true}pick.push(id)}
+    const pick=[];let wx=false,so=false;for(const id of pool){if(pick.length>=n)break;if(EVI[id].grp==='wx'){if(wx)continue;wx=true}if(EVI[id].grp==='so'){if(so)continue;so=true}pick.push(id)} // v5-5: 기상(wx, 안개 포함) 1회 · 사회·시스템(so: 파업·감염병·BIS) 1회
     return at.map((t,i)=>({at:t,id:pick[i]}))}
   G.season=season;
   const envCache=new Map();
@@ -1130,7 +1177,7 @@ function Game(E){
     E.balance(p);
     // 서비스 단절 검사
     let cut=0;for(const li of E.regLA[p.reg]){const l=LA[li];if(!l.routes.length)continue;
-      const alive=l.routes.some(ri=>{if(p.trunc[ri]&&l.reg!==p.reg)return false;for(let h=7;h<21;h++)if(!p.drtRep[ri*25+h]&&p.f[ri*25+h]>0)return true;return false})||p.circ.some(c=>c.la===li)||(p.drt&&p.drt.zone.has(li));if(!alive)cut++}
+      const alive=l.routes.some(ri=>{if(p.trunc[ri]&&!E.IR(l.reg,p.reg))return false;for(let h=7;h<21;h++)if(!p.drtRep[ri*25+h]&&p.f[ri*25+h]>0)return true;return false})||p.circ.some(c=>c.la===li)||(p.drt&&p.drt.zone.has(li));if(!alive)cut++}
     p.check.cutLA=cut;
     p.check.lock=null;
     if(!p.check.ok){const v=p.check.viol[0];p.check.lock=v?`${String(v.h).padStart(2,'0')}시 동시 운행 ${v.over}대 초과`:(p.check.tripOver?`하루 운행 ${p.check.tripOver}회 초과`:'투입 대수 초과')}
@@ -1176,18 +1223,19 @@ const TERMS={
  '일반화비용':'<b>이동 부담(일반화비용)</b><br>걷기·기다리기·타고 가기·갈아타기 시간을 ‘차 안에 앉아 있는 분’으로 바꿔 더한 값이에요. 기다림은 2배, 걷기는 1.8배로 더 힘들게 쳐요(교정 전 기본값).',
  '잠재승객':'<b>잠재승객</b><br>지금은 버스를 안 타지만, 버스가 편해지면 새로 탈 사람이에요. 생활권 ‘갈 수 있는 곳(접근성)’이 좋아진 만큼 늘어난다고 봐요(탄력성 0.4).',
  '접근성':'<b>접근성</b><br>생활권에서 버스로 학교·병원·관공서·상권·터미널 등 600곳에 얼마나 쉽게 갈 수 있는지를 점수로 만든 값이에요(Hansen식).',
- '효율':'<b>효율 3요소</b><br>① 수송 효율(버스 1대·1시간당 승객, 30%) ② 기존 승객 편익(이동 부담 감소, 40%) ③ 승객 수(기존+잠재−이탈, 30%). 현행=1.000이에요.',
+ '효율':'<b>효율 3요소</b><br>① 수송 효율(버스 1대·1시간당 승객, 30%) ② 기존 승객 편익(이동 부담 감소, 40%) ③ 승객 수(기존+잠재−이탈, 30%). 현행=1.000이에요. 선택한 전장 85% + 전장 밖 15%로 합산해요(섬 전역은 100%).',
  '점수':'<b>점수 = 1000 × 종합효율지수 − 감점</b><br>현행 그대로면 1000점. 정원 초과 구간당 −5점(최대 −100), 읍면 최소 서비스 미달 −50점.',
  '등급':'<b>등급</b><br>S 1090↑ · A 1060↑ · B 1030↑ · C 990↑(현행 수준 −1% 이내 포함) · D 990 미만. 낙관·기준·비관 세 가지로 각각 계산해요. (v2에서 노선망 표 반영 후 컷을 재조정)',
  '등고선':'<b>등고선</b><br>3D 지형 지도에 항상 자동으로 나타나는, 같은 높이를 이은 선이에요(WebGL을 못 쓰는 환경에서만 등고선 없는 2D 검은 지도로 자동 전환). 100m마다 가는 회청색 줄, 200m마다 조금 굵고 밝은 줄이고 회색 선은 해안선(0m)이에요. 높이는 색 대신 은은한 명암(음영기복)으로 보여요. 고도 자료: Terrain Tiles(Mapzen/AWS Open Data, SRTM 등 기반).',
  '3D':'<b>3D 지형 보기</b><br>드래그로 돌리고 기울이기, 휠·핀치로 확대, 오른쪽 버튼(또는 Shift)+드래그로 이동해요. 높이는 실제보다 과장(기본 2.5배)해서 보여 줘요.',
  '환승격차':'<b>환승 격차 (노선망 구조 지표)</b><br>현행 평일 시간표로 생활권 185곳·거점 5곳 사이 가장 빠른 버스 경로(RAPTOR)를 미리 계산해, 다른 생활권으로 가려면 직통인지·몇 번 갈아타야 하는지·평균 몇 분 걸리는지를 보여 줘요. 카드 효과(단축·DRT·순환·배차)도 반영해요.',
- '이벤트':'<b>돌발 이벤트</b><br>시드로 정해진 상황(입문 0~1개·보통 1~2개·어려움 4개)(태풍·폭설·집중호우·관광 성수기·대형 행사·학기 시작·도로 공사·버스요금 인상)이 라운드 사이에 터지고, 한 번 터지면 시즌 끝까지 이어져요. 수요 배율·차내시간·기다림/걷기 가중치·갈아타기 벌점·통제 구간 같은 모델 값만 바꾸고, 현행도 같은 조건으로 다시 계산해 ‘그 상황에서 현행 대비’ 점수를 매겨요.',
- '민원':'<b>주민 만족도·민원</b><br>생활권마다 배차 감축·DRT 전환·노선 단축(강제 환승)·정류장 통합·이탈 승객·접근성 악화를 민원으로, 접근성 개선·증편을 호감으로 계산해 인구로 가중 집계해요(개편 권역 60% + 그 밖 40%). 시작 70. <b>50 미만</b>이면 다음 라운드의 강한 축소 카드(★★)가, <b>30 미만(민원 폭주)</b>이면 축소 카드(★ 이상)가 전부 잠겨요. 점수에는 만족도 50 미만부터 1점당 −1.5점(최대 −60)을 감점하고, 30 미만이면 최종 등급 상한이 B예요.',
+ '이벤트':'<b>돌발 이벤트</b><br>시드로 정해진 상황(입문 0~1개·보통 1~2개·어려움 4개)(태풍·폭설·집중호우·중산간 안개·관광 성수기·대형 행사·학기 시작·도로 공사·말·노루 출몰·버스요금 인상·총파업 위기·감염병 확산·버스정보시스템 마비, 기상 계열·사회/시스템 계열은 시즌당 각 1번까지)이 라운드 사이에 터지고, 한 번 터지면 시즌 끝까지 이어져요. 수요 배율·차내시간·기다림/걷기 가중치·갈아타기 벌점·통제 구간 같은 모델 값만 바꾸고, 현행도 같은 조건으로 다시 계산해 ‘그 상황에서 현행 대비’ 점수를 매겨요.',
+ '민원':'<b>주민 만족도·민원</b><br>생활권마다 배차 감축·DRT 전환·노선 단축(강제 환승)·정류장 통합·이탈 승객·접근성 악화를 민원으로, 접근성 개선·증편을 호감으로 계산해 인구로 가중 집계해요(선택 전장 85% + 전장 밖 15%). 민원 건수·목록은 선택 전장 생활권만 세요. 시작 70. <b>50 미만</b>이면 다음 라운드의 강한 축소 카드(★★)가, <b>30 미만(민원 폭주)</b>이면 축소 카드(★ 이상)가 전부 잠겨요. 점수에는 만족도 50 미만부터 1점당 −1.5점(최대 −60)을 감점하고, 30 미만이면 최종 등급 상한이 B예요.',
  '세트':'<b>낙관·기준·비관</b><br>잘 모르는 값(탄력성, 갈아타기 벌점, 기다림 가중치, DRT 대기, 수요 반응 기간)을 세 가지로 바꿔 계산한 범위예요.'
 };
 const TERM_WORDS=[['큰길 버스','간선'],['간선','간선'],['순환버스','순환'],['셔틀','순환'],['DRT','DRT'],['부르면 오는 버스','DRT'],['갈아타기','환승'],['환승','환승'],['버스 오는 간격','배차'],['배차','배차'],['동시 운행','동시 운행']];
-{const C1=E.CUTS_BY.normal,C3=E.CUTS_BY.hard;TERMS['등급']=`<b>등급 (v3 재조정)</b><br>입문·보통: S ${C1.S}↑ · A ${C1.A}↑ · B ${C1.B}↑ · C ${C1.C}↑ · D ${C1.C} 미만<br>어려움(비관 세트·이벤트 강도 ×1.35): S ${C3.S}↑ · A ${C3.A}↑ · B ${C3.B}↑ · C ${C3.C}↑<br>돌발 이벤트·민원 패널티 도입 후 시드별 전체 경로 분포로 다시 정했어요. 민원 폭주(만족도 30 미만)면 최종 등급 상한 B.`}
+function cutsTxt(){const f=C=>`S ${C.S} · A ${C.A} · B ${C.B} · C ${C.C}`;return `쉬움 ${f(E.CUTS_BY.easy)} / 보통 ${f(E.CUTS_BY.normal)} / 어려움 ${f(E.CUTS_BY.hard)}<br>🏝️ 섬 전역: 쉬움 ${f(E.CUTS_ISL.easy)} / 보통 ${f(E.CUTS_ISL.normal)} / 어려움 ${f(E.CUTS_ISL.hard)}`}
+TERMS['등급']=`<b>등급 (v5-5 재조정)</b><br>${cutsTxt()}<br>D는 C 컷 미만. 전장 가중 점수·신규 돌발 이벤트 도입 후 시드별 전체 경로 분포로 다시 정했어요. 민원 폭주(만족도 30 미만)면 최종 등급 상한 B.`;
 TERM_WORDS.push(['민원','민원'],['이벤트','이벤트']);
 function termify(s){ // 첫 등장 용어에 툴팁
   const used=new Set();
@@ -1371,7 +1419,7 @@ const CLS_COL={trunk:'#2fd6ff',feeder:'#3ddc84',other:'#c8aa6e',circ:'#ff4fd8',d
 function rcls(r){return r.trunk?'trunk':r.feeder?'feeder':'other'}
 // 공용 정적 그리기: c=컨텍스트, W·H=크기, T=월드→화면/텍스처 변환, k=월드 1단위당 픽셀, sc=선 굵기 배율, tex=3D 텍스처용
 /* v5-1: 전장 강조 중에는 다른 전장 생활권 표시(접근성 변화·환승 격차·민원·이벤트 고리)를 그리지 않음. 섬 전체 보기면 원래대로. */
-const laShow=i=>{if(typeof RG==='undefined'||RG.whole||RG.reg<0)return true;const l=E.LA[i];return !l||l.reg===RG.reg};
+const laShow=i=>{if(typeof RG==='undefined'||RG.whole||RG.reg<0||RG.reg>=5)return true;const l=E.LA[i];return !l||l.reg===RG.reg};
 function paintStatic(c,W,H,T,k,sc,tex){c.clearRect(0,0,W,H);c.fillStyle='#07080a';c.fillRect(0,0,W,H);
   const useTiles=!tex&&tileMode==='tile';
   if(useTiles){const z=Math.max(7,Math.min(14,Math.round(view.z)));const n=Math.pow(2,z);
@@ -1472,7 +1520,7 @@ function camPreset(k){let P=typeof k==='string'?PRESET[k]:k;const asp=view.w/Mat
 /* ---- v5-1: 전장 강조 (선택 전장 밖 70% 어둡고 흐리게 + 경계 맥동선 + 3D 빛 막 + 카메라 이동) ----
    경계: 섬 육지 격자(약 0.6km)를 가장 가까운 생활권의 권역으로 나눈 뒤(보로노이), 권역 칸의 바깥 모서리를 이어 외곽선 → Chaikin 2회로 매끈하게.
    어둡게: 3D 지형 텍스처(지형·노선·생활권·라벨)에 직접 칠하고, 움직이는 버스 점은 화면 위에서 전장 밖만 70% 지움. 주민 경로·행 강조는 그 뒤에 그려 가리지 않음. */
-const REG_COL=['#4fc3ff','#ff9f43','#2ee6a6','#ffd23f','#c38bff'];
+const REG_COL=['#4fc3ff','#ff9f43','#2ee6a6','#ffd23f','#c38bff','#ff6fb1'];
 const RG={whole:false,key:'',flash:0,reg:-1,loops:null,xyz:null,ex:-1};
 function regLoops(){if(RG.loops)return RG.loops;const t0=performance.now();const LA=E.LA.filter(l=>l.reg>=0);
   const la0=Math.min(...LA.map(l=>l.lat))-0.06,la1=Math.max(...LA.map(l=>l.lat))+0.06,lo0=Math.min(...LA.map(l=>l.lon))-0.08,lo1=Math.max(...LA.map(l=>l.lon))+0.08;
@@ -1491,7 +1539,7 @@ function regLoops(){if(RG.loops)return RG.loops;const t0=performance.now();const
   RG.loops=out;RG.ms=performance.now()-t0;return out}
 function regAtW(x,y){const G_=RG.grid;if(!G_)return -2;const lon=lonOf(x),lat=latOf(y);const i=Math.floor((G_.la1-lat)/G_.d),j=Math.floor((lon-G_.lo0)/G_.dl);if(i<0||j<0||i>=G_.NR||j>=G_.NC)return -1;return G_.cell[i*G_.NC+j]}
 const curReg=()=>{try{return regOf(S.path)}catch(e){return -1}};
-const regOn=()=>!RG.whole&&RG.reg>=0;
+const regOn=()=>!RG.whole&&RG.reg>=0&&RG.reg<5; // v5-5: 섬 전역(5)은 어둡게·경계 없음
 function regPath(c,T,loops,W,H){c.beginPath();c.rect(-10,-10,W+20,H+20);for(const L of loops){let st=false;for(const p of L){const q=T(p[0],p[1]);if(!q){st=false;continue}st?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]);st=true}c.closePath()}}
 // 지형 텍스처(3D)·정적 지도(2D)에 전장 밖 흐림+어둡게
 function regDimStatic(c,W,H,T,sc){if(!regOn())return;const R=regLoops()[RG.reg];if(!R)return;c.save();regPath(c,T,R.loops,W,H);c.clip('evenodd');
@@ -1518,8 +1566,8 @@ function regCam(){const R=regLoops()[RG.reg];if(!R||!mode3D)return;const asp=vie
   camPreset({tx:Math.max(-60,Math.min(60,R.c[0])),ty:Math.max(-40,Math.min(40,R.c[1]-span*0.03)),yaw:0,pitch:46,dist:Math.max(22,Math.min(110,span*1.35*(asp<1?1.25:1)))})}
 // 상태 감시: 전장이 바뀌면 텍스처 다시 칠하고(선택 직후엔) 카메라 이동
 function regTick(t){const r=curReg();const key=r+'|'+RG.whole;if(key===RG.key)return;const prevReg=RG.reg;RG.key=key;RG.reg=r;G3.texDirty=true;dirty=true;
-  const b=$('#pWhole');if(b){b.style.display=r>=0?'':'none';b.classList.toggle('on',RG.whole);b.textContent=RG.whole?'🔦 전장 강조로':'🗺️ 섬 전체 보기'}
-  if(r>=0&&r!==prevReg){RG.flash=t;if(!RG.noCam)setTimeout(regCam,60)}else if(r<0&&prevReg>=0&&mode3D)camPreset('island')}
+  const b=$('#pWhole');if(b){b.style.display=r>=0&&r<5?'':'none';b.classList.toggle('on',RG.whole);b.textContent=RG.whole?'🔦 전장 강조로':'🗺️ 섬 전체 보기'}
+  if(r===5&&r!==prevReg){if(!RG.noCam&&mode3D)setTimeout(()=>camPreset('island'),60)}else if(r>=0&&r!==prevReg){RG.flash=t;if(!RG.noCam)setTimeout(regCam,60)}else if(r<0&&prevReg>=0&&mode3D)camPreset('island')}
 /* ---- 애니메이션 루프: 2D/3D 공용 입자 ---- */
 let clockMin=7*60,lastT=0;
 function animate(t){requestAnimationFrame(animate);const dt=Math.min(100,t-lastT);lastT=t;
@@ -1603,7 +1651,7 @@ function legend(){$('#mapLegend').innerHTML=`<div><i style="background:${CLS_COL
 /* ---------------- 차트 ---------------- */
 function cv(id){const c=$(id);const dp=Math.min(2,devicePixelRatio||1);if(!c._w){c._w=c.width;c._h=c.height;c.width=c._w*dp;c.height=c._h*dp}const x=c.getContext('2d');x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,c._w,c._h);return [x,c._w,c._h]}
 function drawGauge(score){const [c,W,H]=cv('#cGauge');const cx=W/2,cy=H-18,R=Math.min(W/2-14,H-30);const lo=860,hi=1150;const ang=v=>Math.PI+(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo)*Math.PI;
-  const CU=E.cutsOf(S.diff);const bands=[[lo,CU.C,'#ff5a5a'],[CU.C,CU.B,'#7ee787'],[CU.B,CU.A,'#4fd1ff'],[CU.A,CU.S,'#ff7ad9'],[CU.S,hi,'#ffd76a']];
+  const CU=E.cutsOf(S.diff,curReg());const bands=[[lo,CU.C,'#ff5a5a'],[CU.C,CU.B,'#7ee787'],[CU.B,CU.A,'#4fd1ff'],[CU.A,CU.S,'#ff7ad9'],[CU.S,hi,'#ffd76a']];
   for(const [a,b,col] of bands){c.strokeStyle=col;c.globalAlpha=.85;c.lineWidth=12;c.beginPath();c.arc(cx,cy,R,ang(a),ang(b));c.stroke()}c.globalAlpha=1;
   c.fillStyle='#9aa3b5';c.font='10px sans-serif';c.textAlign='center';for(const v of [CU.C,CU.B,CU.A,CU.S]){const a=ang(v);c.fillText(v,cx+Math.cos(a)*(R-20),cy+Math.sin(a)*(R-20))}
   for(const [lbl,v] of [['D',940],['C',1020],['B',1060],['A',1100],['S',1150]]){const a=ang(v);c.fillStyle='#fff';c.font='bold 11px serif';c.fillText(lbl,cx+Math.cos(a)*(R+12),cy+Math.sin(a)*(R+12)+4)}
@@ -1623,10 +1671,10 @@ function drawConc(p){const [c,W,H]=cv('#cConc');const L=36,B=18,T=8,Rr=6;const h
   const hc=Math.floor(clockMin/60);if(hc>=5){const i=hc-5;c.strokeStyle='rgba(10,200,185,.7)';c.beginPath();c.moveTo(L+i*bw+bw/2,T);c.lineTo(L+i*bw+bw/2,H-B);c.stroke()}
   c.textAlign='left';c.fillStyle='rgba(120,135,170,.9)';c.fillRect(L+4,T,8,8);c.fillStyle='#9aa3b5';c.fillText('현행',L+15,T+8);c.fillStyle='rgba(255,214,106,.9)';c.fillRect(L+48,T,8,8);c.fillStyle='#9aa3b5';c.fillText('개편',L+59,T+8)}
 function drawTrend(hist){const [c,W,H]=cv('#cTrend');const L=36,B=16,T=10;const n=G.ROUNDS.length;const vals=[1000].concat(hist);const lo=Math.min(940,...vals)-10,hi=Math.max(1140,...vals)+10;const y=v=>H-B-(v-lo)/(hi-lo)*(H-B-T);const x=i=>L+i*(W-L-10)/n;
-  {const CU=E.cutsOf(S.diff);for(const [v,col] of [[CU.C,'#7ee787'],[CU.B,'#4fd1ff'],[CU.A,'#ff7ad9'],[CU.S,'#ffd76a']]){c.strokeStyle=col;c.globalAlpha=.3;c.setLineDash([3,3]);c.beginPath();c.moveTo(L,y(v));c.lineTo(W-10,y(v));c.stroke();c.globalAlpha=.8;c.fillStyle=col;c.font='9px sans-serif';c.textAlign='right';c.fillText(v,L-3,y(v)+3)}}
+  {const CU=E.cutsOf(S.diff,curReg());for(const [v,col] of [[CU.C,'#7ee787'],[CU.B,'#4fd1ff'],[CU.A,'#ff7ad9'],[CU.S,'#ffd76a']]){c.strokeStyle=col;c.globalAlpha=.3;c.setLineDash([3,3]);c.beginPath();c.moveTo(L,y(v));c.lineTo(W-10,y(v));c.stroke();c.globalAlpha=.8;c.fillStyle=col;c.font='9px sans-serif';c.textAlign='right';c.fillText(v,L-3,y(v)+3)}}
   c.setLineDash([]);c.globalAlpha=1;c.fillStyle='#6b7590';c.textAlign='center';for(let i=0;i<=n;i++)c.fillText(i?('R'+i):'현행',x(i),H-3);
   c.strokeStyle='#0ac8b9';c.lineWidth=2;c.shadowColor='#0ac8b9';c.shadowBlur=8;c.beginPath();vals.forEach((v,i)=>i?c.lineTo(x(i),y(v)):c.moveTo(x(i),y(v)));c.stroke();c.shadowBlur=0;
-  vals.forEach((v,i)=>{c.fillStyle=GRADE_COL[E.grade(v,S.diff)];c.beginPath();c.arc(x(i),y(v),3.5,0,7);c.fill()})}
+  vals.forEach((v,i)=>{c.fillStyle=GRADE_COL[E.grade(v,S.diff,curReg())];c.beginPath();c.arc(x(i),y(v),3.5,0,7);c.fill()})}
 function drawGC(m){const el=$('#gcBars');if(!m||!m.Q0){el.innerHTML='<div class="sub" style="font-size:12px">권역을 고르면 표시돼요.</div>';return}const g=m.gcd;const rows=[['걷기',g.walk],['기다리기',g.wait],['타고 가기',g.ivt],['갈아타기',g.xfer]];const mxv=Math.max(...rows.map(r=>Math.max(r[1][0],r[1][1])),1);
   el.innerHTML=rows.map(([n,[a,b]])=>`<div class="row"><span>${n}</span><div class="bar"><i style="width:${a/mxv*100}%;background:rgba(120,135,170,.6)"></i><i style="width:${b/mxv*100}%;background:${b<=a?'rgba(61,220,132,.75)':'rgba(255,70,85,.75)'};height:4px;top:auto"></i></div><span>${a.toFixed(1)} → <b class="${b<a-0.05?'up':b>a+0.05?'dn':'eq'}">${b.toFixed(1)}</b></span></div>`).join('')+
   `<div class="row"><span><b>합계</b></span><div></div><span>${m.gc0.toFixed(1)} → <b class="${m.gc1<m.gc0?'up':'dn'}">${m.gc1.toFixed(1)}</b>분</span></div><div class="sub" style="font-size:11px">회색=현행, 색 막대=개편 · 대상: 개편 영향권 승객 ${fmt(m.Q0)}명/일</div>`}
@@ -1654,7 +1702,7 @@ function renderSat(){const m=curM();const sat=m?m.sat:E.CW.base;const c=m?m.comp
   el.innerHTML=`<div class="compSum">만족도 <b style="color:${col}">${sat.toFixed(0)}</b> / 100 · 민원 <b>${fmt(c.cnt)}</b>건/월 · ${m.compPen?`<span class="dn">민원 패널티 −${m.compPen}</span>`:'<span class="up">패널티 없음</span>'} ${sat<E.SATR.warn?`<span class="dn">· 다음 라운드 ${sat<E.SATR.riot?'축소 카드 전부':'강한 축소 카드'} 잠금</span>`:''}</div>
    <div class="compCause">${c.causeT.map((v,k)=>v>0.5?`<span title="${E.CAUSE[k]}"><i style="width:${Math.max(4,v/tot*100)}%"></i>${E.CAUSE[k]} ${Math.round(v/tot*100)}%</span>`:'').join('')}</div>
    <div class="compTop">${top.map(([i,x])=>`<div>📢 <b>${E.LA[i].n.replace(/ 일대.*$/,'')}</b> <span class="lbl">${D.REG[E.LA[i].reg].replace(/ \(.*$/,'')}</span> ${fmt(x.c)}건 · ${E.CAUSE[x.top]||''}${x.amp>1.05?` <span class="evAmp">⚡×${x.amp.toFixed(2)}</span>`:''}</div>`).join('')||'<div class="up">눈에 띄는 민원이 없어요.</div>'}</div>`}
-function renderDash(){const ev=cur;const m=ev&&ev.res?ev.res[repKey()]:null;const sc=m?m.score:1000;rollScore(sc);const gb=$('#gradeBadge');const gr=m?m.grade:E.grade(sc,S.diff);gb.textContent=gr;gb.className='grade g'+gr;
+function renderDash(){const ev=cur;const m=ev&&ev.res?ev.res[repKey()]:null;const sc=m?m.score:1000;rollScore(sc);const gb=$('#gradeBadge');const gr=m?m.grade:E.grade(sc,S.diff,curReg());gb.textContent=gr;gb.className='grade g'+gr;
   drawGauge(sc);drawRadar(m);drawConc(ev?ev.plan:null);drawTrend(histScores);drawGC(m);renderSat();
   $('#setChips').innerHTML=ev&&ev.res?['opt','base','pess'].map(k=>`<span style="${k===repKey()?'border-color:#c8aa6e':''}">${SETN[k]} <b style="color:${GRADE_COL[ev.res[k].grade]}">${ev.res[k].score} ${ev.res[k].grade}</b></span>`).join('')+'<span class="term" data-term="세트">?</span>':'<span>현행 기준판 1000점</span>';
   const ck=ev&&ev.plan.check;const chips=[];
@@ -1759,7 +1807,7 @@ const TUT=[
   <div><span class="gi">🚍</span><span><b>수송 효율 30%</b> · 버스 1대가 1시간에 태우는 승객</span></div>
   <div><span class="gi">😊</span><span><b>기존 승객 편익 40%</b> · 걷기·기다리기·갈아타기 부담이 줄었나</span></div>
   <div><span class="gi">👥</span><span><b>승객 수 30%</b> · 새로 탈 잠재승객 − 떠나는 승객</span></div></div>
-  <p>등급(입문·보통): <b style="color:#ffd76a">S</b> ${E.CUTS_BY.normal.S}↑ <b style="color:#ff7ad9">A</b> ${E.CUTS_BY.normal.A}↑ <b style="color:#4fd1ff">B</b> ${E.CUTS_BY.normal.B}↑ <b style="color:#7ee787">C</b> ${E.CUTS_BY.normal.C}↑ <b style="color:#ff5a5a">D</b> 그 미만 · 어려움은 S ${E.CUTS_BY.hard.S} · A ${E.CUTS_BY.hard.A} · B ${E.CUTS_BY.hard.B} · C ${E.CUTS_BY.hard.C} (v3 재조정, 1000 = 같은 상황의 현행). 시간대별 버스 수나 하루 운행 횟수를 넘기는 카드는 🔒 잠겨요.</p><p class="sub">잘 모르는 값은 낙관·기준·비관 세 가지로 계산해 범위를 보여 드려요.</p>`}
+  <p>등급: ${cutsTxt()} · D는 그 미만 (v5-5 재조정, 1000 = 같은 상황의 현행). 시간대별 버스 수나 하루 운행 횟수를 넘기는 카드는 🔒 잠겨요.</p><p class="sub">잘 모르는 값은 낙관·기준·비관 세 가지로 계산해 범위를 보여 드려요.</p>`}
 ];
 TUT.push({h:'⚡ 돌발 이벤트 & 📢 민심',b:`<p>시즌마다 <b>돌발 이벤트</b>가 라운드 사이에 터져요(입문 0~1개·보통 1~2개·어려움 4개, 시드로 재현 — 입문은 이벤트 없는 평온한 시즌도 나와요). 태풍·폭설·집중호우·관광 성수기·대형 행사·학기 시작·도로 공사·버스요금 인상 중에서 나오고, <b>한 번 터지면 시즌 끝까지</b> 이어져요.</p><p>같은 카드도 이벤트에 따라 효과가 달라져요. 카드에 <b>⚡ 이벤트 영향</b>이 표시되고, 이벤트가 터지면 <b>↶ 직전 카드 다시 고르기</b>로 대응할 수도 있어요.</p><p><b>주민 만족도</b>(시작 70)도 지켜보세요. 배차를 줄이거나 DRT로 바꾸거나 갈아타기를 늘리면 민원이 쌓여요. <b>50 미만</b>이면 다음 라운드의 강한 축소 카드(★★)가, <b>30 미만</b>이면 축소 카드(★)가 전부 잠기고, 점수에서도 민원 패널티가 빠져요.</p>`});
 let tutI=0;
@@ -1804,8 +1852,8 @@ $('#btnConsent').onclick=()=>{if(landVid)landVid.stop();consented=true;audUnlock
   else openDiff()};
 
 /* ---------------- 최종 결과 ---------------- */
-function endingOf(m,diff){const CU=E.cutsOf(diff);const sat=m.sat,sc=m.score,raw=m.rawScore;
-  if(sat<E.SATR.riot&&raw>=CU.B)return {k:'effRiot',t:'💥 효율은 올랐는데 민원 폭주!',d:`효율만 보면 ${E.grade(raw,diff)}급(${raw}점)인데, 주민 만족도가 ${sat.toFixed(0)}까지 떨어졌어요. 민원 패널티 −${m.compPen}${m.capped?' · 등급 상한 B':''}.`,c:'lose'};
+function endingOf(m,diff){const CU=E.cutsOf(diff,curReg());const sat=m.sat,sc=m.score,raw=m.rawScore;
+  if(sat<E.SATR.riot&&raw>=CU.B)return {k:'effRiot',t:'💥 효율은 올랐는데 민원 폭주!',d:`효율만 보면 ${E.grade(raw,diff,curReg())}급(${raw}점)인데, 주민 만족도가 ${sat.toFixed(0)}까지 떨어졌어요. 민원 패널티 −${m.compPen}${m.capped?' · 등급 상한 B':''}.`,c:'lose'};
   if(sat<E.SATR.riot)return {k:'riot',t:'📢 DEFEAT · 민심이 등을 돌렸습니다',d:`효율도 민심도 잃었어요(만족도 ${sat.toFixed(0)}).`,c:'lose'};
   if(sat>=60&&sc>=CU.A)return {k:'legend',t:'👑 LEGENDARY · 효율과 민심 동시 장악',d:`등급 ${m.grade} + 주민 만족도 ${sat.toFixed(0)}. ${SEA.length?'돌발 이벤트 속에서도 둘 다 잡았어요!':'평온한 시즌에 둘 다 잡았어요!'}`,c:'win'};
   if(sat>=60&&sc<1000)return {k:'calm',t:'🕊️ 민심은 지켰지만 효율은 제자리',d:`만족도 ${sat.toFixed(0)}로 조용한 시즌이었지만, 효율은 현행보다 낮아요.`,c:'lose'};
@@ -1842,6 +1890,7 @@ function showFinal(){const ev=cur;if(!ev||!ev.res)return;const rk=repKey();const
   $('#finalBadges').innerHTML=badges.map(b=>`<span>${b}</span>`).join('');
   $('#finalSets').innerHTML=['opt','base','pess'].map(k=>{const x=ev.res[k];const st=E.SETS[k];return `<div class="setBox ${k===rk?'rep':''}"><div class="lbl">${SETN[k]} 세트${k===rk?' · 대표':''}</div><div class="g" style="color:${GRADE_COL[x.grade]}">${x.grade} · ${x.score}</div><div class="lbl">만족도 ${x.sat.toFixed(0)} · ε ${st.eps} · 갈아타기 벌점 ${st.tau}분 · 기다림 ×${st.ww} · 걷기 ×${st.wk} · DRT 대기 ${st.drt}분 · 수요 반응 ${st.realName}</div></div>`}).join('');
   $('#finalHist').innerHTML=S.path.map((id,n)=>{const o=G.optionsAt(n,S.path,S.diff).find(x=>x.id===id);const s=histScores[n],pv=n?histScores[n-1]:1000;const e=SEA.find(x=>x.at===n);return `${e?`<li class="evH" style="--ev:${G.EVI[e.id].col}">⚡ ${G.EVI[e.id].icon} <b>${G.EVI[e.id].name}</b> 발생</li>`:''}<li value="${n+1}"><b>${G.ROUNDS[n].title}</b>: ${o.icon} ${o.name}${o.tag?' ('+o.tag+')':''} <span class="${s-pv>0?'up':s-pv<0?'dn':'eq'}">${s-pv>=0?'+':''}${s-pv}</span> → ${s}</li>`}).join('');
+  {const g_=ev.plan.reg;$('#eiScope').textContent=g_===5?'제주도 섬 전역 100%':g_>=0?`${D.REG[g_].replace(/ \(.*$/,'')} 전장 85% + 밖 15%`:'전장 기준'}
   $('#finalComp').innerHTML=`<div>🚍 수송 효율 ${m.e1r.toFixed(3)} <span class="${m.e1r>=1?'up':'dn'}">(${pct(m.e1r-1)})</span> ×30%</div><div>😊 기존 승객 편익 ${m.gcr.toFixed(3)} <span class="${m.gcr>=1?'up':'dn'}">(${pct(m.gcr-1)})</span> ×40% · 이동 부담 ${m.gc0.toFixed(1)}→${m.gc1.toFixed(1)}분</div><div>👥 승객 수 ${m.qr.toFixed(3)} <span class="${m.qr>=1?'up':'dn'}">(${pct(m.qr-1)})</span> ×30%</div><div class="lbl">잠재승객 +${fmt(m.dQ)} · 순이탈 ${fmt(m.QL+m.QLx)}명/일 (음수=유입) · 영향권 기존 승객 ${fmt(m.Q0)}명/일 · 감점 ${m.pen}</div>`;
   const ck=ev.plan.check;$('#finalRules').innerHTML=`<div>R1 시간대별 동시 운행 최대 ${ck.peak.toFixed(0)} / ${ck.fleetLim}대 ✔</div><div>R2 하루 운행 ${fmt(ck.trips)} / ${fmt(ck.tripLim)}회 ✔</div><div class="lbl">DRT 차량은 버스 1대로 환산 · 이벤트는 운행대수 규칙을 바꾸지 않아요</div>`;
   const la=[];for(let i=0;i<E.LA.length;i++){if(m.laA[i])la.push([i,m.laA[i],m.laD[i]])}la.sort((a,b)=>b[1]-a[1]);const top=la.slice(0,4),bot=la.filter(x=>x[1]<0).slice(-3).reverse();
@@ -1852,11 +1901,15 @@ function showFinal(){const ev=cur;if(!ev||!ev.res)return;const rk=repKey();const
   $('#finalSat').innerHTML=`<div class="satBig"><div class="satBar"><i style="width:${m.sat.toFixed(1)}%;background:linear-gradient(90deg,${sc_}66,${sc_})"></i><b style="left:${E.SATR.warn}%"></b><b style="left:${E.SATR.riot}%"></b></div><div><b style="color:${sc_};font-size:22px">${m.sat.toFixed(0)}</b> / 100 <span class="lbl">(시작 70 · 경고 ${E.SATR.warn} · 폭주 ${E.SATR.riot})</span></div></div>
    <div>민원 <b>${fmt(c.cnt)}</b>건/월 · 시즌 누적 <b>${fmt(acc)}</b>건(라운드별 합) · 라운드별 만족도 ${satH.map(v=>v.toFixed(0)).join(' → ')}</div>
    <div class="lbl">점수 결합: 최종 점수 = 1000×효율지수 − (정원 초과·최소 서비스 감점 + 민원 패널티). 민원 패널티 = 만족도 ${E.SATR.penFrom} 미만부터 1점당 −${E.SATR.penK}점(최대 −${E.SATR.penMax}) → 이번 −${m.compPen}. 만족도 ${E.SATR.riot} 미만이면 등급 상한 B.</div>`;
-  const topL=c.la.map((x,i)=>[i,x]).filter(x=>x[1].c>=0.5).sort((a,b)=>b[1].c-a[1].c).slice(0,8);
-  $('#finalCompTop').innerHTML=topL.map(([i,x])=>`<li data-i="${i}" title="지도에서 보기">📢 <b>${E.LA[i].n.replace(/ 일대.*$/,'')}</b> <span class="lbl">${D.REG[E.LA[i].reg].replace(/ \(.*$/,'')}</span> · ${fmt(x.c)}건 · 주원인 <b>${E.CAUSE[x.top]||'-'}</b>${x.amp>1.05?` · <span class="evAmp">⚡이벤트 증폭 ×${x.amp.toFixed(2)}</span>`:''}</li>`).join('')||'<li class="up">눈에 띄는 민원이 없어요.</li>';
+  const topL=c.la.map((x,i)=>[i,x]).filter(x=>x[1].c>=0.5).sort((a,b)=>b[1].c-a[1].c).slice(0,20); /* v5-5: 상위 8곳 + 더 보기(최대 20곳) */
+  $('#finalCompTop').innerHTML=topL.map(([i,x],k)=>`<li data-i="${i}" title="지도에서 보기"${k>=8?' class="more" hidden':''}>📢 <b>${E.LA[i].n.replace(/ 일대.*$/,'')}</b> <span class="lbl">${D.REG[E.LA[i].reg].replace(/ \(.*$/,'')}</span> · ${fmt(x.c)}건 · 주원인 <b>${E.CAUSE[x.top]||'-'}</b>${x.amp>1.05?` · <span class="evAmp">⚡이벤트 증폭 ×${x.amp.toFixed(2)}</span>`:''}</li>`).join('')||'<li class="up">눈에 띄는 민원이 없어요.</li>';
   $$('#finalCompTop li[data-i]').forEach(li=>li.onclick=()=>{SFX.click();hlLA(+li.dataset.i)});
+  if(topL.length>8){$('#finalCompTop').insertAdjacentHTML('beforeend',`<li class="moreBtn"><button type="button" class="ghostBtn" id="compMore">＋ 민원 생활권 더 보기 (${topL.length-8}곳)</button></li>`);$('#compMore').onclick=e=>{e.stopPropagation();$$('#finalCompTop li.more').forEach(l=>l.hidden=false);e.currentTarget.parentNode.remove()}}
+  $$('#finalCompTop li[data-i]').forEach(li=>{const i=+li.dataset.i;const q=voiceOf(i,c.la[i],S.seed);if(q.length)li.insertAdjacentHTML('beforeend',`<div class="vox">${q.map(t=>`<q>${t}</q>`).join('')}</div>`)});
   const tot=c.causeT.reduce((a,b)=>a+b,0)||1;$('#finalCause').innerHTML=c.causeT.map((v,k)=>[v,k]).sort((a,b)=>b[0]-a[0]).filter(x=>x[0]>0.5).map(([v,k])=>`<div class="cRow"><span>${E.CAUSE[k]}</span><div class="bar dn"><i style="width:${v/tot*100}%"></i></div><span>${fmt(v)}건 (${Math.round(v/tot*100)}%)</span></div>`).join('')||'<div class="up">없음</div>';
-  $('#finalCompReg').innerHTML=c.regC.map((v,g)=>`<div class="cRow"><span>${D.REG[g].replace(/ \(.*$/,'')}${g===ev.plan.reg?' ★':''}</span><div class="bar dn"><i style="width:${v/Math.max(1,...c.regC)*100}%"></i></div><span>${fmt(v)}건</span></div>`).join('');
+  { /* v5-5: 선택 전장 민원만 · 전장 밖은 영향 수준 한 줄 */ const g=ev.plan.reg,nLa=c.la.filter(x=>x.inB&&x.c>=0.5).length,OL=[['낮음','up'],['보통','warnT'],['높음','dn']][c.outLv]||['낮음','up'];
+    if(g===5){const mx=Math.max(1,...c.regC);$('#finalCompReg').innerHTML=c.regC.map((v,r)=>`<div class="cRow"><span>${D.REG[r].replace(/ \(.*$/,'')}</span><div class="bar dn"><i style="width:${v/mx*100}%"></i></div><span>${fmt(v)}건</span></div>`).join('')+`<div class="lbl">섬 전역 전장 · 민원 생활권 ${nLa}곳 · 합계 ${fmt(c.cnt)}건</div>`}else
+    $('#finalCompReg').innerHTML=`<div class="cRow"><span>${D.REG[g].replace(/ \(.*$/,'')} ★</span><div class="bar dn"><i style="width:100%"></i></div><span>${fmt(c.cnt)}건</span></div><div class="lbl">민원 생활권 ${nLa}곳 · 전장 밖 생활권 민원은 목록·합계에서 제외</div><div class="outLv">전장 밖 영향: <b class="${OL[1]}">${OL[0]}</b> <span class="lbl">(만족도에 15%만 반영)</span></div>`}
   const reg=ev.plan.reg;$('#finalEv').innerHTML=SEA.length?SEA.map(e=>{const X=G.EVI[e.id];return `<div class="evRow" style="--ev:${X.col}"><div class="evI2">${X.icon}</div><div><b>${X.name}</b> · ${G.eventTitle(e.id,reg)} <span class="lbl">(ROUND ${e.at+1} 직전 · 강도 ×${G.INT[S.diff]})</span><ul>${G.eventFx(e.id,S.diff,reg).map(x=>`<li>${x}</li>`).join('')}</ul></div></div>`}).join('')+`<div class="lbl">시드 #${S.seed} · 같은 시드·난이도면 같은 이벤트가 같은 순서로 나와요.</div>`:`<div class="eq">🌤️ 이번 시즌은 돌발 이벤트 없이 평온하게 끝났어요(입문은 시드에 따라 0~1개).</div><div class="lbl">시드 #${S.seed} · 같은 시드·난이도면 같은 시즌이 재현돼요.</div>`;
   $('#finalSeed').textContent=S.seed;
   setTimeout(()=>{try{SFX.grade(gr);if(END.k==='effRiot'||END.k==='riot')setTimeout(()=>SFX.riotEnd(),1600)}catch(e){}if(win){if(gr==='S'||gr==='A'){const p=$('#pillar');p.classList.remove('on');void p.offsetWidth;if(!S.reduced)p.classList.add('on');firework();if(gr==='S')setTimeout(firework,900)}else burst(innerWidth/2,innerHeight*.3,'#c8aa6e',100,8)}else{shake()}if(END.k==='effRiot'){burst(innerWidth/2,innerHeight*.25,'#ff3b5c',140,10)}},S.reduced?0:350);
@@ -1876,15 +1929,15 @@ function bdNet(){const ev=cur;if(!ev||!ev.plan)return null;const g=netGapOf(ev.p
   const rows=g.la.map((x,i)=>({kind:'la',i,name:E.LA[i].n,sub:regN(E.LA[i].reg),b:x.b,a:x.a,p0:x.T0,p1:x.T1,d:x.T0==null?0:x.T1-x.T0,r:x.T0?(x.T1-x.T0)/x.T0:null}));window.__NETROWS=rows;return {rows,all:g.all}}
 function bdData(){const ev=cur;if(!ev||!ev.plan||!ev.res)return null;const key=ev.path.join('.')+'|'+S.diff+'|'+BD.set+'|'+(ev.env?ev.env.key:'none');if(BD.cache.key===key)return BD.cache.v;
   const b=E.breakdown(ev.plan,BD.set,ev.env);const p=ev.plan;const T=D.meta.types;const regN=r=>r>=0&&D.REG[r]?D.REG[r]:'기타';
-  const la=[];for(let z=0;z<D.zoneName.length;z++){const a=b.zone.p0[z],c=b.zone.p1[z];if(a<0.05&&Math.abs(c)<0.05)continue;la.push({kind:'la',i:z,name:D.zoneName[z],sub:regN(D.zoneReg[z]),p0:a,p1:c})}
+  const la=[],laX=[];for(let z=0;z<D.zoneName.length;z++){const a=b.zone.p0[z],c=b.zone.p1[z];if(a<0.05&&Math.abs(c)<0.05)continue;(p.reg<0||E.IR(D.zoneReg[z],p.reg)?la:laX).push({kind:'la',i:z,name:D.zoneName[z],sub:regN(D.zoneReg[z]),p0:a,p1:c})} /* v5-5: 생활권 표는 선택 전장 소속만(점수·모델 총계는 섬 전체 그대로) */
   const rt=[];for(const r of E.R){const a=b.route.p0[r.i],c=b.route.p1[r.i];if(a<0.05&&Math.abs(c)<0.05)continue;
     let dr=0,fs=0,n=0;for(let h=5;h<24;h++){if(!r.dep[h])continue;if(p.drtRep[r.i*25+h])dr++;else{fs+=p.f[r.i*25+h];n++}}const fa=n?fs/n:1;const ch=[];
     if(p.trunc[r.i])ch.push('단축(환승센터까지)');if(dr)ch.push(`DRT 전환 ${dr}시간`);if(fa>1.02)ch.push(`증편 +${Math.round((fa-1)*100)}%`);else if(fa<0.98)ch.push(`감축 −${Math.round((1-fa)*100)}%`);if(p.spd[r.i]>1)ch.push('급행화');if(p.layoverAdd[r.i])ch.push('환승 맞춤 대기');
     rt.push({kind:'rt',i:r.i,name:`${r.id}번`,sub:r.name&&r.name!==r.id+'번'?r.name:'',type:(T[r.k]||'기타')+(r.trunk?' · 간선':r.feeder?' · 지선':''),p0:a,p1:c,chg:ch.join(', ')||'유지'})}
   p.circ.forEach((cc,j)=>{rt.push({kind:'circ',i:j,name:`마을 셔틀 ${j+1}`,sub:(E.LA[cc.la]?E.LA[cc.la].n.replace(/ 일대/,''):'')+' (신설)',type:'순환',p0:0,p1:b.route.p1[E.R.length+j],chg:`신설 ${cc.veh}대 · 시간당 ${cc.freq.toFixed(1)}회`})});
   if(p.drt){const v=b.route.p1[b.route.DRT];rt.push({kind:'drt',i:0,name:'부르면 오는 버스',sub:'DRT (신설·전환)',type:'DRT',p0:0,p1:v,chg:`${p.drt.routes.length}개 노선 시간대 전환 · 대기 약 ${Math.round(p.drt.waitEff[BD.set])}분`})}
-  for(const x of [...la,...rt]){x.d=x.p1-x.p0;x.r=x.p0>0.5?x.d/x.p0:null}
-  const sum=a=>a.reduce((s,x)=>s+x.d,0);const v={la,rt,tot:b.tot,check:b.check,sumLA:sum(la),sumRT:sum(rt)};BD.cache={key,v};window.__BD=v;return v}
+  for(const x of [...la,...laX,...rt]){x.d=x.p1-x.p0;x.r=x.p0>0.5?x.d/x.p0:null}
+  const sum=a=>a.reduce((s,x)=>s+x.d,0);const v={la,rt,tot:b.tot,check:b.check,sumLA:sum(la),sumLAout:sum(laX),reg:p.reg,laP0:la.reduce((s,x)=>s+x.p0,0),laP1:la.reduce((s,x)=>s+x.p1,0),sumRT:sum(rt)};BD.cache={key,v};window.__BD=v;return v}
 const sgn=x=>(x>=0?'+':'−')+fmt(Math.abs(x));
 function bdRows(){let a;if(BD.tab==='net'){const nv=bdNet();if(!nv)return [];a=nv.rows.slice()}else{const v=bdData();if(!v)return [];a=(BD.tab==='la'?v.la:v.rt).slice()}
   const th=BD.tab==='net'?0.05:0.5;if(BD.filter==='up')a=a.filter(x=>x.d>th);else if(BD.filter==='dn')a=a.filter(x=>x.d<-th);
@@ -1902,6 +1955,7 @@ function bdRender(){const pn=$('#bdPanel');if(!BD.tab){pn.classList.remove('open
   const top=all.reduce((a,x)=>!a||x.d>a.d?x:a,null),bot=all.reduce((a,x)=>!a||x.d<a.d?x:a,null);const lbl=x=>`<b>${x.name}</b>${x.sub?' ('+x.sub+')':''} ${sgn(x.d)}명${x.r!=null?' ('+pct(x.r)+')':''}`;
   $('#bdSum').innerHTML=`<span class="up">▲ 가장 늘어난 곳: ${top&&top.d>0.5?lbl(top):'없음'}</span> <span class="dn">▼ 가장 줄어든 곳: ${bot&&bot.d<-0.5?lbl(bot):'없음'}</span>`;
   const s=BD.tab==='la'?v.sumLA:v.sumRT;const ok=Math.abs(s-v.check.model)<1;
+  if(BD.tab==='la'){const rn=v.reg>=0?D.REG[v.reg].replace(/ \(.*$/,''):'섬 전체';$('#bdCheck').innerHTML=`🏘️ <b>${rn} 전장 생활권 승객 증감</b> · ${SETN[BD.set]} 세트 · 현행 ${fmt(v.laP0)}명/일 → 개편 후 ${fmt(v.laP1)}명/일 · 전장 생활권 합계 ${sgn(s)}명 · 표시 ${rows.length}/${all.length}행`}else
   $('#bdCheck').innerHTML=`${SETN[BD.set]} 세트 · 현행 ${fmt(v.tot.p0)}명/일 → 개편 후 ${fmt(v.tot.p1)}명/일 · 리스트 합계 ${sgn(s)}명 ${ok?'=':'≠'} 모델 총 증감 ${sgn(v.check.model)}명 ${ok?'✔':'⚠'} · 표시 ${rows.length}/${all.length}행`;
   const mx_=Math.max(1,...all.map(x=>Math.abs(x.d)));
   const head=BD.tab==='la'?['생활권','권역','현행','개편 후','증감','증감률','']:['노선','유형','현행','개편 후','증감','증감률','배차 변화'];
@@ -1948,7 +2002,7 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 <li><b>이벤트 속도(태풍·폭설·공사)는 차량 대수에 넣지 않아요</b>: 운행대수·운행 횟수 규칙은 계획 단계의 제약이고, 이벤트 날은 같은 차량이 늦게 다니는 상황(승객 차내시간·대기에만 반영)으로 봐요. 이벤트와 규칙·잠금은 서로 독립이에요.</li>
 <li><b>시간표 정류장 보완</b>: 원자료 일부 운행(예: 201번 일부 방향)은 주요 정류장만 기록돼 있어, 중간 마을에서 그 버스를 못 타는 것처럼 계산됐어요. 같은 노선의 다른 운행(소요가 비슷한 구간) 또는 반대 방향 운행(150m 안 마주 보는 정류장)의 정류장 순서로 중간 정류장을 시간 비례로 채웠어요(급행·리무진·관광지순환 제외, 크게 도는 보간은 버림). 순환 노선에서 같은 차를 먼저 타고 한 바퀴 도는 일을 막으려고, 같은 차를 3분 안에 다음 정류장에서도 탈 수 있으면 거기서 탄 것으로 봐요.</li>
 <li><b>주민 경로</b>: 인물의 실제 출발·도착 좌표(시설 좌표 또는 생활권 중심)에서 1km 안 정류장 최대 16곳으로 현행 시간표 RAPTOR를 시간대 12개 출발 시각마다 돌려, 평균 소요·대기·환승과 <b>대표 경로</b>(가장 흔한 노선 조합 중 덜 걷고 빠른 것, 실제 탑승·하차 정류장과 노선 구간)를 내장했어요. 카드 효과는 환승 격차 탭과 같은 공식으로 얹어요. 시설 좌표 2곳(성읍민속마을, 렛츠런파크 제주)을 공공 자료 주소 좌표로 바로잡았어요.</li></ul>
-<h3>v4 추가 기능 (점수와 무관)</h3><ul><li><b>🔊 효과음·배경음</b>: 브라우저 WebAudio로 즉석 합성(외부 음원 파일 없음). 첫 클릭·터치 뒤에만 켜지고, 우상단 🔊에서 음소거·음량·배경음(기본 끔)을 바꾸면 이 기기에 저장돼요.</li><li><b>🎓 0라운드 튜토리얼</b>: 연습 카드는 별도 계산만 하고 본 게임 진행·시드·점수·저장 기록을 건드리지 않아요. 언제든 🎓 버튼으로 다시 볼 수 있어요.</li><li><b>🧑‍🤝‍🧑 주민 체험</b>: 결과 화면에서 고른 전장(1라운드 권역)에 사는 가상 인물 15명(전장 5개 × 15명 = 75명). 내장 이동표(현행 시간표)에 ‘환승 격차’ 탭과 같은 근사식으로 카드 효과를 얹은 평상시(이벤트 제외) 값이며, 순환·DRT 신설 구간은 근사예요. 주민 75명은 모두 <b>가상 인물</b>(닉네임·호칭 수준)(실제 개인정보 아님)이고, 게임 화면에서는 이런 안내를 생략했어요.</li><li><b>표기 정책</b>: 플레이·결과 화면에서는 ‘(가상)’·‘확정 수치 아님’ 같은 표기를 빼고, 승객 OD가 합성(더미) 데이터라는 점과 모든 결과가 가정 계수로 계산한 시험값(확정 수치 아님)이라는 한계를 시작 화면 경고와 이 설명 패널에 모아 두었어요.</li></ul><h3>내장 데이터</h3><table><tr><th>항목</th><th>규모</th><th>출처</th></tr>
+<h3>v4 추가 기능 (점수와 무관)</h3><ul><li><b>🔊 효과음·배경음</b>: 브라우저 WebAudio로 즉석 합성(외부 음원 파일 없음). 첫 클릭·터치 뒤에만 켜지고, 우상단 🔊에서 음소거·음량·배경음(기본 끔)을 바꾸면 이 기기에 저장돼요.</li><li><b>🎓 0라운드 튜토리얼</b>: 연습 카드는 별도 계산만 하고 본 게임 진행·시드·점수·저장 기록을 건드리지 않아요. 언제든 🎓 버튼으로 다시 볼 수 있어요.</li><li><b>🧑‍🤝‍🧑 주민 체험</b>: 결과 화면에서 고른 전장(1라운드 권역)에 사는 가상 인물 15명(전장 5개 × 15명 = 75명, ‘제주도 섬 전역’은 다섯 전장에서 3명씩 고른 15명). 내장 이동표(현행 시간표)에 ‘환승 격차’ 탭과 같은 근사식으로 카드 효과를 얹은 평상시(이벤트 제외) 값이며, 순환·DRT 신설 구간은 근사예요. 주민 75명은 모두 <b>가상 인물</b>(닉네임·호칭 수준)(실제 개인정보 아님)이고, 게임 화면에서는 이런 안내를 생략했어요.</li><li><b>표기 정책</b>: 플레이·결과 화면에서는 ‘(가상)’·‘확정 수치 아님’ 같은 표기를 빼고, 승객 OD가 합성(더미) 데이터라는 점과 모든 결과가 가정 계수로 계산한 시험값(확정 수치 아님)이라는 한계를 시작 화면 경고와 이 설명 패널에 모아 두었어요.</li></ul><h3>내장 데이터</h3><table><tr><th>항목</th><th>규모</th><th>출처</th></tr>
 <tr><td>정류장</td><td>${fmt(m.nStops)}개</td><td>BUS_DATA.stops (승하차 시뮬레이터 v16-10)</td></tr>
 <tr><td>노선·평일 운행</td><td>${m.nRoutes}개 노선 · ${fmt(m.nTrips)}회</td><td>TRIP_DATA (분 단위 시간표, 대표 경로 형상)</td></tr>
 <tr><td>승객 OD (더미)</td><td>${fmt(m.nOD)}건 → ${fmt(E.nG)}개 묶음(출발·도착 생활권 × 노선 × 시간대)</td><td>__EMBED_P (합성)</td></tr>
@@ -1959,13 +2013,14 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 <li><b>기존 승객 이동 부담</b>: OD 묶음마다 걷기×w<sub>walk</sub> + 기다리기(배차간격/2, 최대 15분)×w<sub>wait</sub> + 차내시간 + 갈아타기 벌점 τ + 환승 대기를 현행·개편 각각 계산합니다.</li>
 <li><b>떠나거나 새로 타는 승객(로짓, θ=0.1/분)</b>: 이동 부담 차이에 따라 버스 선택 확률이 바뀝니다(현행 분담 65% 가정). Q<sub>이탈</sub>은 순이탈(음수는 유입)이며, 다른 권역에서 버스를 덜어 와 생긴 이탈도 포함합니다.</li>
 <li><b>잠재승객(접근성 탄력성)</b>: 생활권 185곳 × 시설 600곳의 Hansen 접근성 A=Σ O·exp(−0.05·GC)를 다시 계산해 ΔQ = Q⁰[(A¹/A⁰)<sup>ε</sup>−1].</li>
-<li><b>점수</b>: EI = 0.3·수송효율비 + 0.4·이동부담비(GC⁰/GC¹) + 0.3·승객비, 점수 = round(1000×EI) − 감점. 수송효율은 도 전체 승객/차량·시간, 나머지 두 항은 ‘개편 영향권’(권역 안에서 바뀐 노선의 승객 + 순환·DRT 생활권 승객) 기준입니다.</li></ol>
+<li><b>점수</b>: EI = 0.3·수송효율비 + 0.4·이동부담비(GC⁰/GC¹) + 0.3·승객비, 점수 = round(1000×EI) − 감점. 수송효율은 도 전체 승객/차량·시간, 나머지 두 항은 ‘개편 영향권’(권역 안에서 바뀐 노선의 승객 + 순환·DRT 생활권 승객) 기준입니다.</li>
+<li><b>전장 가중(v5-5)</b>: 세 요소를 각각 <b>전장 안</b>(출발 생활권이 선택 전장인 승객, 전장 노선의 운행시간은 노선의 전장 구간 비율만큼)과 <b>전장 밖</b>으로 나눠 계산한 뒤 <b>0.85·안 + 0.15·밖</b>으로 합칩니다. 수송효율도 전장 안·밖 승객/차량·시간을 따로 현행과 비교합니다. 아무것도 바꾸지 않으면 모든 비가 1이라 점수는 정확히 1000입니다. ‘제주도 섬 전역’ 전장은 섬 전체 100%(가중 없음)로 계산합니다. 주민 만족도도 같은 방식(전장 85% + 밖 15%, 섬 전역은 100%)이고, 민원 목록·승객 증감 표는 전장 안 생활권만 보여 줍니다.</li></ol>
 <h3>교정 전 기본값 (낙관 / 기준 / 비관)</h3><table><tr><th>계수</th><th>낙관</th><th>기준</th><th>비관</th></tr>
 <tr><td>접근성 탄력성 ε</td><td>0.7</td><td>0.4</td><td>0.2</td></tr><tr><td>갈아타기 벌점 τ</td><td>5분</td><td>10분</td><td>15분</td></tr><tr><td>기다림 가중 w<sub>wait</sub></td><td>1.5</td><td>2.0</td><td>2.5</td></tr><tr><td>걷기 가중 w<sub>walk</sub></td><td>1.5</td><td>1.8</td><td>2.2</td></tr><tr><td>DRT 응답 대기</td><td>10분</td><td>20분</td><td>30분</td></tr><tr><td>수요 반응 실현률(증가분)</td><td>100% (장기)</td><td>75% (중기)</td><td>45% (단기)</td></tr></table>
 <p class="sub">그 밖의 가정: 로짓 θ 0.1/분, Hansen β 0.05/분, 버스 평균속도 22km/h·우회계수 1.3, 순환버스 18km/h·회차 6분, DRT 우회 1.15배·차량당 시간 2.5회×1.6명, DRT 차량 = 전환 노선 차량의 70%, 정원 초과 = 시간당 승객/운행×0.45 > 정원.</p>
 <h3>v2 · 노선망 이동시간표 (RAPTOR)</h3><p>현행 평일 시간표(244개 노선·${fmt(D.meta.nTrips)}회 운행·정류장 ${fmt(D.meta.nStops)}곳)를 개발 단계에서 RAPTOR(라운드 기반 대중교통 최단경로, 최대 환승 2회)로 미리 돌려, 생활권 185곳 + 거점 5곳 사이의 <b>평균 소요시간·대기시간·환승 횟수</b>를 4개 시간대(출근 7–9시·낮 10–16시·퇴근 17–19시·야간 20–23시)별로 내장했어요(출발 시각 표본 평균). 생활권 대표 정류장은 생활권 중심 600m 안의 가까운 정류장 최대 12곳(없으면 2km 안 3곳), 거점은 터미널 정류장과 300m 안 정류장이에요. 도보는 직선거리×1.3, 시속 4.5km이고, 경로를 고를 때만 도보 1.8배·환승 1회 5분을 일반화비용으로 더해요.</p>
 <p><b>모델 반영:</b> ① 노선 단축·DRT로 권역 밖으로 가려면 거점에서 갈아타야 할 때, 갈아타기 벌점과 대기시간을 '거점→목적 생활권' 표값(대기·추가 환승, 간선 배차 변화 반영)으로 계산해요. ② 시설 접근성(잠재 수요)에서 직통이 없는 시설은 '생활권→시설 인근 생활권' 표의 환승 횟수·환승 대기로 비용을 매겨요. ③ 결과 화면의 '환승 격차'는 표에 카드 효과를 <b>근사</b>로 얹은 지표예요: 단축되는 노선이 주 이용 노선이면 환승 +1, 배차 변화는 첫 대기에 반영, DRT는 DRT 대기로 바꾸고, 순환 셔틀은 도보 1.5분 단축, 정시 환승 펄스는 환승 대기를 줄여요. <b>순환·DRT 신설 구간은 표에 없어 근사</b>예요.</p>
-<p><b>정직한 한계:</b> 승객 OD는 더미 데이터이고 환승 이력이 없어요. 그래서 이 표로 '승객이 실제로 몇 번 갈아탔는지'를 추정하지 않고, <b>노선망 구조상 환승이 필요한지·불편한지</b>를 보는 지표로만 써요.</p><h3>v3 · 돌발 이벤트 (가상)</h3><p>시드(공유 URL의 <code>s=</code>)와 난이도로 이벤트 개수와 터지는 라운드를 정해요 — 입문 0~1개(반반, ROUND 2~4 직전), 보통 1~2개(반반; 1개면 ROUND 2~4 직전, 2개면 ROUND 2~3 직전 1개 + ROUND 4~6 직전 1개), 어려움 4개(ROUND 2~6 직전 다섯 자리 중 네 곳). 날씨(태풍·폭설·집중호우)는 한 시즌에 1개까지. ${(S.diff==='hard'||S.path.length>=6)?`이번 시즌: ${SEA.length}개.`:'이번 시즌 개수는 끝날 때까지 비공개예요.'} 강도: 입문 ×0.7 · 보통 ×1.0 · 어려움 ×1.35. 이벤트는 <b>내장 시간표·더미 OD·생활권·시설로 계산 가능한 모델 값</b>만 바꿉니다 — OD 묶음별 수요 배율, 노선별 차내시간 배율(통제·우회·정체), 생활권별 걷기 가중치, 기다림 가중치, 갈아타기 벌점, DRT 응답 대기, 시설 접근성 가중치, 통제 노선 증편 무효(배차 배율 상한 1). 현행(무개편)도 같은 조건으로 다시 계산하므로 점수는 ‘그 상황에서 현행 대비’ 값이고, <b>운행대수 규칙(572대·5,287회)과 잠금 판정은 이벤트와 무관</b>해요. 한 번 터진 이벤트는 시즌 끝까지 누적 적용되고, 최종 점수는 시즌 전체 이벤트 조건에서 계산해요.</p>
+<p><b>정직한 한계:</b> 승객 OD는 더미 데이터이고 환승 이력이 없어요. 그래서 이 표로 '승객이 실제로 몇 번 갈아탔는지'를 추정하지 않고, <b>노선망 구조상 환승이 필요한지·불편한지</b>를 보는 지표로만 써요.</p><h3>v3 · 돌발 이벤트 (가상)</h3><p>시드(공유 URL의 <code>s=</code>)와 난이도로 이벤트 개수와 터지는 라운드를 정해요 — 입문 0~1개(반반, ROUND 2~4 직전), 보통 1~2개(반반; 1개면 ROUND 2~4 직전, 2개면 ROUND 2~3 직전 1개 + ROUND 4~6 직전 1개), 어려움 4개(ROUND 2~6 직전 다섯 자리 중 네 곳). 날씨(태풍·폭설·집중호우·중산간 안개)는 한 시즌에 1개까지, 사회·시스템 계열(총파업 위기·감염병 확산·버스정보시스템 마비)도 1개까지. 이벤트 계수(수요·차내시간·대기 가중·민원 증폭 배율)는 실제 사례를 참고한 가정치예요. ${(S.diff==='hard'||S.path.length>=6)?`이번 시즌: ${SEA.length}개.`:'이번 시즌 개수는 끝날 때까지 비공개예요.'} 강도: 입문 ×0.7 · 보통 ×1.0 · 어려움 ×1.35. 이벤트는 <b>내장 시간표·더미 OD·생활권·시설로 계산 가능한 모델 값</b>만 바꿉니다 — OD 묶음별 수요 배율, 노선별 차내시간 배율(통제·우회·정체), 생활권별 걷기 가중치, 기다림 가중치, 갈아타기 벌점, DRT 응답 대기, 시설 접근성 가중치, 통제 노선 증편 무효(배차 배율 상한 1). 현행(무개편)도 같은 조건으로 다시 계산하므로 점수는 ‘그 상황에서 현행 대비’ 값이고, <b>운행대수 규칙(572대·5,287회)과 잠금 판정은 이벤트와 무관</b>해요. 한 번 터진 이벤트는 시즌 끝까지 누적 적용되고, 최종 점수는 시즌 전체 이벤트 조건에서 계산해요.</p>
 <table><tr><th>이벤트</th><th>모델 반영 (강도 ×1.0 기준, 배율은 가정값)</th></tr>
 <tr><td>🌀 태풍 북상</td><td>해발 600m 이상을 지나는 한라산 횡단 노선(지형 격자로 판정) 차내시간 +50%·증편 무효, 그 노선 수요 −30%, 섬 전체 수요 −6%, 기다림 가중 +15%, 해당 생활권 민원 ×1.5</td></tr>
 <tr><td>❄️ 기습 폭설</td><td>횡단 노선 차내시간 +45%, 해발 450~600m 노선 +20%, 횡단 노선 수요 −25%, 해발 100m 이상 생활권 걷기 가중 +45%(그 밖 +15%), DRT 응답 대기 +100%, 고지대 민원 ×1.4</td></tr>
@@ -1974,10 +2029,15 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 <tr><td>🎆 대형 행사</td><td>개편 권역의 행사장(가상) 반경 2.5km 생활권 오가는 수요 16~22시 +250%·10~15시 +60%, 주변 시설 가중 +100%, 주변 민원 ×1.4</td></tr>
 <tr><td>🎒 학기 시작</td><td>학교 밀집 생활권 오가는 7~8시·15~17시 수요 최대 +90%, 학교 시설 가중 +60%</td></tr>
 <tr><td>🚧 도로 공사</td><td>개편 권역 간선 차내시간 +30%, 그 노선 수요 −8%, 권역 민원 ×1.15</td></tr>
+<tr><td>🌫️ 중산간 짙은 안개</td><td>5·16도로(281)·1100도로(240)·남조로(231·232) 차내시간 +60%, 그 밖 해발 450m 이상 경유 노선 +30%, 해당 노선 수요 −12%, 이용 생활권 민원 ×1.2 (기상 계열)</td></tr>
+<tr><td>🐎 말·노루 출몰</td><td>평화로(251·251-1·252·253·254·255·282)·번영로(221·222·222-1) 노선 차내시간 +35%, 수요 −10%, 이용 생활권 민원 ×1.25</td></tr>
+<tr><td>✊ 총파업 위기</td><td>전 노선 증편분 결행(배차 상한 = 현행), 기다림 가중 +25%, 갈아타기 벌점 +1.5분, 수요 −5%, 섬 전체 민원 ×1.3 (사회·시스템 계열)</td></tr>
+<tr><td>🦠 감염병 확산</td><td>관광지·호텔 인근 생활권 수요 최대 −50%·그 밖 −12%, 급행·리무진·관광지순환 수요 −37%·증편 불가, 지선 5개 중 1개 결행(수요 −20%), 결행 노선 생활권 민원 ×1.25 (사회·시스템 계열)</td></tr>
+<tr><td>📡 버스정보시스템 마비</td><td>기다림 체감 +30%, 갈아타기 벌점 +2분, 환승 민원 ×1.4, 섬 전체 민원 ×1.2, 실제 운행은 그대로 (사회·시스템 계열)</td></tr>
 <tr><td>🪙 버스요금 인상</td><td>기본요금 1,150→1,250원(+8.7%, 가상 상황). 가격 탄력성 −0.22(가상, 강도 ×0.7~×1.35면 −0.15~−0.30)로 OD 수요 배율 하락 — 장거리(차내 15→60분) 최대 ×1.8, 학생 생활권 최대 ×1.5 더 민감(보통: 섬 전체 약 −3%, OD별 최대 −4.8%). 기다림 불만 가중 +8%(가상), 장거리·학생 생활권 민원 최대 +60%. 요금 수입 증가분은 효율지수에 넣지 않음(점수 정의 유지). 소득 자료가 없어 저소득층 민감도는 반영하지 않았어요. 환승은 현행처럼 무료로 가정해요.</td></tr></table>
-<h3>v3 · 민원·여론 게이지 (가상)</h3><p>생활권 185곳마다 7~20시 고정 노선 배차 감축률(순환 셔틀 운행으로 일부 상쇄), DRT로 바뀐 운행 비율, 강제 환승 승객 비율(노선 단축·DRT 연계), 정류장 통합 노선 비율, 이탈 승객 비율, 접근성 악화율을 가중합(×1.0 / 0.45 / 0.6 / 0.25 / 2.2 / 1.2)해 <b>민원 강도</b>로, 접근성 개선(×0.9)과 증편(×0.35)을 <b>호감</b>(생활권당 최대 0.12)으로 계산하고, 이벤트가 걸린 생활권은 민원을 증폭해요(최대 ×2.5). Δ = 0.6·(개편 권역 생활권의 인구가중 평균 호감−민원) + 0.4·(그 밖 권역 평균)으로 모아 <b>주민 만족도 = 100 / (1 + e<sup>−(ln(7/3) + 10.5·Δ)</sup>)</b>로 바꿔요(Δ=0이면 70, 0~100 사이에서 완만히 포화). 가상 민원 건수 = Σ 인구 × 민원 강도 × 0.1 (월).</p>
+<h3>v3 · 민원·여론 게이지 (가상)</h3><p>생활권 185곳마다 7~20시 고정 노선 배차 감축률(순환 셔틀 운행으로 일부 상쇄), DRT로 바뀐 운행 비율, 강제 환승 승객 비율(노선 단축·DRT 연계), 정류장 통합 노선 비율, 이탈 승객 비율, 접근성 악화율을 가중합(×1.0 / 0.45 / 0.6 / 0.25 / 2.2 / 1.2)해 <b>민원 강도</b>로, 접근성 개선(×0.9)과 증편(×0.35)을 <b>호감</b>(생활권당 최대 0.12)으로 계산하고, 이벤트가 걸린 생활권은 민원을 증폭해요(최대 ×2.5). Δ = 0.85·(선택 전장 생활권의 인구가중 평균 호감−민원) + 0.15·(전장 밖 평균)으로 모아 <b>주민 만족도 = 100 / (1 + e<sup>−(ln(7/3) + 10.5·Δ)</sup>)</b>로 바꿔요(Δ=0이면 70, 0~100 사이에서 완만히 포화). 가상 민원 건수 = Σ 인구 × 민원 강도 × 0.1 (월, 선택 전장 생활권만 집계·표시). 전장 밖은 만족도에만 15% 반영하고, 결과 화면에 ‘전장 밖 영향’(전장 밖 평균 Δ ≥ −0.04 낮음 · −0.10 이상 보통 · 그 미만 높음)으로만 보여 줘요.</p>
 <p><b>결합 방식</b>: 점수 = round(1000 × 효율지수) − 감점이며, 감점에 <b>민원 패널티 = min(60, 1.5 × max(0, 50 − 만족도))</b>를 더해요(30/40/30 효율지수 자체는 그대로). 만족도 30 미만(민원 폭주)이면 최종 등급 상한 B. 다음 라운드 카드 잠금: 만족도 50 미만 → ★★ 카드(허브 앤 스포크, 빈 버스 탈출, 심야 콜버스, 모두 조금씩, 재정 압박 미션), 30 미만 → ★ 카드 추가(번개 간선, 한낮의 호출, 새벽·밤 호출, 출퇴근 화력 집중). 잠그면 고를 카드가 없어지는 경우엔 잠그지 않아요.</p>
-<p><b>등급 컷(v3)</b>: 입문·보통 S ${E.CUTS_BY.normal.S} · A ${E.CUTS_BY.normal.A} · B ${E.CUTS_BY.normal.B} · C ${E.CUTS_BY.normal.C}, 어려움 S ${E.CUTS_BY.hard.S} · A ${E.CUTS_BY.hard.A} · B ${E.CUTS_BY.hard.B} · C ${E.CUTS_BY.hard.C}. 시드별 전체 경로 순회 분포로 정했어요(README 참고).</p>
+<p><b>등급 컷(v5-5)</b>: ${cutsTxt()}. 시드 24개 × 난이도별 전체 경로 순회(플레이 가능 경로) 분포가 v5-2 분포와 각 등급 3%p 이내가 되도록 정했어요. 섬 전역은 가중 없는 100% 점수라 컷을 따로 둡니다.</p>
 <p><b>한계</b>: 이벤트 배율과 민원 가중치는 문헌·실측이 아닌 게임용 가정값이에요. 이벤트 때 승객의 경로 전환·수단 전환은 로짓 이탈로만 반영하고, 환승 격차 탭(RAPTOR 표)은 평상시 시간표 기준이에요.</p>
 <h3>지형(3D·등고선) 자료</h3><p>고도: Terrain Tiles (Mapzen/AWS Open Data Registry, Terrarium 형식 z=10, SRTM 등 공개 자료 기반)를 미리 받아 약 200m 격자(${TR.nc}×${TR.nr}, 위도 33.10~33.60·경도 126.10~127.00, 우도 포함·추자도 제외)로 내장했어요. 실행 중에는 고도를 외부에서 받지 않아요. 격자 최고값은 ${PEAK.e}m(실제 한라산 1,947m보다 낮게 평활화됨). 지형은 시각화 전용이며 점수 계산에는 쓰지 않아요.</p><h3>단순화한 것과 한계</h3><ul>
 <li>설계서의 RAPTOR 경로탐색은 브라우저용으로 단순화했습니다. 승객은 원래 탔던 노선을 그대로 쓰고, 노선이 단축·전환되면 갈아타기 벌점과 대기를 더하는 방식입니다(경로 전환 없음).</li>
@@ -2085,8 +2145,10 @@ const PPL_ALL=PPL60.map(([g,p],ix)=>{const pj=PJ[ix]||null;let oLA,dLA;if(pj){oL
   const fr=p.dF?(E.D.FAC||[]).find(x=>x[0]===p.dF):null;return {...p,reg:g,job:p.t,why:p.w,oLA,dLA,pj,out:fr?fr[5]!==g:(dLA>=0&&E.LA[dLA].reg!==g)}});
 const PPL_TG=[['all','전체'],['commute','출퇴근·통학'],['daily','장보기·행정'],['care','병원·보건'],['tour','관광'],['night','야간·교대'],['farm','농업']];
 const pplTg=p=>/관광/.test(p.t)?'tour':/야간|교대/.test(p.t)?'night':/농업/.test(p.t)?'farm':/병원|보건/.test(p.t)?'care':/출퇴근|통학/.test(p.t)?'commute':'daily';
+/* v5-5: 섬 전역(5) 주민 15명 = 다섯 전장에서 3명씩(전장 밖 거점 행 제외), 좌표·경로는 기존 검증 데이터 그대로 */
+const PPL_ISL=[0,1,2,3,4].flatMap(g=>PPL_ALL.filter(p=>p.reg===g&&!p.out).slice(0,3)).map(p=>({...p,reg:5,out:false}));
 let PPL=[],PPL_REG=-2,PPLF={t:'all',s:'def'},PPLO=[];
-function pplSync(ev){ev=ev||cur;const reg=ev&&ev.plan?ev.plan.reg:-1;if(reg!==PPL_REG){PPL_REG=reg;PPL=PPL_ALL.filter(p=>p.reg===reg);PPLF={t:'all',s:'def'}}return PPL}
+function pplSync(ev){ev=ev||cur;const reg=ev&&ev.plan?ev.plan.reg:-1;if(reg!==PPL_REG){PPL_REG=reg;PPL=reg===5?PPL_ISL:PPL_ALL.filter(p=>p.reg===reg);PPLF={t:'all',s:'def'}}return PPL}
 let PPLV=null;
 function pplCalc(i,ev){ev=ev||cur;pplSync(ev);const p=PPL[i];if(!p)return null;if(!ev||!ev.plan)return null;const pj=p.pj;const r=E.netPair(ev.plan,p.oLA,p.dLA,p.b,pj?{reach:pj.reach,T0:pj.T0,W0:pj.W0,x0:pj.x0,IV:pj.IV,r1:pj.r1,r2:pj.r2}:undefined);const m=ev.res?ev.res[repKey()]:null;const cl=m&&m.comp?m.comp.la[p.oLA]:null;
   let sat0=E.CW.base,sat1=null;if(r&&r.reach){const g=cl?cl.gain-cl.sev:0;const z=E.CW.z0+0.3*Math.tanh(E.CW.k*g)-0.06*(r.T1-r.T0)-0.08*(r.W1-r.W0)-0.5*(r.x1-r.x0);sat1=100/(1+Math.exp(-z))}
@@ -2163,12 +2225,12 @@ const T0_LS='jeju_bus_tut0_v4';
 const T0={i:0,on:false,pick:{},onEnd:null};
 const t0Seen=()=>{try{return localStorage.getItem(T0_LS)==='1'}catch(e){return false}};
 const T0STEPS=[
- {t:null,h:'🎓 0라운드: 연습 경기',b:'어서 오세요, 노선기획관님! 저는 진행자 <b>한라</b>예요. 본 경기 전에 2분짜리 <b>연습 라운드</b>를 해 볼게요. 여기서 고른 카드는 <b>점수·시드·진행에 전혀 영향이 없어요</b>. 언제든 [건너뛰기]!'},
+ {t:null,h:'🎓 0라운드: 연습 경기',b:'어서 오세요, 버스노선 기획관님! 저는 <b>진행자</b>예요. 본 경기 전에 2분짜리 <b>연습 라운드</b>를 해 볼게요. 여기서 고른 카드는 <b>점수·시드·진행에 전혀 영향이 없어요</b>. 언제든 [건너뛰기]!'},
  {t:'#mapWrap',h:'🗺️ 전장: 제주 3D 지도',b:'이 섬 위를 버스가 달려요. 선 색이 버스 종류예요.<br>⚡ <b>간선</b> = 큰길 급행(거점↔거점) · 🔄 <b>순환</b> = 동네 한 바퀴 셔틀(마을→큰길 정류장) · 📱 <b>DRT</b> = 부르면 오는 버스(구역 안에서 호출). 드래그로 돌리고, 핀치·휠로 확대!'},
  {t:'#mapClock',h:'🚌 절대 규칙: 버스 수 고정',b:'가장 바쁜 아침에 동시에 달리는 버스는 <b>572대</b>, 하루 운행은 <b>5,287회</b>. 이 숫자는 <b>늘릴 수 없어요</b>. 한쪽을 늘리면 다른 쪽에서 빼야 하죠. 규칙을 넘는 카드는 🔒 잠겨요.'},
- {t:'.scoreBox',h:'🏆 점수 = 효율지수',b:'현행 노선 = <b>1000점</b>. 효율은 세 가지로 매겨요: 🚍 <b>수송 효율 30%</b>(버스 한 대가 태우는 승객) · 😊 <b>기존 승객 편익 40%</b>(걷기·기다림·갈아타기) · 👥 <b>승객 수 30%</b>(새로 타는 사람 − 떠나는 사람).'},
+ {t:'.scoreBox',h:'🏆 점수 = 효율지수',b:'현행 노선 = <b>1000점</b>. 효율은 세 가지로 매겨요: 🚍 <b>수송 효율 30%</b>(버스 한 대가 태우는 승객) · 😊 <b>기존 승객 편익 40%</b>(걷기·기다림·갈아타기) · 👥 <b>승객 수 30%</b>(새로 타는 사람 − 떠나는 사람). 고른 <b>전장 85% + 나머지 15%</b>로 합산하고, 🏝️ 섬 전역을 고르면 섬 전체 100%예요.'},
  {t:'#satBox',h:'📢 민심 게이지',b:'점수와 따로 <b>주민 만족도</b>(시작 70)가 있어요. 배차를 줄이거나 DRT로 바꾸거나 갈아타기를 늘리면 민원이 쌓여요. <b>50 아래</b>면 감점과 일부 카드 잠금, <b>30 아래</b>면 등급이 B로 묶여요!'},
- {t:'#evBar',h:'⚡ 돌발 이벤트',b:'시즌마다 태풍·폭설·관광 성수기·요금 인상 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. 같은 카드도 이벤트에 따라 효과가 달라지니, 카드의 <b>⚡ 이벤트 영향</b>을 보세요.',bh:'시즌마다 태풍·폭설·관광 성수기·요금 인상 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. <b>어려움</b>에선 시즌에 몇 번 더 터질지, 카드별로 어떤 효과가 날지 미리 알려 드리지 않아요. 터지면 ↶ 직전 카드 다시 고르기로 대응할 수 있어요.'},
+ {t:'#evBar',h:'⚡ 돌발 이벤트',b:'시즌마다 태풍·안개·관광 성수기·요금 인상·버스 파업·안내 시스템 마비 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. 같은 카드도 이벤트에 따라 효과가 달라지니, 카드의 <b>⚡ 이벤트 영향</b>을 보세요.',bh:'시즌마다 태풍·안개·관광 성수기·요금 인상·버스 파업·안내 시스템 마비 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. <b>어려움</b>에선 시즌에 몇 번 더 터질지, 카드별로 어떤 효과가 날지 미리 알려 드리지 않아요. 터지면 ↶ 직전 카드 다시 고르기로 대응할 수 있어요.'},
  {t:'#cards',h:'🃏 카드 고르기',b:'라운드마다 카드 한 장을 골라요. 카드엔 <b>수송·편함·승객</b> 화살표와 예상 변화, 민원 민감도 ★가 표시돼요. 이제 연습 카드로 직접 해 볼까요?',bh:'라운드마다 카드 한 장을 골라요. <b>어려움</b>에선 카드에 점수·방향 미리보기와 민원 민감도 표시가 없어요 — 카드 이름과 설명만 보고 판단하고, 결과는 고른 뒤에 공개돼요. 이제 연습 카드를 눌러 볼까요?'},
  {t:null,prac:1,h:'🧪 연습 ① 큰길 버스 정책',b:'연습 무대: <b>🌅 서쪽 노을 해안(애월·한림)</b>, 입문 난이도, 이벤트 없음. 두 카드 중 하나를 눌러 보세요.'},
  {t:null,prac:2,h:'🧪 연습 ② 부르면 오는 버스(DRT)',b:'같은 무대에서 이번엔 DRT 카드예요. 점수와 <b>민심</b>이 어떻게 갈리는지 보세요.',bh:'같은 무대에서 이번엔 DRT 카드예요. 한산한 마을을 DRT로 바꾸는 건 효율과 <b>민심</b> 사이의 줄다리기예요. 어려움에선 결과를 미리 알려 드리지 않아요.'},
@@ -2205,6 +2267,31 @@ addEventListener('keydown',e=>{if(T0.on&&e.key==='Escape')t0Close()});
 
 /* v5-3: 결과 화면 [민원·여론 결산]은 게이지만, [돌발 이벤트]는 제목만 보이게 접고, 누르면(클릭·터치·Enter·Space) 확장 스크린으로 펼침.
    펼칠 때 섹션 요소 자체를 확장 스크린으로 옮겨(지도 보기 등 기존 클릭 동작 유지) 닫을 때 제자리로 돌려놓음. 닫기 버튼·ESC·바깥 클릭. 결과 화면이 닫히면 함께 정리. */
+
+/* v5-5: 민원 상세 — 생활권 주민 항의 한 줄(원인·생활권 특성·이벤트 증폭에 맞춰, 시드·생활권·원인으로 결정적 선택) */
+const VOX={
+ who(n){return /대학|학교|고등|중학|초등/.test(n)?'stu':/해수욕장|관광|호텔|면세|공항|올레|폭포|오름|민속/.test(n)?'tour':/아파트|단지|지구/.test(n)?'apt':/리$|리 |마을|포구/.test(n)?'old':'gen'},
+ C:[ // 0 배차 감축
+ ['버스가 반토막이 됐는데 도청은 대체 뭐 하는 겁니까!','한 시간을 정류장에 세워 놓고 이게 개편입니까? 책임자 나오세요!','배차 줄일 거면 미리 물어보기라도 했어야지, 이게 행정이에요?','아침마다 만원 버스 놓치고 지각합니다. 당장 원래대로 돌려놓으세요!'],
+ // 1 DRT 전환
+ ['전화로 버스 부르라니, 폰 못 쓰는 우리는 어떡하라고요!','DRT인지 뭔지, 부르면 30분 걸립니다. 정해진 시간 버스 내놓으세요!','멀쩡한 노선 없애고 콜버스요? 탁상행정도 정도껏 하세요!'],
+ // 2 노선 단축·강제 환승
+ ['한 번에 가던 길을 두 번 세 번 갈아타라니, 도청 사람들도 이렇게 다녀 보세요!','환승하다 하루가 다 갑니다. 노선 왜 잘랐는지 설명하세요!','짐 들고 갈아타다 버스 놓치는 게 일상이 됐어요. 이게 개선입니까!'],
+ // 3 정류장 통합
+ ['정류장을 없애 놓으니 한참을 걸어가야 합니다. 누구 좋으라고 이런 겁니까!','집 앞 정류장 뺏어 가고 무슨 효율 타령입니까!','비 오는 날 그 먼 정류장까지 걸어 보셨어요? 당장 되살려 놓으세요!'],
+ // 4 이탈(이동 부담↑)
+ ['이젠 버스 포기하고 택시 탑니다. 돈은 도청이 내줄 거예요?','버스로는 도저히 못 다니겠어요. 결국 차 사라는 겁니까!','시간도 돈도 두 배로 듭니다. 이걸 개편이라고 내놓은 겁니까!'],
+ // 5 접근성 악화
+ ['병원, 시장 가는 길이 막혔어요. 우리 동네는 버려도 된다는 겁니까!','시내 한 번 나가기가 이렇게 힘들어서야 사람이 살겠어요!','동네가 섬 안의 섬이 됐습니다. 도청은 책임지세요!']],
+ TAG:{stu:['학생들 등굣길 생각은 해 봤어요?','애들 학원 시간 다 놓칩니다!'],old:['게메 마씸, 늙은이들은 어디 가지도 말라는 거우꽈?','다리 아픈 어르신들 생각은 안 햄수꽈?'],tour:['관광객들도 다 투덜대며 갑니다, 제주 이미지 다 버려요!','손님들이 버스 못 타서 택시 줄만 길어졌어요!'],apt:['이 큰 단지 주민들을 다 무시하는 겁니까!','출근 시간 단지 앞이 난리입니다!'],gen:['이게 정말 주민을 위한 겁니까!','도대체 누구 의견 듣고 정한 거예요!']},
+ OK:['버스 시간이 좀 나아졌네요, 계속 이렇게만 해 주세요.','요즘은 버스 탈 만해요. 이 정도면 고맙수다.'],
+ h(s){let x=2166136261;for(const ch of s)x=Math.imul(x^ch.charCodeAt(0),16777619);return x>>>0}};
+function voiceOf(i,x,seed){if(!x)return [];const n=E.LA[i].n;const hs=VOX.h(seed+'|'+i+'|'+x.top+'|'+x.top2);
+  if(x.top<0||x.c<3)return x.gain>0.02?[VOX.OK[hs%2]]:[];
+  const L=VOX.C[x.top];let a=L[hs%L.length];if(x.amp>1.3&&(hs>>>4)%2===0){const SX=['이런 난리 통에 대책은 있긴 한 겁니까!','돌발 상황까지 겹쳤는데 이게 뭡니까!','비상 상황에 손 놓고 있으면 어떡합니까!'];a=a+' '+SX[(hs>>>12)%SX.length]}
+  const out=[a];const w=VOX.who(n);
+  if(x.top2>=0){const L2=VOX.C[x.top2];out.push(L2[(hs>>>8)%L2.length])}else if(x.c>=20){const T=VOX.TAG[w];out.push(T[(hs>>>8)%T.length])}
+  return out.slice(0,2)}
 const XP=(function(){const scr=$('#xpScr'),body=$('#xpBody');let cur_=null,ph=null,back=null;
   const TITLE={finalCompWrap:'📢 민원·여론 결산',finalEvWrap:'⚡ 이번 시즌 돌발 이벤트'};
   function open(sec){if(cur_)close(true);back=document.activeElement;ph=document.createComment('xp');sec.parentNode.insertBefore(ph,sec);fold(sec,false);
