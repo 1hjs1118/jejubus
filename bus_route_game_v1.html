@@ -2305,7 +2305,7 @@ const VOX={
  C:[ // 0 배차 감축
  ['버스가 반토막이 됐는데 도청은 대체 뭐 하는 겁니까!','한 시간을 정류장에 세워 놓고 이게 개편입니까? 책임자 나오세요!','배차 줄일 거면 미리 물어보기라도 했어야지, 이게 행정이에요?','아침마다 만원 버스 놓치고 지각합니다. 당장 원래대로 돌려놓으세요!'],
  // 1 DRT 전환
- ['전화로 버스 부르라니, 폰 못 쓰는 우리는 어떡하라고요!','DRT인지 뭔지, 부르면 30분 걸립니다. 정해진 시간 버스 내놓으세요!','멀쩡한 노선 없애고 콜버스요? 탁상행정도 정도껏 하세요!'],
+ ['앱으로 버스 부르라니, 스마트폰 못하는 노인은 어떡하라고!','DRT인지 뭔지, 부르면 30분 걸립니다. 정해진 시간 버스 내놓으세요!','멀쩡한 노선 없애고 콜버스요? 탁상행정도 정도껏 하세요!'],
  // 2 노선 단축·강제 환승
  ['한 번에 가던 길을 두 번 세 번 갈아타라니, 도청 사람들도 이렇게 다녀 보세요!','환승하다 하루가 다 갑니다. 노선 왜 잘랐는지 설명하세요!','짐 들고 갈아타다 버스 놓치는 게 일상이 됐어요. 이게 개선입니까!'],
  // 3 정류장 통합
@@ -2319,7 +2319,7 @@ const VOX={
  h(s){let x=2166136261;for(const ch of s)x=Math.imul(x^ch.charCodeAt(0),16777619);return x>>>0}};
 function voiceOf(i,x,seed){if(!x)return [];const n=E.LA[i].n;const hs=VOX.h(seed+'|'+i+'|'+x.top+'|'+x.top2);
   if(x.top<0||x.c<3)return x.gain>0.02?[VOX.OK[hs%2]]:[];
-  const L=VOX.C[x.top];let a=L[hs%L.length];if(x.amp>1.3&&(hs>>>4)%2===0){const SX=['이런 난리 통에 대책은 있긴 한 겁니까!','돌발 상황까지 겹쳤는데 이게 뭡니까!','비상 상황에 손 놓고 있으면 어떡합니까!'];a=a+' '+SX[(hs>>>12)%SX.length]}
+  const L=VOX.C[x.top];let a=L[hs%L.length];if(x.amp>1.3&&(hs>>>4)%2===0){const SX=['이런 난리 통에 대책은 있긴 한 겁니까!','버스를 타야되는 때마다 꼭 없네요!','비상 상황에 손 놓고 있으면 어떡합니까!'];a=a+' '+SX[(hs>>>12)%SX.length]}
   const out=[a];const w=VOX.who(n);
   if(x.top2>=0){const L2=VOX.C[x.top2];out.push(L2[(hs>>>8)%L2.length])}else if(x.c>=20){const T=VOX.TAG[w];out.push(T[(hs>>>8)%T.length])}
   return out.slice(0,2)}
