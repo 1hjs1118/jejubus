@@ -401,8 +401,6 @@ html.t0on #cards .card{pointer-events:none}
           <div class="dcell wide"><div class="dt">📢 민원·여론 <span class="term" data-term="민원">?</span></div><div id="compBox"></div></div>
           <div class="dcell"><div class="dt">점수 게이지 <span class="term" data-term="등급">?</span></div><canvas id="cGauge" width="260" height="150"></canvas><div id="setChips"></div></div>
           <div class="dcell"><div class="dt">효율 3요소 <span class="term" data-term="효율">?</span></div><canvas id="cRadar" width="260" height="190"></canvas></div>
-          <div class="dcell wide"><div class="dt">시간대별 동시 운행 버스 (현행 vs 개편, 빨간 점선=한도) <span class="term" data-term="동시 운행">?</span></div><canvas id="cConc" width="560" height="170"></canvas></div>
-          <div class="dcell wide"><div class="dt">라운드별 점수 추이</div><canvas id="cTrend" width="560" height="130"></canvas></div>
           <div class="dcell wide"><div class="dt">기존 승객 한 번 이동 부담(분, 낮을수록 편함) <span class="term" data-term="일반화비용">?</span></div><div id="gcBars"></div></div>
         </div>
       </div>
@@ -1689,19 +1687,6 @@ function drawRadar(m){const [c,W,H]=cv('#cRadar');const cx=W/2,cy=H/2+8,R=Math.m
   for(const k of [0.8,0.9,1.0,1.1,1.2]){c.strokeStyle=k===1?'rgba(200,170,110,.6)':'rgba(80,100,140,.35)';c.beginPath();ax.forEach((_,i)=>{const a=-Math.PI/2+i*2*Math.PI/3;const r=sc(k);i?c.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r):c.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)});c.closePath();c.stroke()}
   c.fillStyle='rgba(10,200,185,.25)';c.strokeStyle='#0ac8b9';c.lineWidth=2;c.beginPath();ax.forEach(([,v],i)=>{const a=-Math.PI/2+i*2*Math.PI/3;const r=sc(v);i?c.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r):c.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)});c.closePath();c.fill();c.stroke();
   c.font='11px sans-serif';c.textAlign='center';ax.forEach(([n,v],i)=>{const a=-Math.PI/2+i*2*Math.PI/3;const r=R+12;const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;c.fillStyle='#c8aa6e';c.fillText(n,x,y-(i===0?6:-4));c.fillStyle=v>=1.0005?'#3ddc84':v<=0.9995?'#ff4655':'#9aa3b5';c.fillText(v.toFixed(3),x,y+(i===0?6:10))})}
-function drawConc(p){const [c,W,H]=cv('#cConc');const L=36,B=18,T=8,Rr=6;const hs=[];for(let h=5;h<=24;h++)hs.push(h);const maxV=600;const bw=(W-L-Rr)/hs.length;const y=v=>H-B-(v/maxV)*(H-B-T);
-  c.strokeStyle='#1d2840';c.fillStyle='#6b7590';c.font='10px sans-serif';c.textAlign='right';for(const v of [0,200,400,600]){c.beginPath();c.moveTo(L,y(v));c.lineTo(W-Rr,y(v));c.stroke();c.fillText(v,L-4,y(v)+3)}
-  const base=E.limit;const nw=p&&p.check?p.check.hourMax:null;const lim=p&&p.check?p.check.lim:base;
-  hs.forEach((h,i)=>{const x=L+i*bw;c.fillStyle='rgba(120,135,170,.45)';c.fillRect(x+2,y(base[h]),bw/2-2,H-B-y(base[h]));if(nw){const v=nw[h];c.fillStyle=v>lim[h]+.5?'#ff4655':'rgba(255,214,106,.85)';c.fillRect(x+bw/2,y(v),bw/2-2,H-B-y(v))}
-    c.fillStyle='#6b7590';c.textAlign='center';if(h%2===1||hs.length<14)c.fillText(String(h).padStart(2,'0'),x+bw/2,H-5)});
-  c.strokeStyle='#ff4655';c.setLineDash([4,3]);c.lineWidth=1.4;c.beginPath();hs.forEach((h,i)=>{const x=L+i*bw;c.lineTo(x,y(lim[h]));c.lineTo(x+bw,y(lim[h]))});c.stroke();c.setLineDash([]);
-  const hc=Math.floor(clockMin/60);if(hc>=5){const i=hc-5;c.strokeStyle='rgba(10,200,185,.7)';c.beginPath();c.moveTo(L+i*bw+bw/2,T);c.lineTo(L+i*bw+bw/2,H-B);c.stroke()}
-  c.textAlign='left';c.fillStyle='rgba(120,135,170,.9)';c.fillRect(L+4,T,8,8);c.fillStyle='#9aa3b5';c.fillText('현행',L+15,T+8);c.fillStyle='rgba(255,214,106,.9)';c.fillRect(L+48,T,8,8);c.fillStyle='#9aa3b5';c.fillText('개편',L+59,T+8)}
-function drawTrend(hist){const [c,W,H]=cv('#cTrend');const L=36,B=16,T=10;const n=G.ROUNDS.length;const vals=[1000].concat(hist);const lo=Math.min(940,...vals)-10,hi=Math.max(1140,...vals)+10;const y=v=>H-B-(v-lo)/(hi-lo)*(H-B-T);const x=i=>L+i*(W-L-10)/n;
-  {const CU=E.cutsOf(S.diff,curReg());for(const [v,col] of [[CU.C,'#7ee787'],[CU.B,'#4fd1ff'],[CU.A,'#ff7ad9'],[CU.S,'#ffd76a']]){c.strokeStyle=col;c.globalAlpha=.3;c.setLineDash([3,3]);c.beginPath();c.moveTo(L,y(v));c.lineTo(W-10,y(v));c.stroke();c.globalAlpha=.8;c.fillStyle=col;c.font='9px sans-serif';c.textAlign='right';c.fillText(v,L-3,y(v)+3)}}
-  c.setLineDash([]);c.globalAlpha=1;c.fillStyle='#6b7590';c.textAlign='center';for(let i=0;i<=n;i++)c.fillText(i?('R'+i):'현행',x(i),H-3);
-  c.strokeStyle='#0ac8b9';c.lineWidth=2;c.shadowColor='#0ac8b9';c.shadowBlur=8;c.beginPath();vals.forEach((v,i)=>i?c.lineTo(x(i),y(v)):c.moveTo(x(i),y(v)));c.stroke();c.shadowBlur=0;
-  vals.forEach((v,i)=>{c.fillStyle=GRADE_COL[E.grade(v,S.diff,curReg())];c.beginPath();c.arc(x(i),y(v),3.5,0,7);c.fill()})}
 function drawGC(m){const el=$('#gcBars');if(!m||!m.Q0){el.innerHTML='<div class="sub" style="font-size:12px">권역을 고르면 표시돼요.</div>';return}const g=m.gcd;const rows=[['걷기',g.walk],['기다리기',g.wait],['타고 가기',g.ivt],['갈아타기',g.xfer]];const mxv=Math.max(...rows.map(r=>Math.max(r[1][0],r[1][1])),1);
   el.innerHTML=rows.map(([n,[a,b]])=>`<div class="row"><span>${n}</span><div class="bar"><i style="width:${a/mxv*100}%;background:rgba(120,135,170,.6)"></i><i style="width:${b/mxv*100}%;background:${b<=a?'rgba(61,220,132,.75)':'rgba(255,70,85,.75)'};height:4px;top:auto"></i></div><span>${a.toFixed(1)} → <b class="${b<a-0.05?'up':b>a+0.05?'dn':'eq'}">${b.toFixed(1)}</b></span></div>`).join('')+
   `<div class="row"><span><b>합계</b></span><div></div><span>${m.gc0.toFixed(1)} → <b class="${m.gc1<m.gc0?'up':'dn'}">${m.gc1.toFixed(1)}</b>분</span></div><div class="sub" style="font-size:11px">회색=현행, 색 막대=개편 · 대상: 개편 영향권 승객 ${fmt(m.Q0)}명/일</div>`}
@@ -1730,7 +1715,7 @@ function renderSat(){const m=curM();const sat=m?m.sat:E.CW.base;const c=m?m.comp
    <div class="compCause">${c.causeT.map((v,k)=>v>0.5?`<span title="${E.CAUSE[k]}"><i style="width:${Math.max(4,v/tot*100)}%"></i>${E.CAUSE[k]} ${Math.round(v/tot*100)}%</span>`:'').join('')}</div>
    <div class="compTop">${top.map(([i,x])=>`<div>📢 <b>${E.LA[i].n.replace(/ 일대.*$/,'')}</b> <span class="lbl">${D.REG[E.LA[i].reg].replace(/ \(.*$/,'')}</span> ${fmt(x.c)}건 · ${E.CAUSE[x.top]||''}${x.amp>1.05?` <span class="evAmp">⚡×${x.amp.toFixed(2)}</span>`:''}</div>`).join('')||'<div class="up">눈에 띄는 민원이 없어요.</div>'}</div>`}
 function renderDash(){const ev=cur;const m=ev&&ev.res?ev.res[repKey()]:null;const sc=m?m.score:1000;rollScore(sc);const gb=$('#gradeBadge');const gr=m?m.grade:E.grade(sc,S.diff,curReg());gb.textContent=gr;gb.className='grade g'+gr;
-  drawGauge(sc);drawRadar(m);drawConc(ev?ev.plan:null);drawTrend(histScores);drawGC(m);renderSat();
+  drawGauge(sc);drawRadar(m);drawGC(m);renderSat();
   $('#setChips').innerHTML=ev&&ev.res?['opt','base','pess'].map(k=>`<span style="${k===repKey()?'border-color:#c8aa6e':''}">${SETN[k]} <b style="color:${GRADE_COL[ev.res[k].grade]}">${ev.res[k].score} ${ev.res[k].grade}</b></span>`).join('')+'<span class="term" data-term="세트">?</span>':'<span>현행 기준판 1000점</span>';
   const ck=ev&&ev.plan.check;const chips=[];
   if(ck){chips.push(`<span class="chip ${ck.viol.length?'bad':'ok'}">R1 시간대별 동시 운행 ≤ 현행 · 최대 ${ck.peak.toFixed(0)}/${ck.fleetLim}대</span>`);chips.push(`<span class="chip ${ck.tripOver?'bad':'ok'}">R2 하루 운행 ${fmt(ck.trips)}/${fmt(ck.tripLim)}회</span>`);chips.push(`<span class="chip ${ck.peak<=ck.fleetLim+.5?'ok':'bad'}">R2 하루 투입 ≤ ${ck.fleetLim}대</span>`);
@@ -2053,7 +2038,7 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 <tr><td>생활권 · 시설</td><td>${E.LA.length}개 · ${E.FAC.length}곳</td><td>__OVL.la / fac</td></tr></table>
 <h3>계산 순서 (선택할 때마다 실제로 다시 계산)</h3>
 <ol><li><b>개편안 만들기</b>: 카드 선택을 노선별·시간대별 배차 배율, 속도, 환승센터 단축, DRT 전환, 순환버스(차량 수·순환시간), 환승 조건으로 바꿉니다. ‘환승 거점 리모델링’ 카드는 거점(권역 허브 1곳 + 순환버스 연결점 + DRT 연계점, 최대 5곳) 수에 비례해 갈아타기 대기 가중치를 최대 20%(2.0→1.6), 갈아타기 벌점을 최대 2분(10→8분) 낮춥니다. 차량·감점 비용은 없고, 갈아타는 승객과 갈아타야 닿는 목적지에만 효과가 있습니다.</li>
-<li><b>v6-5</b>: 입문은 수송·편함·승객 ▲▼ 예측을 항상 보여 주고 예상 점수 숫자·추천 표시는 숨깁니다. 보통의 시범사업은 첫 전장 선택 단계(1라운드)에서는 쓸 수 없고 2라운드부터 쓸 수 있습니다.</li><li><b>v6-4 · 되돌리기</b>: 입문·보통은 한 판에 1번(직전 카드 1장, 이벤트 화면의 ‘직전 카드 다시 고르기’ 포함), 어려움은 처음부터 잠김. 새 게임·다시 하기에서 초기화되고, 시범사업 횟수는 되돌려도 복구되지 않습니다. 점수와는 무관합니다.</li><li><b>v6-3 · 입문 난이도</b>: 카드의 예상 점수(±점·등급)와 추천 표시는 없습니다(v6-5부터 수송·편함·승객 화살표는 다시 표시). 민심 변화·이벤트 영향·민감도 ★·이벤트 안내는 그대로 보여 줍니다.</li><li><b>v6 · 보통 난이도 힌트</b>: 카드의 수송·편함·승객 화살표와 예상·민심·이벤트 영향은 접혀 있고 ‘🧪 시범사업 운영’으로 펼쳐 봅니다. 한 판에 5회까지(같은 라운드 같은 카드는 다시 봐도 무료, 되돌리기로 복구되지 않음). 값·점수 계산은 같고 사용 횟수는 점수에 영향이 없습니다. 입문은 항상 표시, 어려움은 표시하지 않습니다.</li>
+<li><b>v6-6</b>: 진행 화면에서 '시간대별 동시 운행 버스' 그래프와 '라운드별 점수 추이' 그래프를 뺐습니다. 동시 운행 한도는 라운드 아래 제약 칩과 점수 계산에 그대로 반영됩니다.</li><li><b>v6-5</b>: 입문은 수송·편함·승객 ▲▼ 예측을 항상 보여 주고 예상 점수 숫자·추천 표시는 숨깁니다. 보통의 시범사업은 첫 전장 선택 단계(1라운드)에서는 쓸 수 없고 2라운드부터 쓸 수 있습니다.</li><li><b>v6-4 · 되돌리기</b>: 입문·보통은 한 판에 1번(직전 카드 1장, 이벤트 화면의 ‘직전 카드 다시 고르기’ 포함), 어려움은 처음부터 잠김. 새 게임·다시 하기에서 초기화되고, 시범사업 횟수는 되돌려도 복구되지 않습니다. 점수와는 무관합니다.</li><li><b>v6-3 · 입문 난이도</b>: 카드의 예상 점수(±점·등급)와 추천 표시는 없습니다(v6-5부터 수송·편함·승객 화살표는 다시 표시). 민심 변화·이벤트 영향·민감도 ★·이벤트 안내는 그대로 보여 줍니다.</li><li><b>v6 · 보통 난이도 힌트</b>: 카드의 수송·편함·승객 화살표와 예상·민심·이벤트 영향은 접혀 있고 ‘🧪 시범사업 운영’으로 펼쳐 봅니다. 한 판에 5회까지(같은 라운드 같은 카드는 다시 봐도 무료, 되돌리기로 복구되지 않음). 값·점수 계산은 같고 사용 횟수는 점수에 영향이 없습니다. 입문은 항상 표시, 어려움은 표시하지 않습니다.</li>
 <li><b>v6 신규 카드</b>: 🔗 <b>겹치는 노선 통폐합</b>(2라운드) — 전장 안 비간선 노선 중 경유 생활권이 40% 이상 겹치는 짝(같은 번호의 방향 변형 제외) 상위 3쌍에서 이용이 적은 쪽을 6~22시 60% 줄이고 남긴 쪽을 25% 늘립니다. 줄어든 노선 손님은 두 노선 배차를 합쳐 기다리고(경로 절충으로 차내 +6%), 그 구간 읍면 최소 서비스는 합친 노선이 맡습니다. ✂️ <b>긴 노선 둘로 나누기</b>(2라운드) — 왕복 90분 이상 노선 상위 3개를 전장 거점에서 끊어(전장을 넘는 손님 강제 환승, 차량은 전장 구간만큼) 속도 +8%·배차 +10%. 🤝 <b>민관 협력 셔틀</b>(3라운드) — 학교·대학·병원·보건·공공·마트·터미널이 몰린 생활권 3곳에 7~20시 순환버스 2대씩, 반경 1.5km 시설까지 직접 연결, 해당 생활권 호감 +0.02. 🕰️ <b>허브 연계 시각표</b>(5라운드) — 거점 환승 대기 가중 ×0.55(RAPTOR 이동시간표의 거점 환승 대기에도 같은 배율), 갈아타기 벌점 −1분, 대신 전장 간선·지선 회차 대기 +2분(차량 소요 증가)·전장 노선 대기 ×1.02(배차 융통성 저하). 계수는 모두 가정치입니다. 민원 민감도: 통폐합 ★★, 분할 ★, 민관 협력·허브 연계 시각표는 비민감.</li>
 <li><b>운행대수 맞추기(설계서 5.6절)</b>: 분 단위로 노선별 동시 운행 대수를 다시 합산하고, 시간대별 현행 최대값을 넘으면 그 시간대 승객 대비 버스가 남는 노선부터 배차를 10%씩 줄입니다(최소 서비스 하한 유지). 하루 운행 횟수(5,287회)도 같은 방식으로 맞춥니다. 끝까지 맞출 수 없으면 카드가 🔒 잠깁니다.</li>
 <li><b>기존 승객 이동 부담</b>: OD 묶음마다 걷기×w<sub>walk</sub> + 기다리기(배차간격/2, 최대 15분)×w<sub>wait</sub> + 차내시간 + 갈아타기 벌점 τ + 환승 대기를 현행·개편 각각 계산합니다.</li>
@@ -2096,7 +2081,7 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 legend();syncToggles();addEventListener('resize',()=>{resizeMap();dirty=true;renderDash()});mG.style.display='none';
 resizeMap();fit();tryTiles();{const t0=performance.now();set3D(true);G3.loadMs=performance.now()-t0}requestAnimationFrame(animate);
 $('#app').classList.add('locked');
-setInterval(()=>{if(cur)drawConc(cur.plan);else drawConc(null)},1000);
+/* v6-6: 진행 화면 '시간대별 동시 운행 버스'·'라운드별 점수 추이' 차트 삭제(제약 칩·점수 로직은 유지) */
 /* ================= v4: 주민 시점 체험 =================
    이동시간은 내장 RAPTOR 이동표(현행 시간표, 4개 시간대)의 출발 생활권→도착 생활권 값에, 카드 효과를 환승 격차 탭과 같은 식(E.netPair)으로 얹은 값.
    이벤트(날씨·행사 등)는 반영하지 않은 평상시 기준. */
