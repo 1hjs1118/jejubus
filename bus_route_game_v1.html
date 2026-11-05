@@ -338,6 +338,11 @@ html.t0on #cards .card{pointer-events:none}
 .card .hintTgl{display:inline-block;margin-top:6px;padding:3px 9px;border:1px solid rgba(255,255,255,.25);border-radius:999px;font-size:12px;color:#cfe8ff;background:rgba(255,255,255,.06);cursor:pointer;user-select:none}.card .hintTgl:hover,.card .hintTgl:focus-visible{background:rgba(79,195,255,.18);outline:2px solid #4fc3ff55}
 .card .hintBox[hidden]{display:none}
 
+#trialCnt{display:inline-block;margin:4px 0 8px;padding:4px 12px;border:1px solid rgba(200,170,110,.6);border-radius:999px;font-size:13px;color:#f3e3bf;background:rgba(200,170,110,.12)}#trialCnt[hidden]{display:none}#trialCnt.out{color:#ffb3b3;border-color:rgba(255,120,120,.6);background:rgba(255,80,80,.1)}.card .hintTgl.lockd{opacity:.5;cursor:not-allowed;filter:grayscale(1)}
+.card .fx:empty,.card .pv:empty{display:none}
+.hbtn.ulock{opacity:.5;cursor:not-allowed;filter:grayscale(.6)}
+#evRe:disabled{opacity:.45;cursor:not-allowed}
+
 </style>
 </head>
 <body>
@@ -387,6 +392,7 @@ html.t0on #cards .card{pointer-events:none}
       <div id="roundBox" class="panel gold">
         <div id="evBar"></div>
         <div id="roundHead"><div id="roundNo"></div><div id="roundTitle"></div><div id="roundSub"></div></div>
+        <div id="trialCnt" hidden aria-live="polite"></div>
         <div id="cards"></div>
         <div id="ruleChips"></div>
       </div>
@@ -448,7 +454,7 @@ html.t0on #cards .card{pointer-events:none}
     <div id="finalSets"></div>
     <div class="fgrid">
       <div><h3>선택 이력</h3><ol id="finalHist"></ol></div>
-      <div><h3>효율 3요소 (현행=1.000 · <span id="eiScope">전장 기준</span>)</h3><div id="finalComp"></div><h3>규칙 검사</h3><div id="finalRules"></div></div>
+      <div><h3>효율 3요소 (현행=1.000 · <span id="eiScope">전장 기준</span>)</h3><div id="finalComp"></div></div>
       <div><h3>접근성 변화가 큰 생활권</h3><div id="finalLA"></div></div>
     </div>
     <div id="finalCompWrap" class="xpSec"><h3>📢 민원·여론 결산 <span class="xpHint">🔍 눌러서 자세히 보기</span></h3><div id="finalSat"></div>
@@ -1230,9 +1236,9 @@ const fmt=(x,d=0)=>Number(x).toLocaleString('ko-KR',{maximumFractionDigits:d,min
 const pct=x=>(x>=0?'+':'')+(x*100).toFixed(1)+'%';
 const GRADE_COL={S:'#ffd76a',A:'#ff7ad9',B:'#4fd1ff',C:'#7ee787',D:'#ff5a5a'};
 const SETN={opt:'낙관',base:'기준',pess:'비관'};
-const DIFFS={easy:{nm:'입문',ic:'🌱',d:'기준 세트로 채점해요. 카드마다 예상 점수·민심 변화를 숫자로 보여 드리고 추천 카드도 표시해요. 돌발 이벤트 0~1회(시드에 따라 없을 수도, 강도 ×0.7).'},
-  normal:{nm:'보통',ic:'⚔️',d:'기준 세트로 채점해요. 카드의 🔍 예상 보기를 누르면 ↑↓ 방향을 볼 수 있어요. 돌발 이벤트 1~2회(시드에 따라, 강도 ×1.0). 감으로 승부!'},
-  hard:{nm:'어려움',ic:'☠️',d:'비관 세트로 채점해요. 카드의 점수·방향·민심 미리보기와 남은 이벤트 수는 비공개(고른 뒤 실제 결과만 표시). 돌발 이벤트 4회(강도 ×1.35), 읍면 최소 서비스(60분) 위반은 실행 불가, 마지막에 5% 감축 미션도 열려요.'}};
+const DIFFS={easy:{nm:'입문',ic:'🌱',d:'기준 세트로 채점해요. 카드마다 수송·편함·승객 ▲▼ 예측과 민심·이벤트 영향을 보여 드려요(점수 변화 숫자는 없어요). 되돌리기 1회. 돌발 이벤트 0~1회(시드에 따라 없을 수도, 강도 ×0.7).'},
+  normal:{nm:'보통',ic:'⚔️',d:'기준 세트로 채점해요. 카드의 🧪 시범사업 운영으로 ↑↓ 방향을 미리 볼 수 있어요(한 판 5회, 전장 선택 단계 제외). 되돌리기 1회. 돌발 이벤트 1~2회(시드에 따라, 강도 ×1.0). 감으로 승부!'},
+  hard:{nm:'어려움',ic:'☠️',d:'비관 세트로 채점해요. 카드의 점수·방향·민심 미리보기와 남은 이벤트 수는 비공개(고른 뒤 실제 결과만 표시). 되돌리기 불가. 돌발 이벤트 4회(강도 ×1.35), 읍면 최소 서비스(60분) 위반은 실행 불가, 마지막에 5% 감축 미션도 열려요.'}};
 const TERMS={
  '간선':'<b>간선 = 큰길 급행</b><br>도시와 도시, 큰 거점을 큰길로 빠르게 잇는 버스예요. (급행·간선·일반간선)',
  '지선':'<b>지선 = 동네 버스</b><br>마을과 간선 정류장을 이어 주는 버스예요. (지선·읍면지선·마을버스)',
@@ -1267,12 +1273,12 @@ function termify(s){ // 첫 등장 용어에 툴팁
 
 /* ---------------- 상태 ---------------- */
 const LS='jeju_bus_game_v4_1';
-let S={diff:null,path:[],seed:0,rev:0,evSeen:[],muted:false,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches,tutSeen:false,best:null};
+let S={diff:null,path:[],undo:0,trial:0,trialSeen:[],seed:0,rev:0,evSeen:[],muted:false,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches,tutSeen:false,best:null};
 let consented=false;
-try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(s)Object.assign(S,{diff:s.diff||null,path:Array.isArray(s.path)?s.path:[],seed:+s.seed||0,rev:+s.rev||0,evSeen:Array.isArray(s.evSeen)?s.evSeen:[],muted:!!s.muted,reduced:s.reduced!=null?!!s.reduced:S.reduced,tutSeen:!!s.tutSeen,best:s.best||null})}catch(e){}
-function readHash(){const h=location.hash.replace(/^#/,'');if(!h)return null;const q=new URLSearchParams(h);const d=q.get('d'),p=q.get('p'),sd=parseInt(q.get('s'),10);if(!d||!DIFFS[d])return null;return {diff:d,seed:sd>0?sd:0,path:p?p.split('.').filter(Boolean):[]}}
+try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(s)Object.assign(S,{diff:s.diff||null,path:Array.isArray(s.path)?s.path:[],seed:+s.seed||0,rev:+s.rev||0,evSeen:Array.isArray(s.evSeen)?s.evSeen:[],muted:!!s.muted,reduced:s.reduced!=null?!!s.reduced:S.reduced,tutSeen:!!s.tutSeen,best:s.best||null,trial:Math.max(0,Math.min(5,+s.trial||0)),trialSeen:Array.isArray(s.trialSeen)?s.trialSeen:[],undo:s.undo?1:0})}catch(e){}
+function readHash(){const h=location.hash.replace(/^#/,'');if(!h)return null;const q=new URLSearchParams(h);const d=q.get('d'),p=q.get('p'),sd=parseInt(q.get('s'),10);if(!d||!DIFFS[d])return null;return {diff:d,seed:sd>0?sd:0,path:p?p.split('.').filter(Boolean):[],trial:Math.max(0,Math.min(5,parseInt(q.get('t'),10)||0)),undo:q.get('u')==='1'?1:0}}
 function newSeed(){let x=0;try{x=crypto.getRandomValues(new Uint32Array(1))[0]}catch(e){x=Math.floor(Math.random()*4e9)}return 100000+(x%900000)}
-const fromHash=readHash();if(fromHash){S.diff=fromHash.diff;S.path=fromHash.path;if(fromHash.seed!==S.seed){S.evSeen=[]}S.seed=fromHash.seed||newSeed();S.rev=0}
+const fromHash=readHash();if(fromHash){if(fromHash.diff!==S.diff||(fromHash.seed&&fromHash.seed!==S.seed)){S.trial=0;S.trialSeen=[];S.undo=0}S.diff=fromHash.diff;S.path=fromHash.path;if(fromHash.seed!==S.seed){S.evSeen=[]}S.seed=fromHash.seed||newSeed();S.rev=0;if(fromHash.trial>(S.trial||0))S.trial=fromHash.trial;if(fromHash.undo)S.undo=1}
 if(S.diff&&!S.seed)S.seed=newSeed();
 /* v3: 시즌(돌발 이벤트) — 시드·난이도로 결정, URL 해시 s=에 저장 */
 let SEA=[];function setSeason(){SEA=S.diff&&S.seed?G.season(S.seed,S.diff):[]}setSeason();
@@ -1281,7 +1287,7 @@ function envIds(t){const tau=Math.max(t,S.rev||0);return G.eventsUntil(SEA,tau)}
 function envAt(t,path){path=path||S.path;const ids=envIds(t);return ids.length&&regOf(path)>=0?G.envFor(ids,regOf(path),S.diff):E.ENV0}
 function validatePath(){const ok=[];for(let n=0;n<S.path.length&&n<G.ROUNDS.length;n++){let opts;try{opts=G.optionsAt(n,ok,S.diff)}catch(e){break}if(!opts.find(o=>o.id===S.path[n]))break;ok.push(S.path[n])}S.path=ok}
 function save(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}
-  const h=S.diff?`#d=${S.diff}&s=${S.seed}&p=${S.path.join('.')}`:'';if(history.replaceState)history.replaceState(null,'',location.pathname+location.search+h)}
+  const h=S.diff?`#d=${S.diff}&s=${S.seed}&p=${S.path.join('.')}`+(S.diff==='normal'&&S.trial?`&t=${S.trial}`:'')+(S.diff!=='hard'&&S.undo?'&u=1':''):'';if(history.replaceState)history.replaceState(null,'',location.pathname+location.search+h)}
 
 /* ---------------- v4 사운드 (WebAudio 합성 · 외부 파일 없음) ----------------
    구조: 소리원 → SFX 버스 / BGM 버스 → 마스터 게인(볼륨·음소거) → 출력.
@@ -1372,7 +1378,7 @@ const REACT={
  crit:['치명타 작렬! 이 한 수로 판이 확 바뀌었어요!','와, 정확히 급소를 찔렀네요! 승객들이 환호하고 있어요.'],
  good:['좋아요, 효율이 올라갔어요! 이 기세로 계속 가 볼까요?','나이스! 버스 수는 그대로인데 더 많은 분이 편해졌어요.','깔끔한 선택이에요. 점수가 쑥 올라갔네요!'],
  flat:['큰 변화는 없지만, 다음 수를 위한 발판이 될 수 있어요.','잔잔한 한 수네요. 다음 라운드에서 승부를 걸어 봐요!'],
- bad:['앗, 역풍이에요! 어딘가에서 버스를 너무 많이 덜어 왔나 봐요.','음… 기다리는 시간이 늘어난 승객이 꽤 생겼어요. 되돌리기도 있으니 걱정 마세요.']
+ bad:['앗, 역풍이에요! 어딘가에서 버스를 너무 많이 덜어 왔나 봐요.','음… 기다리는 시간이 늘어난 승객이 꽤 생겼어요. 다음 카드로 만회해 봐요.']
 };
 
 /* ---------------- 지도 (v1: 2D + 등고선 + 3D 지형) ---------------- */
@@ -1736,9 +1742,12 @@ let previewToken=0;
 /* v4: 어려움은 결과를 미리 짐작하게 하는 표시(예상 점수·방향 화살표·민심/이벤트 영향·민감도 ★·남은 이벤트 수)를 모두 숨김 */
 const NOHINT=()=>S.diff==='hard';
 const EVM={easy:'num',normal:'num',hard:'arrow'};
-/* v6: 보통은 카드 힌트(수송·편함·승객 화살표, 예상, 민심·이벤트 영향)를 접어 두고 '🔍 예상 보기'를 눌러야 펼침. 카드 선택과 분리(캡처 단계에서 가로채 전파 중단). 라운드·선택·되돌리기 때 다시 그리면서 접힌 상태로 초기화 */
-const HIDEH=()=>S.diff==='normal';
-function hintToggle(t){const box=t.nextElementSibling;if(!box)return;const open=box.hidden;box.hidden=!open;t.setAttribute('aria-expanded',open?'true':'false');t.textContent=open?'🔍 예상 숨기기':'🔍 예상 보기';try{SFX.click()}catch(e){}}
+/* v6: 보통은 카드 힌트(수송·편함·승객 화살표, 예상, 민심·이벤트 영향)를 접어 두고 '🧪 시범사업 운영'(한 판 5회)으로 펼침. 카드 선택과 분리(캡처 단계에서 가로채 전파 중단). 라운드·선택·되돌리기 때 다시 그리면서 접힌 상태로 초기화 */
+const HIDEH=()=>S.diff==='normal';const TRIAL_OFF=()=>HIDEH()&&S.path.length===0;
+const TRIAL_MAX=5;const trialLeft=()=>Math.max(0,TRIAL_MAX-(S.trial||0));const trialKey=t=>{const c=t.closest('.card');return S.path.length+':'+(c?c.dataset.id:'')};
+function trialUI(){const el=$('#trialCnt');if(!el)return;if(!HIDEH()||S.path.length>=G.ROUNDS.length){el.hidden=true;return}const n=trialLeft();el.hidden=false;el.className=n?'':'out';el.innerHTML=`🧪 남은 시범사업 <b>${n}</b>/${TRIAL_MAX}`+(n?'':' · 🔒 모두 사용');
+ if(TRIAL_OFF()){el.innerHTML+=' · 전장 선택 후 사용 가능';return}$$('#cards .hintTgl').forEach(t=>{const box=t.nextElementSibling;const seen=(S.trialSeen||[]).includes(trialKey(t));const lk=!n&&!seen&&box&&box.hidden;t.classList.toggle('lockd',lk);t.setAttribute('aria-disabled',lk?'true':'false');if(box&&box.hidden)t.textContent=lk?'🔒 시범사업 잠김':(seen?'🧪 시범사업 결과 다시 보기':'🧪 시범사업 운영')})}
+function hintToggle(t){if(TRIAL_OFF()||t.classList.contains('r0')){toast('🔒 전장 선택 단계에서는 시범사업을 쓸 수 없어요. 2라운드부터 가능!');return}const box=t.nextElementSibling;if(!box)return;const open=box.hidden;if(open){S.trialSeen=S.trialSeen||[];const k=trialKey(t);if(!S.trialSeen.includes(k)){if(trialLeft()<=0){try{SFX.err&&SFX.err()}catch(e){}toast('🔒 시범사업 5회를 모두 사용했어요');return}S.trial=(S.trial||0)+1;S.trialSeen.push(k);save()}}box.hidden=!open;t.setAttribute('aria-expanded',open?'true':'false');t.textContent=open?'🧪 시범사업 결과 접기':'🧪 시범사업 운영';trialUI();try{SFX.click()}catch(e){}}
 {const cs=document.querySelector('#cards');const stop=e=>{const t=e.target.closest&&e.target.closest('.hintTgl');if(!t)return null;e.stopPropagation();e.preventDefault();return t};
  cs.addEventListener('click',e=>{const t=stop(e);if(t)hintToggle(t)},true);
  for(const ty of ['pointerdown','pointerup','mousedown','mouseup','touchstart','touchend'])cs.addEventListener(ty,e=>{if(e.target.closest&&e.target.closest('.hintTgl'))e.stopPropagation()},true);
@@ -1752,19 +1761,19 @@ function renderRound(){const n=S.path.length;if(n>0&&n<G.ROUNDS.length&&!renderR
   const info=opts.map(o=>({o,ev:evalPath(S.path.concat(o.id)),comp:n>0&&G.compLocked(n,o.id,sat0)}));
   const ruleOk=info.filter(x=>!x.ev.lock);let fb=false;if(ruleOk.length&&ruleOk.every(x=>x.comp)){info.forEach(x=>x.comp=false);fb=true}
   const sensOf=id=>{const s_=G.SENS[R.id];return s_&&s_[id]?s_[id]:0};
-  $('#cards').innerHTML=info.map(({o,comp})=>`<button class="card calc${comp?' lock clk':''}" data-id="${o.id}"><div class="ic">${o.icon}</div><div class="nm">${o.name}${(!NOHINT()&&sensOf(o.id))?`<span class="sens" title="민원 민감 카드: 만족도가 낮으면 잠길 수 있어요">${'★'.repeat(sensOf(o.id))}</span>`:''}</div>${o.tag?`<div class="tg">${o.tag}</div>`:''}<div class="ez">${termify(o.easy)}</div>${NOHINT()?'<div class="fx nh">🙈 결과는 고른 뒤 공개</div>':HIDEH()?'<span class="hintTgl" role="button" tabindex="0" aria-expanded="false">🔍 예상 보기</span><div class="hintBox" hidden><div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div></div>':'<div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div>'}${comp?`<div class="lk comp">📢 민원 보류: 만족도 ${sat0.toFixed(0)} &lt; ${sat0<E.SATR.riot?E.SATR.riot:E.SATR.warn}</div>`:''}</button>`).join('');
-  const tok=++previewToken;const pv=[];const imp=[];
+  $('#cards').innerHTML=info.map(({o,comp})=>`<button class="card calc${comp?' lock clk':''}" data-id="${o.id}"><div class="ic">${o.icon}</div><div class="nm">${o.name}${(!NOHINT()&&sensOf(o.id))?`<span class="sens" title="민원 민감 카드: 만족도가 낮으면 잠길 수 있어요">${'★'.repeat(sensOf(o.id))}</span>`:''}</div>${o.tag?`<div class="tg">${o.tag}</div>`:''}<div class="ez">${termify(o.easy)}</div>${NOHINT()?'<div class="fx nh">🙈 결과는 고른 뒤 공개</div>':HIDEH()?(TRIAL_OFF()?'<span class="hintTgl lockd r0" role="button" aria-disabled="true" tabindex="-1">🔒 전장 선택 단계는 시범사업 불가</span><div class="hintBox" hidden><div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div></div>':'<span class="hintTgl" role="button" tabindex="0" aria-expanded="false">🧪 시범사업 운영</span><div class="hintBox" hidden><div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div></div>'):'<div class="fx">계산 중…</div><div class="pv"></div><div class="evx"></div>'}${comp?`<div class="lk comp">📢 민원 보류: 만족도 ${sat0.toFixed(0)} &lt; ${sat0<E.SATR.riot?E.SATR.riot:E.SATR.warn}</div>`:''}</button>`).join('');
+  S.trialSeen=(S.trialSeen||[]).filter(k=>k.startsWith(S.path.length+':'));trialUI();const tok=++previewToken;const pv=[];const imp=[];
   info.forEach((x,i)=>setTimeout(()=>{if(tok!==previewToken)return;const {o,ev,comp}=x;const el=$(`.card[data-id="${o.id}"]`);if(!el)return;el.classList.remove('calc');
     if(ev.lock){el.classList.add('lock');{const t_=el.querySelector('.hintTgl');if(t_)t_.remove()}el.querySelector('.fx').innerHTML='';el.insertAdjacentHTML('beforeend',`<div class="lk">🔒 선택 불가: ${ev.lock}</div>`);pv[i]=null}
     else if(NOHINT()){pv[i]=null}
     else{const m=ev.res[repKey()];const b=baseM||{e1r:1,gcr:1,qr:1};const ar=(v,w)=>{const d=v-w;return d>0.0015?'<span class="up">▲</span>':d<-0.0015?'<span class="dn">▼</span>':'<span class="eq">–</span>'};
       el.querySelector('.fx').innerHTML=`<b>수송 ${ar(m.e1r,b.e1r)}</b><b>편함 ${ar(m.gcr,b.gcr)}</b><b>승객 ${ar(m.qr,b.qr)}</b>`;
-      const d=m.score-s0;el.querySelector('.pv').innerHTML=S.diff==='easy'?`예상 ${d>=0?'+':''}${d}점 → ${m.score} (${m.grade})`:(n===0?'':`예상: ${d>5?'<span class="up">좋아짐 ▲</span>':d<-5?'<span class="dn">나빠짐 ▼</span>':'<span class="eq">비슷 –</span>'}`);
+      const d=m.score-s0;el.querySelector('.pv').innerHTML=S.diff==='easy'?'':(n===0?'':`예상: ${d>5?'<span class="up">좋아짐 ▲</span>':d<-5?'<span class="dn">나빠짐 ▼</span>':'<span class="eq">비슷 –</span>'}`);
       let h='';if(n>0){const ds=m.sat-sat0;h=S.diff==='easy'?`민심 ${m.sat.toFixed(0)} <span class="${ds>0.5?'up':ds<-0.5?'dn':'eq'}">(${ds>=0?'+':''}${ds.toFixed(0)})</span>`:`민심 ${ds>1.5?'<span class="up">▲</span>':ds<-1.5?'<span class="dn">▼</span>':'<span class="eq">–</span>'}`}
       if(evs.length){const m0=G.evaluate(S.path.concat(o.id),S.diff,E.ENV0).res[repKey()];const d0=m.score-m0.score;imp[i]=[d0,o];
         h+=(h?' · ':'')+`<span class="evI">${evIc} 이벤트 영향 ${EVM[S.diff]==='num'?`<b class="${d0>0?'up':d0<0?'dn':'eq'}">${d0>=0?'+':''}${d0}</b>`:(d0>3?'<b class="up">▲</b>':d0<-3?'<b class="dn">▼</b>':'<b class="eq">–</b>')}</span>`}
       el.querySelector('.evx').innerHTML=h;pv[i]=comp?null:m.score}
-    if(i===opts.length-1){if(S.diff==='easy'&&n>0){let bi=-1,bv=-1e9;pv.forEach((v,j)=>{if(v!=null&&v>bv){bv=v;bi=j}});if(bi>=0)$$('#cards .card')[bi].classList.add('best')}
+    if(i===opts.length-1){if(false&&S.diff==='easy'&&n>0){let bi=-1,bv=-1e9;pv.forEach((v,j)=>{if(v!=null&&v>bv){bv=v;bi=j}});if(bi>=0)$$('#cards .card')[bi].classList.add('best')}
       const L=imp.filter(Boolean);if(!NOHINT()&&L.length>=2&&!renderRound.quiet){L.sort((a,b)=>b[0]-a[0]);const hi=L[0],lo=L[L.length-1];
         if(hi[0]-lo[0]>=3){const nm=evs.map(id=>G.EVI[id].icon+' '+G.EVI[id].name).join(' · ');const v=x=>EVM[S.diff]==='num'?`(${x>=0?'+':''}${x})`:'';
           say(termify(R.host[0])+`<br><span class="gmEv">⚡ ${nm} 상황! 이 판에서 이벤트 덕을 가장 크게 보는 카드는 <b>${hi[1].icon} ${hi[1].name}</b>${v(hi[0])}, 가장 손해 보는 카드는 <b>${lo[1].icon} ${lo[1].name}</b>${v(lo[0])}입니다!</span>`)}}
@@ -1798,19 +1807,25 @@ function showEvent(e,info){const X=G.EVI[e.id];const reg=regOf(S.path);const ov=
   $('#evTag').textContent=`⚠ 돌발 이벤트 · ROUND ${e.at+1} 개시 직전 · 강도 ×${G.INT[S.diff]}`;$('#evIcon').textContent=X.icon;$('#evTitle').textContent=X.name;$('#evSub').textContent=G.eventTitle(e.id,reg);
   $('#evFx').innerHTML=G.eventFx(e.id,S.diff,reg).map(x=>`<li>${x}</li>`).join('');
   $('#evDelta').innerHTML=info?`현재 개편안 <b>${info.s0}</b> → <b class="${info.s1>=info.s0?'up':'dn'}">${info.s1}</b>점 · 주민 만족도 <b>${info.sat0.toFixed(0)}</b> → <b class="${info.sat1>=info.sat0-0.5?'up':'dn'}">${info.sat1.toFixed(0)}</b><div class="lbl">점수는 ‘같은 이벤트 조건의 현행 = 1000’ 기준으로 다시 계산했어요.</div>`:`<div class="lbl">이 이벤트는 시즌 끝까지 이어집니다.</div>`;
-  $('#evRe').style.display=info&&S.path.length>0&&S.path.length<G.ROUNDS.length?'':'none';$('#evGo').textContent=info?'⚔ 대응 카드 고르기':'닫기';
+  undoUI();$('#evRe').style.display=info&&S.path.length>0&&S.path.length<G.ROUNDS.length?'':'none';$('#evGo').textContent=info?'⚔ 대응 카드 고르기':'닫기';
   ov.classList.remove('show');void ov.offsetWidth;ov.classList.add('show');
   if(info){SFX.eventIn();flash(.5);shake();setTimeout(()=>burst(innerWidth/2,innerHeight*.3,X.col,150,11),120)}
   const el=$('#evGM');const html=`<b>${X.gm[0]}</b><br>${X.gm[1]}`;clearInterval(evTypeT);if(S.reduced||!info){el.innerHTML=html}else{const tmp=document.createElement('div');tmp.innerHTML=html;const plain=tmp.textContent;let i=0;el.textContent='';evTypeT=setInterval(()=>{i+=2;el.textContent=plain.slice(0,i);if(i>=plain.length){clearInterval(evTypeT);el.innerHTML=html}},22)}
   dirty=true;G3.texDirty=true}
 function closeEvent(){$('#scrEvent').classList.remove('show');clearInterval(evTypeT)}
 $('#evGo').onclick=()=>{SFX.click();const was=$('#evGo').textContent!=='닫기';closeEvent();if(was&&S.path.length<G.ROUNDS.length)renderRound()};
-$('#evRe').onclick=()=>{SFX.click();closeEvent();if(!S.path.length)return;S.path.pop();comboN=0;save();setCur();recomputeHist();renderAll();toast('↶ 이벤트를 반영해 직전 카드를 다시 고를 수 있어요.');say('이미 드러난 이벤트는 그대로 적용돼요. 이번엔 상황에 맞는 카드로 다시 골라 보세요!')};
+$('#evRe').onclick=()=>{if(!undoOK()){undoDenied();return}SFX.click();closeEvent();if(!S.path.length)return;S.undo=1;S.path.pop();comboN=0;save();setCur();recomputeHist();renderAll();toast('↶ 이벤트를 반영해 직전 카드를 다시 고를 수 있어요.');say('이미 드러난 이벤트는 그대로 적용돼요. 이번엔 상황에 맞는 카드로 다시 골라 보세요!')};
 function comboName(k){return k>=5?'펜타 개선!!':k===4?'쿼드라 개선!':k===3?'트리플 개선!':'더블 개선!'}
-function renderAll(){renderRound();renderDash()}
-$('#btnUndo').onclick=()=>{if(!S.path.length)return;S.path.pop();comboN=0;save();setCur();recomputeHist();SFX.click();toast('한 수 되돌렸어요.');renderAll();say('되돌렸어요! 다른 카드로 다시 도전해 보세요.')};
+/* v6-4: 되돌리기 제한 — 입문·보통 한 판 1회, 어려움 불가. 버튼(#btnUndo)과 이벤트 화면의 '직전 카드 다시 고르기'(#evRe) 모두 같은 규칙. 시범사업 횟수는 복구하지 않음 */
+const undoOK=()=>S.diff!=='hard'&&!S.undo;
+function undoDenied(){try{SFX.err&&SFX.err()}catch(e){}toast(S.diff==='hard'?'🔒 어려움 난이도는 되돌리기를 쓸 수 없어요':'🔒 되돌리기는 한 판에 1번만 쓸 수 있어요')}
+function undoUI(){const b=$('#btnUndo');if(!b)return;const ok=undoOK();const lab=S.diff==='hard'?'되돌리기 불가':ok?'되돌리기 1/1':'되돌리기 사용 완료';
+ b.innerHTML=(ok?'↶':'🔒')+`<span>${lab}</span>`;b.classList.toggle('ulock',!ok);b.setAttribute('aria-disabled',ok?'false':'true');b.title=(ok?'':'🔒 ')+lab;
+ const r=$('#evRe');if(r){r.disabled=!ok;r.textContent=ok?'↶ 직전 카드 다시 고르기 (되돌리기 1/1)':(S.diff==='hard'?'🔒 되돌리기 불가':'🔒 되돌리기 사용 완료')}}
+function renderAll(){renderRound();renderDash();undoUI()}
+$('#btnUndo').onclick=()=>{if(!undoOK()){undoDenied();return}if(!S.path.length)return;S.undo=1;S.path.pop();comboN=0;save();setCur();recomputeHist();SFX.click();toast('한 수 되돌렸어요.');renderAll();say('되돌렸어요! 다른 카드로 다시 도전해 보세요.')};
 $('#btnRestart').onclick=()=>{if(!confirm('처음부터 다시 할까요? (진행 상황이 지워져요)'))return;restart()};
-function restart(same){S.path=[];comboN=0;S.rev=0;S.evSeen=[];cur=null;histScores=[];$('#scrFinal').classList.remove('show');closeEvent();
+function restart(same){S.path=[];S.undo=0;S.trial=0;S.trialSeen=[];comboN=0;S.rev=0;S.evSeen=[];cur=null;histScores=[];$('#scrFinal').classList.remove('show');closeEvent();
   if(same&&S.diff){save();setSeason();enterGame(true);toast(`🎲 같은 시드 #${S.seed}로 다시 도전!`);return}S.diff=null;save();openDiff()}
 $('#btnTut0').onclick=()=>{try{SFX.click()}catch(e){}if(!T0.on)t0Open()};
 $('#btnSound').onclick=e=>{e.stopPropagation();audUnlock();const p=$('#audPop');const on=!p.classList.contains('show');p.classList.toggle('show',on);$('#btnSound').setAttribute('aria-expanded',on?'true':'false');audSync();if(on)SFX.click()};
@@ -1846,7 +1861,7 @@ function renderTut(){const t=TUT[tutI];$('#tutBody').innerHTML=`<h2>${t.h}</h2>$
 $('#tutNext').onclick=()=>{SFX.click();if(tutI<TUT.length-1){tutI++;renderTut()}else{S.tutSeen=true;save();$('#scrTut').classList.remove('show');if(!tutInGame)openDiff()}};
 $('#tutSkip').onclick=()=>{S.tutSeen=true;save();$('#scrTut').classList.remove('show');if(!tutInGame)openDiff()};
 function openDiff(){$('#app').classList.add('locked');$('#scrDiff').classList.add('show');$('#diffCards').innerHTML=Object.entries(DIFFS).map(([k,d])=>`<button class="dcard" data-k="${k}"><div class="ic">${d.ic}</div><div class="nm">${d.nm}</div><p>${d.d}</p></button>`).join('');
-  $$('.dcard').forEach(b=>{b.onmouseenter=()=>SFX.hover();b.onclick=()=>{S.diff=b.dataset.k;S.path=[];comboN=0;S.seed=newSeed();S.rev=0;S.evSeen=[];setSeason();save();SFX.start();const r=b.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,'#c8aa6e',80,8);flash(.35);$('#scrDiff').classList.remove('show');enterGame(true)}})}
+  $$('.dcard').forEach(b=>{b.onmouseenter=()=>SFX.hover();b.onclick=()=>{S.diff=b.dataset.k;S.path=[];S.undo=0;S.trial=0;S.trialSeen=[];comboN=0;S.seed=newSeed();S.rev=0;S.evSeen=[];setSeason();save();SFX.start();const r=b.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,'#c8aa6e',80,8);flash(.35);$('#scrDiff').classList.remove('show');enterGame(true)}})}
 function enterGame(fresh){$('#app').classList.remove('locked');$('#app').setAttribute('aria-hidden','false');if(!S.seed)S.seed=newSeed();setSeason();validatePath();if(!fresh){S.rev=Math.max(S.rev||0,S.path.length);SEA.forEach(e=>{if(e.at<=S.path.length&&!S.evSeen.includes(e.at))S.evSeen.push(e.at)});save()}setCur();recomputeHist();resizeMap();fit();if(mode3D){const r0=S.reduced;S.reduced=true;camPreset('island');S.reduced=r0;G3.texDirty=true;G3.need=true;G3.frames=0;G3.ft=16;G3.samples=[]}
   renderRound.silent=!fresh&&S.path.length>0;renderAll();
   if((fresh||S.path.length===0)&&!t0Seen())setTimeout(()=>{if(!T0.on&&S.path.length===0)t0Open()},700);
@@ -1921,7 +1936,7 @@ function showFinal(){const ev=cur;if(!ev||!ev.res)return;const rk=repKey();const
   $('#finalHist').innerHTML=S.path.map((id,n)=>{const o=G.optionsAt(n,S.path,S.diff).find(x=>x.id===id);const s=histScores[n],pv=n?histScores[n-1]:1000;const e=SEA.find(x=>x.at===n);return `${e?`<li class="evH" style="--ev:${G.EVI[e.id].col}">⚡ ${G.EVI[e.id].icon} <b>${G.EVI[e.id].name}</b> 발생</li>`:''}<li value="${n+1}"><b>${G.ROUNDS[n].title}</b>: ${o.icon} ${o.name}${o.tag?' ('+o.tag+')':''} <span class="${s-pv>0?'up':s-pv<0?'dn':'eq'}">${s-pv>=0?'+':''}${s-pv}</span> → ${s}</li>`}).join('');
   {const g_=ev.plan.reg;$('#eiScope').textContent=g_===5?'제주도 섬 전역 100%':g_>=0?`${D.REG[g_].replace(/ \(.*$/,'')} 전장 85% + 밖 15%`:'전장 기준'}
   $('#finalComp').innerHTML=`<div>🚍 수송 효율 ${m.e1r.toFixed(3)} <span class="${m.e1r>=1?'up':'dn'}">(${pct(m.e1r-1)})</span> ×30%</div><div>😊 기존 승객 편익 ${m.gcr.toFixed(3)} <span class="${m.gcr>=1?'up':'dn'}">(${pct(m.gcr-1)})</span> ×40% · 이동 부담 ${m.gc0.toFixed(1)}→${m.gc1.toFixed(1)}분</div><div>👥 승객 수 ${m.qr.toFixed(3)} <span class="${m.qr>=1?'up':'dn'}">(${pct(m.qr-1)})</span> ×30%</div><div class="lbl">잠재승객 +${fmt(m.dQ)} · 순이탈 ${fmt(m.QL+m.QLx)}명/일 (음수=유입) · 영향권 기존 승객 ${fmt(m.Q0)}명/일 · 감점 ${m.pen}</div>`;
-  const ck=ev.plan.check;$('#finalRules').innerHTML=`<div>R1 시간대별 동시 운행 최대 ${ck.peak.toFixed(0)} / ${ck.fleetLim}대 ✔</div><div>R2 하루 운행 ${fmt(ck.trips)} / ${fmt(ck.tripLim)}회 ✔</div><div class="lbl">DRT 차량은 버스 1대로 환산 · 이벤트는 운행대수 규칙을 바꾸지 않아요</div>`;
+  const ck=ev.plan.check;const _finalRulesHidden=`<div>R1 시간대별 동시 운행 최대 ${ck.peak.toFixed(0)} / ${ck.fleetLim}대 ✔</div><div>R2 하루 운행 ${fmt(ck.trips)} / ${fmt(ck.tripLim)}회 ✔</div><div class="lbl">DRT 차량은 버스 1대로 환산 · 이벤트는 운행대수 규칙을 바꾸지 않아요</div>`;
   const la=[];for(let i=0;i<E.LA.length;i++){if(m.laA[i])la.push([i,m.laA[i],m.laD[i]])}la.sort((a,b)=>b[1]-a[1]);const top=la.slice(0,4),bot=la.filter(x=>x[1]<0).slice(-3).reverse();
   $('#finalLA').innerHTML=(top.map(([i,v,d])=>`<div class="up">▲ ${E.LA[i].n.replace(/ 일대/,'')} ${pct(v)} (잠재 ${d>=0?'+':''}${fmt(d)}명)</div>`).join('')||'<div class="eq">변화 없음</div>')+bot.map(([i,v,d])=>`<div class="dn">▼ ${E.LA[i].n.replace(/ 일대/,'')} ${pct(v)}</div>`).join('');
   // v3: 민원·여론 결산
@@ -2038,7 +2053,7 @@ $('#btnModel').onclick=()=>{const m=D.meta;modal(`<h2>📘 모델 설명 (가정
 <tr><td>생활권 · 시설</td><td>${E.LA.length}개 · ${E.FAC.length}곳</td><td>__OVL.la / fac</td></tr></table>
 <h3>계산 순서 (선택할 때마다 실제로 다시 계산)</h3>
 <ol><li><b>개편안 만들기</b>: 카드 선택을 노선별·시간대별 배차 배율, 속도, 환승센터 단축, DRT 전환, 순환버스(차량 수·순환시간), 환승 조건으로 바꿉니다. ‘환승 거점 리모델링’ 카드는 거점(권역 허브 1곳 + 순환버스 연결점 + DRT 연계점, 최대 5곳) 수에 비례해 갈아타기 대기 가중치를 최대 20%(2.0→1.6), 갈아타기 벌점을 최대 2분(10→8분) 낮춥니다. 차량·감점 비용은 없고, 갈아타는 승객과 갈아타야 닿는 목적지에만 효과가 있습니다.</li>
-<li><b>v6 · 보통 난이도 힌트</b>: 카드의 수송·편함·승객 화살표와 예상·민심·이벤트 영향은 접혀 있고 ‘🔍 예상 보기’를 눌러야 펼쳐집니다(값·점수 계산은 같고, 열어 본 횟수는 점수에 영향이 없습니다). 입문은 항상 표시, 어려움은 표시하지 않습니다.</li>
+<li><b>v6-5</b>: 입문은 수송·편함·승객 ▲▼ 예측을 항상 보여 주고 예상 점수 숫자·추천 표시는 숨깁니다. 보통의 시범사업은 첫 전장 선택 단계(1라운드)에서는 쓸 수 없고 2라운드부터 쓸 수 있습니다.</li><li><b>v6-4 · 되돌리기</b>: 입문·보통은 한 판에 1번(직전 카드 1장, 이벤트 화면의 ‘직전 카드 다시 고르기’ 포함), 어려움은 처음부터 잠김. 새 게임·다시 하기에서 초기화되고, 시범사업 횟수는 되돌려도 복구되지 않습니다. 점수와는 무관합니다.</li><li><b>v6-3 · 입문 난이도</b>: 카드의 예상 점수(±점·등급)와 추천 표시는 없습니다(v6-5부터 수송·편함·승객 화살표는 다시 표시). 민심 변화·이벤트 영향·민감도 ★·이벤트 안내는 그대로 보여 줍니다.</li><li><b>v6 · 보통 난이도 힌트</b>: 카드의 수송·편함·승객 화살표와 예상·민심·이벤트 영향은 접혀 있고 ‘🧪 시범사업 운영’으로 펼쳐 봅니다. 한 판에 5회까지(같은 라운드 같은 카드는 다시 봐도 무료, 되돌리기로 복구되지 않음). 값·점수 계산은 같고 사용 횟수는 점수에 영향이 없습니다. 입문은 항상 표시, 어려움은 표시하지 않습니다.</li>
 <li><b>v6 신규 카드</b>: 🔗 <b>겹치는 노선 통폐합</b>(2라운드) — 전장 안 비간선 노선 중 경유 생활권이 40% 이상 겹치는 짝(같은 번호의 방향 변형 제외) 상위 3쌍에서 이용이 적은 쪽을 6~22시 60% 줄이고 남긴 쪽을 25% 늘립니다. 줄어든 노선 손님은 두 노선 배차를 합쳐 기다리고(경로 절충으로 차내 +6%), 그 구간 읍면 최소 서비스는 합친 노선이 맡습니다. ✂️ <b>긴 노선 둘로 나누기</b>(2라운드) — 왕복 90분 이상 노선 상위 3개를 전장 거점에서 끊어(전장을 넘는 손님 강제 환승, 차량은 전장 구간만큼) 속도 +8%·배차 +10%. 🤝 <b>민관 협력 셔틀</b>(3라운드) — 학교·대학·병원·보건·공공·마트·터미널이 몰린 생활권 3곳에 7~20시 순환버스 2대씩, 반경 1.5km 시설까지 직접 연결, 해당 생활권 호감 +0.02. 🕰️ <b>허브 연계 시각표</b>(5라운드) — 거점 환승 대기 가중 ×0.55(RAPTOR 이동시간표의 거점 환승 대기에도 같은 배율), 갈아타기 벌점 −1분, 대신 전장 간선·지선 회차 대기 +2분(차량 소요 증가)·전장 노선 대기 ×1.02(배차 융통성 저하). 계수는 모두 가정치입니다. 민원 민감도: 통폐합 ★★, 분할 ★, 민관 협력·허브 연계 시각표는 비민감.</li>
 <li><b>운행대수 맞추기(설계서 5.6절)</b>: 분 단위로 노선별 동시 운행 대수를 다시 합산하고, 시간대별 현행 최대값을 넘으면 그 시간대 승객 대비 버스가 남는 노선부터 배차를 10%씩 줄입니다(최소 서비스 하한 유지). 하루 운행 횟수(5,287회)도 같은 방식으로 맞춥니다. 끝까지 맞출 수 없으면 카드가 🔒 잠깁니다.</li>
 <li><b>기존 승객 이동 부담</b>: OD 묶음마다 걷기×w<sub>walk</sub> + 기다리기(배차간격/2, 최대 15분)×w<sub>wait</sub> + 차내시간 + 갈아타기 벌점 τ + 환승 대기를 현행·개편 각각 계산합니다.</li>
@@ -2262,10 +2277,10 @@ const T0STEPS=[
  {t:'.scoreBox',h:'🏆 점수 = 효율지수',b:'현행 노선 = <b>1000점</b>. 효율은 세 가지로 매겨요: 🚍 <b>수송 효율 30%</b>(버스 한 대가 태우는 승객) · 😊 <b>기존 승객 편익 40%</b>(걷기·기다림·갈아타기) · 👥 <b>승객 수 30%</b>(새로 타는 사람 − 떠나는 사람). 고른 <b>전장 85% + 나머지 15%</b>로 합산하고, 🏝️ 섬 전역을 고르면 섬 전체 100%예요.'},
  {t:'#satBox',h:'📢 민심 게이지',b:'점수와 따로 <b>주민 만족도</b>(시작 70)가 있어요. 배차를 줄이거나 DRT로 바꾸거나 갈아타기를 늘리면 민원이 쌓여요. <b>50 아래</b>면 감점과 일부 카드 잠금, <b>30 아래</b>면 등급이 B로 묶여요!'},
  {t:'#evBar',h:'⚡ 돌발 이벤트',b:'시즌마다 태풍·안개·관광 성수기·요금 인상·버스 파업·안내 시스템 마비 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. 같은 카드도 이벤트에 따라 효과가 달라지니, 카드의 <b>⚡ 이벤트 영향</b>을 보세요.',bh:'시즌마다 태풍·안개·관광 성수기·요금 인상·버스 파업·안내 시스템 마비 같은 <b>돌발 이벤트</b>가 라운드 사이에 터질 수 있어요. <b>어려움</b>에선 시즌에 몇 번 더 터질지, 카드별로 어떤 효과가 날지 미리 알려 드리지 않아요. 터지면 ↶ 직전 카드 다시 고르기로 대응할 수 있어요.'},
- {t:'#cards',h:'🃏 카드 고르기',b:'라운드마다 카드 한 장을 골라요. (보통 난이도는 카드의 <b>🔍 예상 보기</b>를 눌러야 화살표가 보여요.) 새 카드 🔗 노선 통폐합·✂️ 노선 분할·🤝 민관 협력 셔틀·🕰️ 허브 연계 시각표도 섞여 나와요. 카드엔 <b>수송·편함·승객</b> 화살표와 예상 변화, 민원 민감도 ★가 표시돼요. 이제 연습 카드로 직접 해 볼까요?',bh:'라운드마다 카드 한 장을 골라요. <b>어려움</b>에선 카드에 점수·방향 미리보기와 민원 민감도 표시가 없어요 — 카드 이름과 설명만 보고 판단하고, 결과는 고른 뒤에 공개돼요. 이제 연습 카드를 눌러 볼까요?'},
+ {t:'#cards',h:'🃏 카드 고르기',b:'라운드마다 카드 한 장을 골라요. (입문은 수송·편함·승객 ▲▼가 늘 보이고, 보통은 2라운드부터 카드의 <b>🧪 시범사업 운영</b>으로 한 판 5회까지 볼 수 있어요.) 새 카드 🔗 노선 통폐합·✂️ 노선 분할·🤝 민관 협력 셔틀·🕰️ 허브 연계 시각표도 섞여 나와요. 카드엔 <b>수송·편함·승객</b> 화살표와 예상 변화, 민원 민감도 ★가 표시돼요. 이제 연습 카드로 직접 해 볼까요?',bh:'라운드마다 카드 한 장을 골라요. <b>어려움</b>에선 카드에 점수·방향 미리보기와 민원 민감도 표시가 없어요 — 카드 이름과 설명만 보고 판단하고, 결과는 고른 뒤에 공개돼요. 이제 연습 카드를 눌러 볼까요?'},
  {t:null,prac:1,h:'🧪 연습 ① 큰길 버스 정책',b:'연습 무대: <b>🌅 서쪽 노을 해안(애월·한림)</b>, 입문 난이도, 이벤트 없음. 두 카드 중 하나를 눌러 보세요.'},
  {t:null,prac:2,h:'🧪 연습 ② 부르면 오는 버스(DRT)',b:'같은 무대에서 이번엔 DRT 카드예요. 점수와 <b>민심</b>이 어떻게 갈리는지 보세요.',bh:'같은 무대에서 이번엔 DRT 카드예요. 한산한 마을을 DRT로 바꾸는 건 효율과 <b>민심</b> 사이의 줄다리기예요. 어려움에선 결과를 미리 알려 드리지 않아요.'},
- {t:'#btnUndo',h:'↶ 되돌리기 & 다시 보기',b:'실수해도 괜찮아요. <b>↶ 되돌리기</b>로 한 수 물릴 수 있어요. 이 튜토리얼은 위의 <b>🎓 튜토리얼</b> 버튼으로 언제든 다시 볼 수 있어요. 자, 진짜 1라운드로!'}
+ {t:'#btnUndo',h:'↶ 되돌리기 & 다시 보기',b:'실수해도 괜찮아요. <b>↶ 되돌리기</b>로 한 수 물릴 수 있어요. 단, 입문·보통은 한 판에 <b>1번</b>, 어려움은 쓸 수 없어요. 이 튜토리얼은 위의 <b>🎓 튜토리얼</b> 버튼으로 언제든 다시 볼 수 있어요. 자, 진짜 1라운드로!'}
 ];
 const PRAC={1:{path:['r1'],opts:['golden','keep']},2:{path:['r1','golden','none'],opts:['convert','night']}};
 function t0Open(onEnd){T0.i=0;T0.on=true;T0.pick={};T0.onEnd=onEnd||null;$('#t0').classList.add('show');document.documentElement.classList.add('t0on');try{SFX.tut()}catch(e){}t0Render()}
