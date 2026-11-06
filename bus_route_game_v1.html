@@ -1493,7 +1493,7 @@ function tryTiles(){const img=new Image();let done=false;img.crossOrigin='anonym
   const to=setTimeout(()=>{if(done)return;done=true;tileMode='vector';$('#mapMode').textContent='오프라인 벡터 지도 (타일 3초 내 미응답) · 지형: Terrain Tiles';dirty=true},3000);
   img.onload=()=>{if(done)return;done=true;clearTimeout(to);
     let bright=-1;try{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.drawImage(img,0,0);const d=x.getImageData(32,32,192,192).data;bright=0;for(let i=0;i<d.length;i+=4){if(Math.max(d[i],d[i+1],d[i+2])>110)bright++}}catch(e){bright=-1}
-    if(bright<0||bright>120){tileMode='vector';$('#mapMode').textContent=(bright<0?'오프라인 벡터 지도 (타일 확인 불가)':'오프라인 벡터 지도 (CARTO 타일이 API 키를 요구함)')+' · 지형: Terrain Tiles';dirty=true;return}
+    if(bright<0||bright>120){tileMode='vector';$('#mapMode').textContent=(bright<0?'오프라인 벡터 지도 (타일 확인 불가)':'오프라인 벡터 지도')+' · 지형: Terrain Tiles';dirty=true;return}
     tileMode='tile';$('#mapMode').textContent='배경: © OpenStreetMap contributors © CARTO · 지형: Terrain Tiles';dirty=true};
   img.onerror=()=>{if(done)return;done=true;clearTimeout(to);tileMode='vector';$('#mapMode').textContent='오프라인 벡터 지도 (타일 로드 실패) · 지형: Terrain Tiles';dirty=true};
   img.src='https://a.basemaps.cartocdn.com/dark_all/9/436/207.png'}
