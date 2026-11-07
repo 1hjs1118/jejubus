@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>버스노선 개편 시뮬레이션 게임 v8-2 (시설물 표시) — 제주</title>
+<title>버스노선 개편 시뮬레이션 게임 v8-3 (시설 카테고리 확장) — 제주</title>
 <meta name="description" content="제주 버스노선 개편 시뮬레이션 게임">
 <style>
 :root{--bg:#070b14;--bg2:#0c1322;--panel:rgba(12,19,34,.86);--gold:#c8aa6e;--gold2:#f0e6d2;--goldD:#785a28;--cyan:#0ac8b9;--blue:#0bc4e3;--mag:#ff4fd8;--vio:#9d6bff;--red:#ff4655;--grn:#3ddc84;--txt:#e8e2d4;--mut:#9aa3b5;
@@ -376,7 +376,7 @@ html.t0on #cards .card{pointer-events:none}
         <div class="seg" id="laySeg"><button data-l="heat" class="on">접근성 변화</button><button data-l="bus" class="on">달리는 버스</button><button data-l="net">환승 격차</button><button data-l="ev" class="on">⚡ 이벤트</button><button data-l="comp">📢 민원</button></div>
         <span class="term" data-term="3D" title="3D 지형 조작법">?</span>
         <div class="seg miSeg" id="miSeg"><label>생활권 <select id="miLa"><option value="off">끔</option><option value="dem">수요</option><option value="sup">운행(공급)</option><option value="gap">공급−수요</option><option value="acc">접근성 변화</option><option value="comp">민원 강도</option></select></label><button id="miOd">⌒ OD 흐름</button><select id="miBand" title="OD 시간대"><option value="all">하루</option><option value="am">07–09</option><option value="mid">10–16</option><option value="pm">17–19</option><option value="night">20–</option></select><label>노선 <select id="miRt"><option value="base">종류</option><option value="freq">운행횟수</option><option value="vc">혼잡 V/C</option></select></label><span class="term" data-term="정보지도">?</span></div>
-        <div class="seg" id="facSeg" style="font-size:11px"><label style="color:#cfd8e6">시설 <select id="facCat" multiple size="1" title="Ctrl/Cmd로 다중선택"><option value="교통거점">교통거점</option><option value="병원·의료">병원·의료</option><option value="대학교">대학교</option><option value="공공·업무">관공서</option></select></label><button id="facClear" class="ghostBtn" style="padding:2px 6px;font-size:10px">끄기</button></div>
+        <div class="seg" id="facSeg" style="font-size:11px"><label style="color:#cfd8e6">시설 <select id="facCat" multiple size="1" title="Ctrl/Cmd로 다중선택"><option value="교통거점">교통거점</option><option value="병원·의료">병원·의료</option><option value="대학교">대학교</option><option value="공공·업무">관공서</option><option value="학교">초중고등학교</option><option value="호텔·리조트">호텔/리조트</option><option value="대형마트·상권">대형마트/상권</option><option value="공동주택">공동주택</option><option value="관광·문화·여가">관광/문화/여가</option></select></label><button id="facClear" class="ghostBtn" style="padding:2px 6px;font-size:10px">끄기</button></div>
       </div><div id="miLeg"></div><div id="miTip"></div>
       <div id="mapClock"></div>
       <div id="pplHud" style="display:none" aria-live="polite"></div>
@@ -1551,7 +1551,7 @@ function paintStatic(c,W,H,T,k,sc,tex){c.clearRect(0,0,W,H);c.fillStyle='#07080a
   try{miPaint(c,T,sc,tex,viewMode)}catch(e){}
   // v8-2: 주요 시설물 표시 (교통거점·병원·대학교·관공서)
   try{if(window.FAC_SHOW&&window.FAC_SHOW.size&&E.FAC){const cats=window.FAC_SHOW;c.save();c.globalAlpha=0.95;c.font='bold 10px sans-serif';c.textAlign='center';
-    for(const f of E.FAC){if(!cats.has(f.cat))continue;const [x,y]=T(mx(f.lon),my(f.lat));const col=f.cat==='교통거점'?'#4fc3ff':f.cat==='병원·의료'?'#ff6b6b':f.cat==='대학교'?'#ffd23f':'#c38bff';
+    for(const f of E.FAC){if(!cats.has(f.cat))continue;const [x,y]=T(mx(f.lon),my(f.lat));const col=({'교통거점':'#4fc3ff','병원·의료':'#ff6b6b','대학교':'#ffd23f','공공·업무':'#c38bff','학교':'#ff9800','호텔·리조트':'#9c27b0','대형마트·상권':'#e91e63','공동주택':'#3f51b5','관광·문화·여가':'#4caf50'})[f.cat]||'#aaa';
       c.fillStyle=col;c.strokeStyle='#000';c.lineWidth=1.5*sc;c.beginPath();c.arc(x,y,4.5*sc,0,7);c.fill();c.stroke();
       if(!tex&&view.z>9){c.strokeStyle='#000';c.lineWidth=2.5*sc;c.strokeText(f.n.slice(0,8),x,y-8*sc);c.fillStyle='#fff';c.fillText(f.n.slice(0,8),x,y-8*sc)}}}c.restore()}catch(e){}
   for(let g=0;g<E.hubs.length;g++){const h=E.hubs[g];const [x,y]=T(mx(h.lon),my(h.lat));const s6=6*sc;c.fillStyle=g===reg?'#ffe08a':'rgba(200,170,110,.7)';c.beginPath();c.moveTo(x,y-s6);c.lineTo(x+5*sc,y);c.lineTo(x,y+s6);c.lineTo(x-5*sc,y);c.closePath();c.fill();
