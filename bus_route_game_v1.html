@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>버스노선 개편 시뮬레이션 게임 v8-1 (사투리 정리·도심 해상도·엔딩 정확성) — 제주</title>
+<title>버스노선 개편 시뮬레이션 게임 v8-2 (시설물 표시) — 제주</title>
 <meta name="description" content="제주 버스노선 개편 시뮬레이션 게임">
 <style>
 :root{--bg:#070b14;--bg2:#0c1322;--panel:rgba(12,19,34,.86);--gold:#c8aa6e;--gold2:#f0e6d2;--goldD:#785a28;--cyan:#0ac8b9;--blue:#0bc4e3;--mag:#ff4fd8;--vio:#9d6bff;--red:#ff4655;--grn:#3ddc84;--txt:#e8e2d4;--mut:#9aa3b5;
@@ -376,6 +376,7 @@ html.t0on #cards .card{pointer-events:none}
         <div class="seg" id="laySeg"><button data-l="heat" class="on">접근성 변화</button><button data-l="bus" class="on">달리는 버스</button><button data-l="net">환승 격차</button><button data-l="ev" class="on">⚡ 이벤트</button><button data-l="comp">📢 민원</button></div>
         <span class="term" data-term="3D" title="3D 지형 조작법">?</span>
         <div class="seg miSeg" id="miSeg"><label>생활권 <select id="miLa"><option value="off">끔</option><option value="dem">수요</option><option value="sup">운행(공급)</option><option value="gap">공급−수요</option><option value="acc">접근성 변화</option><option value="comp">민원 강도</option></select></label><button id="miOd">⌒ OD 흐름</button><select id="miBand" title="OD 시간대"><option value="all">하루</option><option value="am">07–09</option><option value="mid">10–16</option><option value="pm">17–19</option><option value="night">20–</option></select><label>노선 <select id="miRt"><option value="base">종류</option><option value="freq">운행횟수</option><option value="vc">혼잡 V/C</option></select></label><span class="term" data-term="정보지도">?</span></div>
+        <div class="seg" id="facSeg" style="font-size:11px"><label style="color:#cfd8e6">시설 <select id="facCat" multiple size="1" title="Ctrl/Cmd로 다중선택"><option value="교통거점">교통거점</option><option value="병원·의료">병원·의료</option><option value="대학교">대학교</option><option value="공공·업무">관공서</option></select></label><button id="facClear" class="ghostBtn" style="padding:2px 6px;font-size:10px">끄기</button></div>
       </div><div id="miLeg"></div><div id="miTip"></div>
       <div id="mapClock"></div>
       <div id="pplHud" style="display:none" aria-live="polite"></div>
@@ -1548,6 +1549,11 @@ function paintStatic(c,W,H,T,k,sc,tex){c.clearRect(0,0,W,H);c.fillStyle='#07080a
       c.fillStyle=`rgba(${col},.75)`;c.beginPath();c.arc(x,y,r,0,7);c.fill();const dd=x_.T1-x_.T0;if(Math.abs(dd)>0.5){c.strokeStyle=dd<0?'#7dffb0':'#ff5a6a';c.lineWidth=2*sc;c.beginPath();c.arc(x,y,r+3*sc,0,7);c.stroke()}}}
   // v7-4: 정보 지도 — 생활권 색(코로플레스), 노선 굵기·색(운행·혼잡), OD 흐름 호. 중립 색(증가/감소 방향만)
   try{miPaint(c,T,sc,tex,viewMode)}catch(e){}
+  // v8-2: 주요 시설물 표시 (교통거점·병원·대학교·관공서)
+  try{if(window.FAC_SHOW&&window.FAC_SHOW.size&&E.FAC){const cats=window.FAC_SHOW;c.save();c.globalAlpha=0.95;c.font='bold 10px sans-serif';c.textAlign='center';
+    for(const f of E.FAC){if(!cats.has(f.cat))continue;const [x,y]=T(mx(f.lon),my(f.lat));const col=f.cat==='교통거점'?'#4fc3ff':f.cat==='병원·의료'?'#ff6b6b':f.cat==='대학교'?'#ffd23f':'#c38bff';
+      c.fillStyle=col;c.strokeStyle='#000';c.lineWidth=1.5*sc;c.beginPath();c.arc(x,y,4.5*sc,0,7);c.fill();c.stroke();
+      if(!tex&&view.z>9){c.strokeStyle='#000';c.lineWidth=2.5*sc;c.strokeText(f.n.slice(0,8),x,y-8*sc);c.fillStyle='#fff';c.fillText(f.n.slice(0,8),x,y-8*sc)}}}c.restore()}catch(e){}
   for(let g=0;g<E.hubs.length;g++){const h=E.hubs[g];const [x,y]=T(mx(h.lon),my(h.lat));const s6=6*sc;c.fillStyle=g===reg?'#ffe08a':'rgba(200,170,110,.7)';c.beginPath();c.moveTo(x,y-s6);c.lineTo(x+5*sc,y);c.lineTo(x,y+s6);c.lineTo(x-5*sc,y);c.closePath();c.fill();
     if(g===reg&&!tex){c.font='bold 12px sans-serif';c.fillStyle='#f0e6d2';c.strokeStyle='#000';c.lineWidth=3;const t=h.n.replace(/\(.*$/,'').replace(/\[.*$/,'');c.strokeText(t,x+8,y-6);c.fillText(t,x+8,y-6)}}
   if(false){const [x,y]=T(mx(PEAK.lon),my(PEAK.lat));c.fillStyle='#ffe9b0';c.beginPath();c.moveTo(x,y-7);c.lineTo(x+6,y+4);c.lineTo(x-6,y+4);c.closePath();c.fill();c.font='bold 12px sans-serif';c.strokeStyle='#000';c.lineWidth=3;const t='한라산 1,947m';c.strokeText(t,x+9,y+4);c.fillText(t,x+9,y+4)}
@@ -2531,11 +2537,20 @@ function miTipShow(li,cx,cy){const t=$('#miTip');const M=MI.data;if(li<0||!M||!M
   const n=v=>Math.round(v).toLocaleString('ko-KR');
   t.innerHTML=`<b>${l.n}</b><br>인구 ${n(l.pop)}명<br>버스 통행 수요 ${n(x.q0)} → ${n(x.q1)}명/일<br>운행횟수 ${n(x.s0)} → ${n(x.s1)}회/일<br>접근성 ${x.a>=0?'+':''}${(100*x.a).toFixed(1)}%<br>민원 강도 ${x.sev.toFixed(3)} · ${x.cc.toFixed(1)}건/월${pairs.length?'<br>주요 OD 상대: '+pairs.join(', '):''}${rs.length?'<br>이용 노선: '+rs.slice(0,4).map(([ri,q])=>`${D.R[ri].l}(${n(q)})`).join(', '):''}`;
   const r=$('#mapWrap').getBoundingClientRect();t.style.display='block';const w=t.offsetWidth,h=t.offsetHeight;t.style.left=Math.max(4,Math.min(r.width-w-4,cx-r.left+12))+'px';t.style.top=Math.max(4,Math.min(r.height-h-4,cy-r.top+12))+'px'}
+// v8-2: 시설물 표시
+window.FAC_SHOW=new Set();
+const facSel=$('#facCat');if(facSel){facSel.onchange=()=>{window.FAC_SHOW=new Set([...facSel.selectedOptions].map(o=>o.value));dirty=true;if(mode3D&&G3){G3.texDirty=true;G3.need=true}}};
+const facClr=$('#facClear');if(facClr)facClr.onclick=()=>{facSel.selectedIndex=-1;window.FAC_SHOW.clear();dirty=true;if(mode3D&&G3){G3.texDirty=true;G3.need=true}};
 (function(){const sel=(id,f)=>{const e=$(id);if(e)e.onchange=()=>{f(e.value);miLegend();dirty=true;if(mode3D&&G3){G3.texDirty=true;G3.need=true}}};
   sel('#miLa',v=>MI.la=v);sel('#miBand',v=>{MI.band=v;miCalc()});sel('#miRt',v=>MI.rt=v);const ob=$('#miOd');if(ob)ob.onclick=()=>{MI.od=!MI.od;ob.classList.toggle('on',MI.od);miLegend();dirty=true;if(mode3D&&G3){G3.texDirty=true;G3.need=true}};
+  function facPick(cx,cy){if(!window.FAC_SHOW||!window.FAC_SHOW.size||!E.FAC)return -1;const r=mA.getBoundingClientRect();const x=cx-r.left,y=cy-r.top;let best=-1,bd=18*18;
+    for(let i=0;i<E.FAC.length;i++){const f=E.FAC[i];if(!window.FAC_SHOW.has(f.cat))continue;const p=w2s(mx(f.lon),my(f.lat));if(!p)continue;const d=(p[0]-x)**2+(p[1]-y)**2;if(d<bd){bd=d;best=i}}return best}
+  function facTipShow(fi,cx,cy){const t=$('#miTip');if(fi<0||!E.FAC[fi]){return false}const f=E.FAC[fi];
+    t.innerHTML=`<b>${f.n}</b><br><span class="lbl">${f.cat}</span>`;
+    const r=$('#mapWrap').getBoundingClientRect();t.style.display='block';const w=t.offsetWidth,h=t.offsetHeight;t.style.left=Math.max(4,Math.min(r.width-w-4,cx-r.left+12))+'px';t.style.top=Math.max(4,Math.min(r.height-h-4,cy-r.top+12))+'px';return true}
   let down=null;mA.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY}},true);
-  mA.addEventListener('pointerup',e=>{if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<6){const li=miPick(e.clientX,e.clientY);miTipShow(li,e.clientX,e.clientY)}down=null},true);
-  mA.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType!=='mouse')return;clearTimeout(MI.ht);MI.ht=setTimeout(()=>miTipShow(miPick(e.clientX,e.clientY),e.clientX,e.clientY),60)});
+  mA.addEventListener('pointerup',e=>{if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<6){const fi=facPick(e.clientX,e.clientY);if(fi>=0)facTipShow(fi,e.clientX,e.clientY);else{const li=miPick(e.clientX,e.clientY);miTipShow(li,e.clientX,e.clientY)}}down=null},true);
+  mA.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType!=='mouse')return;clearTimeout(MI.ht);MI.ht=setTimeout(()=>{const fi=facPick(e.clientX,e.clientY);if(fi>=0)facTipShow(fi,e.clientX,e.clientY);else miTipShow(miPick(e.clientX,e.clientY),e.clientX,e.clientY)},60)});
   mA.addEventListener('pointerleave',()=>{if($('#miTip'))$('#miTip').style.display='none'});
   $$('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{miLegend();if(mode3D&&G3){G3.texDirty=true;G3.need=true}}))})();
 window.__TEST__={MI,miCalc,miPick,miTipShow,w2s,XP,VIC,RG,regLoops,regCam,openTut,landVid:()=>landVid,AUD,getAC:()=>AC,getMG:()=>MG,getBG:()=>BG,BGM,SFX,audApply,get PPL(){return PPL},PPL_ALL,pplSync,pplReview,pplCalc,showPpl,get PPLV(){return PPLV},T0,t0Open,t0Close,T0STEPS,is3D:()=>mode3D,SEA:()=>SEA,showEvent,envAt,BD,bdCSV,bdRows,set3D,camPreset,G3,S,G,E,choose:id=>{const el=document.querySelector(`.card[data-id="${id}"]`);choose(id,el||document.body)},evalPath,get cur(){return cur},showFinal};
