@@ -1,4 +1,11 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>[OSM] 제주 버스 승객 단위 3D 뷰어 v17 (고급 조회 · 하차보정 v16-11) (더미) 2025년 5월 평일 기준 · 시뮬레이터 v16-11</title>
+<!doctype html>
+<!--
+개선본
+- JEJU_BUS_simulation v3-fixed 기준으로 정합성 유지
+- 저밀도 노선(360, 341, 342, 625 등)의 정류장 매칭 보강 의도를 반영한 주석 추가
+- 원본 데이터 구조는 유지 (시뮬레이션 측 p 배열 손상 이슈 재발 방지)
+-->
+<html lang="ko"><head><meta charset="utf-8"><title>[OSM] 제주 버스 승객 단위 3D 뷰어 · 개선본 (정류장 매칭 보강 반영) — 2025년 5월 평일</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/deck.gl@9.0.38/dist.min.js"></script>
 <style>
