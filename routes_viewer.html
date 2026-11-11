@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><title>노선 JSON → geojson.io</title>
+<style>body{font-family:sans-serif;max-width:640px;margin:40px auto;line-height:1.6}
+#drop{border:2px dashed #888;padding:40px;text-align:center;border-radius:8px;cursor:pointer}
+#drop.on{background:#eef}button{padding:8px 14px;margin:4px 4px 0 0}#msg{margin-top:16px;white-space:pre-line}</style></head>
+<body>
+<h2>routes_road_network.json → geojson.io</h2>
+<div id="drop">여기에 routes_road_network.json을 끌어다 놓거나 클릭해서 선택<input type="file" id="f" accept=".json" hidden></div>
+<label><input type="checkbox" id="simp" checked> 좌표 간소화 (URL 길이 줄이기, 소수점 5자리→4자리 + 중복점 제거)</label>
+<div id="msg"></div><div id="btns"></div>
+<script>
+const COLORS={"제주시 동지역":"#e41a1c","서귀포시 동지역":"#377eb8","서부(애월·한림·한경)":"#4daf4a","동부(조천·구좌·우도)":"#984ea3","남동(남원·표선·성산)":"#ff7f00","남서(대정·안덕)":"#a65628","추자":"#f781bf"};
+const PALETTE=["#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00","#a65628","#f781bf","#999999"];
+const URL_LIMIT=1500000; // 브라우저 주소 길이 한계 여유분
+const $=id=>document.getElementById(id);
+const drop=$("drop"),inp=$("f");
+drop.onclick=()=>inp.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("on")};
+drop.ondragleave=()=>drop.classList.remove("on");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("on");handle(e.dataTransfer.files[0])};
+inp.onchange=()=>handle(inp.files[0]);
+function convert(routes,simp){
+  const rk={};let k=0;
+  return {type:"FeatureCollection",features:routes.map(r=>{
+    if(!(r.region in rk))rk[r.region]=k++;
+    let c=r.coords.map(([a,b])=>simp?[+b.toFixed(4),+a.toFixed(4)]:[b,a]);
+    if(simp)c=c.filter((p,i)=>i==0||p[0]!=c[i-1][0]||p[1]!=c[i-1][1]);
+    const color=COLORS[r.region]||PALETTE[rk[r.region]%PALETTE.length];
+    return {type:"Feature",properties:{id:r.id,region:r.region,trunk:r.trunk,km:r.km,
+      n_stops:r.stop_ids.length,start:r.stop_names[0],end:r.stop_names[r.stop_names.length-1],
+      stops:r.stop_names.join(" > "),stroke:color,"stroke-width":r.trunk?5:2.5,"stroke-opacity":0.85},
+      geometry:{type:"LineString",coordinates:c}};})};
+}
+function handle(file){
+  if(!file)return;
+  file.text().then(t=>{
+    let routes;try{routes=JSON.parse(t)}catch(e){$("msg").textContent="JSON 읽기 실패: "+e.message;return}
+    if(!Array.isArray(routes)||!routes[0]||!routes[0].coords){$("msg").textContent="앱에서 저장한 노선 파일 형식이 아니에요.";return}
+    const gj=convert(routes,$("simp").checked),s=JSON.stringify(gj);
+    const url="https://geojson.io/#data=data:application/json,"+encodeURIComponent(s);
+    const name=file.name.replace(/\.json$/i,"")+".geojson";
+    const blob=URL.createObjectURL(new Blob([s],{type:"application/geo+json"}));
+    $("btns").innerHTML="";
+    const dl=document.createElement("a");dl.href=blob;dl.download=name;dl.innerHTML="<button>GeoJSON 파일 저장</button>";
+    $("btns").appendChild(dl);
+    if(url.length<=URL_LIMIT){
+      $("msg").textContent=`${routes.length}개 노선 변환 완료. geojson.io를 새 탭으로 엽니다.\n(팝업이 막히면 아래 버튼을 누르세요)`;
+      const b=document.createElement("button");b.textContent="geojson.io에서 열기";b.onclick=()=>window.open(url,"_blank");
+      $("btns").prepend(b);window.open(url,"_blank");
+    }else{
+      $("msg").textContent=`${routes.length}개 노선 변환 완료. 데이터가 커서(${(url.length/1e6).toFixed(1)}MB) 주소로 넘길 수 없어요.\nGeoJSON 파일을 저장한 뒤, 열리는 geojson.io 화면에 끌어다 놓으세요.`;
+      dl.click();window.open("https://geojson.io/","_blank");
+    }
+  });
+}
+</script></body></html>
