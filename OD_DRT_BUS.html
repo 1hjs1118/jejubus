@@ -990,10 +990,15 @@ if(window.L){
     maxZoom:19,
     attribution:'Tiles &copy; Esri, Maxar, Earthstar Geographics'
   });
+  var baseDark=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    maxZoom:19,
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO | DRT OD analysis',
+    subdomains:'abcd'
+  });
   tiles=baseOSM;
   tiles.addTo(map);
   window.__odMap=map;
-  L.control.layers({'OSM':baseOSM,'Satellite':baseSat},null,{position:'topright',collapsed:true}).addTo(map);
+  L.control.layers({'OSM':baseOSM,'Satellite':baseSat,'Dark Matter':baseDark},null,{position:'topright',collapsed:true}).addTo(map);
   nativeRenderer=L.canvas({padding:0.5});
   flowLayer=L.layerGroup().addTo(map);
   heatOLayer=L.layerGroup().addTo(map);
